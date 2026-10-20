@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription><name>ascott.mcp.get-property-details.xapi</name><comment>T-02 get_property_details experience API</comment><projects/><buildSpec><buildCommand><name>org.eclipse.jdt.core.javabuilder</name><arguments/></buildCommand><buildCommand><name>org.mule.tooling.core.muleStudioBuilder</name><arguments/></buildCommand></buildSpec><natures><nature>org.mule.tooling.core.muleStudioNature</nature><nature>org.eclipse.jdt.core.javanature</nature></natures></projectDescription>
