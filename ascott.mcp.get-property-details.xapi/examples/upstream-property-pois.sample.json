@@ -1,0 +1,18 @@
+{
+  "properties": [
+    {
+      "propertyCode": "50926",
+      "pois": [
+        { "poiId": "poi-50926-01", "poiName": "Green Oasis - CapitaSpring", "poiCategory": "Landmarks & Outdoors", "poiType": "Viewpoint", "iconCode": "🌳", "latitude": "1.2834", "longitude": "103.8505", "poiAddress": "88 Market St, Singapore 048948", "distanceMetres": "350" },
+        { "poiId": "poi-50926-02", "poiName": "Singapore Chinatown", "poiCategory": "Shopping", "poiType": "Artisan market", "iconCode": "🛍️", "latitude": "1.2838", "longitude": "103.8436", "poiAddress": "Chinatown, Singapore", "distanceMinutes": 12 },
+        { "poiId": "poi-50926-03", "poiName": "No coordinates", "poiCategory": "Shopping", "poiType": "Boutique", "iconCode": "🛍️" }
+      ]
+    },
+    {
+      "propertyCode": "10183",
+      "pois": [
+        { "poiId": "poi-10183-01", "poiName": "Other property's POI", "poiCategory": "Wellness", "poiType": "Spa", "iconCode": "💆", "latitude": "1.30", "longitude": "103.80" }
+      ]
+    }
+  ]
+}

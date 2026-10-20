@@ -1,0 +1,78 @@
+{
+  "propertyCode": "50926",
+  "propertyName": "Ascott Raffles Place Singapore",
+  "brand": "ascott-the-residence",
+  "brandName": "Ascott The Residence",
+  "brandlogo": "/content/dam/ascott/brand/ascott-the-residence-logo.svg",
+  "bannerImageMobile": "/content/dam/ascott/50926/banner-mobile.jpg",
+  "newPropertyThumbnail": "/content/dam/ascott/50926/thumbnail.jpg",
+  "propertyType": "Serviced Apartments",
+  "asrParticipating": true,
+  "email": "enquiry.arps@the-ascott.com",
+  "phone": "+65 6277 8888",
+  "tag": [
+    { "propertyTagTitle": "CBD", "propertyTagPresent": true },
+    { "propertyTagTitle": "Business-friendly", "propertyTagPresent": true },
+    { "propertyTagTitle": "Beachfront", "propertyTagPresent": false }
+  ],
+  "descriptionTitle": "Singapore Serviced Apartments",
+  "description": "<p>Heritage residence in the heart of Raffles Place.</p>",
+  "gallery": [
+    { "path": "/content/dam/ascott/50926/gallery-1.jpg", "galleryImage": "gallery-1.jpg", "galleryType": "image", "title": "Lobby" },
+    { "path": "/content/dam/ascott/50926/gallery-2.jpg", "galleryType": "image", "title": "" }
+  ],
+  "pricing": {
+    "perNightRatePrefCurr": "312.50",
+    "totalStayRatePrefCurr": "937.50",
+    "strikethroughRate": "350.00",
+    "currency": "SGD",
+    "basedOn": { "checkin": "2026-11-12", "checkout": "2026-11-15", "adults": 2, "children": 0 }
+  },
+  "location": {
+    "city": "Singapore",
+    "country": "Singapore",
+    "countryCode": "sg",
+    "address": "2 Finlayson Green, Singapore 049247",
+    "localAddress": "",
+    "latitude": "1.2823",
+    "longitude": "103.8520",
+    "mapImage": "/content/dam/ascott/50926/map.png",
+    "gettingToProperty": { "title": "Getting to the property", "description": "<p>20 minutes from Changi Airport by taxi.</p>" },
+    "publicTransport": { "title": "Public transport", "description": "<p>Raffles Place MRT, 3 minutes' walk.</p>" }
+  },
+  "amenities": {
+    "facilityGroup": [
+      {
+        "entityName": "facilities-amenities",
+        "entityTitle": "Facilities & Amenities with Icon",
+        "facilities": [
+          { "description": "Pool", "imagePath": "/icons/icon-pool.svg", "charge": null, "enabled": true },
+          { "description": "Gym", "imagePath": "/icons/icon-gym.svg", "enabled": true },
+          { "description": "pool", "imagePath": "/icons/icon-pool.svg", "enabled": true }
+        ]
+      },
+      {
+        "entityName": "in-room",
+        "facilities": [
+          { "description": "Gym", "imagePath": "/icons/icon-gym.svg", "enabled": true },
+          { "description": "Kitchen", "imagePath": "/icons/icon-kitchen.svg", "charge": "free", "enabled": true }
+        ]
+      }
+    ]
+  },
+  "reviews": {
+    "averageRatings": 4.6,
+    "totalNumberOfReviews": "1284",
+    "scoreLabel": "Excellent",
+    "individualReviews": [
+      { "reviewerName": "Andy Andrea", "rating": 5, "postedDate": "2026-07-14T09:00:00Z", "source": "Expedia", "text": "Spacious apartment, great location." }
+    ]
+  },
+  "hotel_information": {
+    "checkInTime": "15:00:00",
+    "checkOutTime": "12:00",
+    "staffLanguages": { "title": "Language(s) our staff speak", "languages": ["English", "Mandarin", "Malay"] },
+    "cancellationPolicy": "<p>Free cancellation up to 24 hours before arrival.</p>",
+    "bestRateGuaranteed": "Applicable under property's Terms and conditions"
+  }
+}

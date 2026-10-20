@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_property_details:request:1.0.0",
+  "title": "get_property_details request",
+  "description": "Body of POST /api/v1/property-details: the get_property_details tool arguments. Non-logged-in journey, so no user, member or session fields. propertyCode or propertyName is required; every other field has a server default (application.properties, default.*). Enforced by dwl/validate-request.dwl; unknown fields are ignored.",
+  "type": "object",
+  "anyOf": [
+    { "required": ["propertyCode"] },
+    { "required": ["propertyName"] }
+  ],
+  "properties": {
+    "propertyCode": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,20}$", "description": "e.g. \"50926\". Takes precedence over propertyName." },
+    "propertyName": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Used to look the property up when no propertyCode is given." },
+    "checkin": { "type": "string", "format": "date", "description": "Default: today + default.checkinOffsetDays. Not in the past." },
+    "checkout": { "type": "string", "format": "date", "description": "Default: checkin + default.nights. After checkin, at most request.maxNights nights." },
+    "adults": { "type": "integer", "minimum": 1, "maximum": 10, "default": 1 },
+    "children": { "type": "integer", "minimum": 0, "maximum": 10, "default": 0 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "ISO 4217 preferred currency. Default: upstream currency, else default.currency." },
+    "language": { "type": "string", "pattern": "^[a-z]{2}(-[A-Za-z]{2,4})?$", "default": "en" },
+    "maxPois": { "type": "integer", "minimum": 0, "maximum": 5, "default": 5, "description": "Upper bound for nearby[]; 0 skips the POI call." }
+  }
+}

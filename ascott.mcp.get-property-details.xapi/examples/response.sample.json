@@ -1,0 +1,80 @@
+{
+  "property_code": "50926",
+  "property_name": "Ascott Raffles Place Singapore",
+  "brand_code": "ascott-the-residence",
+  "brand_name": "Ascott The Residence",
+  "brand_logo_url": "/content/dam/ascott/brand/ascott-the-residence-logo.svg",
+  "banner_image_url": "/content/dam/ascott/50926/banner-mobile.jpg",
+  "thumbnail_url": "/content/dam/ascott/50926/thumbnail.jpg",
+  "property_type": "Serviced Apartments",
+  "asr_participating": true,
+  "email": "enquiry.arps@the-ascott.com",
+  "phone": "+65 6277 8888",
+  "tags": [
+    { "propertyTagTitle": "CBD", "propertyTagPresent": true },
+    { "propertyTagTitle": "Business-friendly", "propertyTagPresent": true },
+    { "propertyTagTitle": "Beachfront", "propertyTagPresent": false }
+  ],
+  "description_title": "Singapore Serviced Apartments",
+  "description": "<p>Heritage residence in the heart of Raffles Place.</p>",
+  "gallery": [
+    { "path": "/content/dam/ascott/50926/gallery-1.jpg", "gallery_image": "gallery-1.jpg", "gallery_type": "image", "title": "Lobby" },
+    { "path": "/content/dam/ascott/50926/gallery-2.jpg", "gallery_type": "image", "title": "Ascott Raffles Place Singapore" }
+  ],
+  "pricing": {
+    "availability_status": "available",
+    "per_night_rate_pref_curr": 312.50,
+    "total_stay_rate_pref_curr": 937.50,
+    "strikethrough_rate": 350.00,
+    "currency": "SGD",
+    "based_on": { "checkin": "2026-11-12", "checkout": "2026-11-15", "adults": 2, "children": 0 }
+  },
+  "location": {
+    "city": "Singapore",
+    "country": "Singapore",
+    "country_code": "SG",
+    "address": "2 Finlayson Green, Singapore 049247",
+    "coordinates": { "latitude": 1.2823, "longitude": 103.8520 },
+    "map_image_url": "/content/dam/ascott/50926/map.png",
+    "getting_to_property": { "title": "Getting to the property", "description": "<p>20 minutes from Changi Airport by taxi.</p>" },
+    "public_transport": { "title": "Public transport", "description": "<p>Raffles Place MRT, 3 minutes' walk.</p>" }
+  },
+  "amenities": {
+    "facility_groups": [
+      {
+        "entity_name": "facilities-amenities",
+        "entity_title": "Facilities & Amenities with Icon",
+        "facilities": [
+          { "description": "Pool", "imagePath": "/icons/icon-pool.svg", "enabled": true },
+          { "description": "Gym", "imagePath": "/icons/icon-gym.svg", "enabled": true }
+        ]
+      },
+      {
+        "entity_name": "in-room",
+        "facilities": [
+          { "description": "Kitchen", "imagePath": "/icons/icon-kitchen.svg", "charge": "free", "enabled": true }
+        ]
+      }
+    ]
+  },
+  "reviews": {
+    "average_ratings": 4.6,
+    "total_number_of_reviews": 1284,
+    "score_label": "Excellent",
+    "individual_reviews": [
+      { "reviewer_name": "Andy Andrea", "rating": 5, "posted_date": "2026-07-14", "source": "Expedia", "text": "Spacious apartment, great location." }
+    ]
+  },
+  "hotel_information": {
+    "check_in_time": "15:00:00",
+    "check_out_time": "12:00",
+    "staff_languages": { "title": "Language(s) our staff speak", "languages": ["English", "Mandarin", "Malay"] },
+    "cancellation_policy": "<p>Free cancellation up to 24 hours before arrival.</p>",
+    "best_rate_guaranteed": "Applicable under property's Terms and conditions"
+  },
+  "nearby": [
+    { "poi_id": "poi-50926-01", "title": "Green Oasis - CapitaSpring", "category": "Landmarks & Outdoors", "type": "Viewpoint", "icon_code": "🌳", "coordinates": { "latitude": 1.2834, "longitude": 103.8505 }, "address": "88 Market St, Singapore 048948", "distance_minutes": 5 },
+    { "poi_id": "poi-50926-02", "title": "Singapore Chinatown", "category": "Shopping", "type": "Artisan market", "icon_code": "🛍️", "coordinates": { "latitude": 1.2838, "longitude": 103.8436 }, "address": "Chinatown, Singapore", "distance_minutes": 12 }
+  ],
+  "asset_base_url": "https://www.discoverasr.com"
+}

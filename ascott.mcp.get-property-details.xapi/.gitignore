@@ -1,0 +1,10 @@
+target/
+.tools/
+logs/
+.runtime/
+__pycache__/
+*.db
+*.db-*
+*.local.properties
+*.lic
+dist/

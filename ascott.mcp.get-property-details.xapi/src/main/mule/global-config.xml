@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+  <configuration-properties file="application.properties"/>
+  <http:listener-config name="HTTP_Listener"><http:listener-connection host="${http.host}" port="${http.port}"/></http:listener-config>
+  <http:request-config name="Property_Info_HTTP" basePath="${property.basePath}"><http:request-connection host="${property.host}" port="${property.port}" protocol="${property.protocol}"/></http:request-config>
+  <http:request-config name="Property_POI_HTTP" basePath="${poi.basePath}"><http:request-connection host="${poi.host}" port="${poi.port}" protocol="${poi.protocol}"/></http:request-config>
+</mule>
