@@ -1,0 +1,19 @@
+# Keys the property-details, room-details and service-offerings flows read that are not in the UAT YAML yet.
+# Append these blocks to the UAT YAML. None of these block names (default, request, app) exist there today.
+
+default:
+  language: "en"            # lower case: requests are validated against ^[a-z]{2}(-[A-Za-z]{2,4})?$
+  currency: "SGD"
+  adults: "1"
+  children: "0"
+  checkinOffsetDays: "1"    # default checkin = today + 1
+  nights: "1"               # default checkout = checkin + 1
+
+request:
+  maxAdults: "10"
+  maxChildren: "10"
+  maxNights: "90"
+
+app:
+  version: "v1"             # sent as "version" to the property, POI and room-rate APIs
+  channel: "mcp"            # sent as "channel"

@@ -3,7 +3,7 @@
 
   <!-- POST /api/v1/property-details: T-02 get_property_details. Returns the MCP structuredContent object. -->
   <flow name="get-property-details">
-    <http:listener config-ref="HTTP_Listener" path="${http.path}" allowedMethods="POST">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="${http.path}" allowedMethods="POST">
       <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
       <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
     </http:listener>

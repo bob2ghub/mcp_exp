@@ -2,13 +2,13 @@
 <!--
   T-04 get_room_details_and_rates: POST ${rooms.http.path}
   Global elements (Room_Rates_HTTP) are in get-room-details-global-config.xml; properties are in room-details.yaml (rooms.*)
-  plus the shared http.*, app.*, default.* and request.* keys. Uses HTTP_Listener from global-config.xml.
+  plus the shared http.*, app.*, default.* and request.* keys. Uses common_HTTP_Listener_Config from global-config.xml.
   Response: one flat property row plus apartments[], one flat row per requested room x apartment.
 -->
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <flow name="get-room-details">
-    <http:listener config-ref="HTTP_Listener" path="${rooms.http.path}" allowedMethods="POST">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="${rooms.http.path}" allowedMethods="POST">
       <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
       <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
     </http:listener>

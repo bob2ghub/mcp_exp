@@ -3,14 +3,14 @@
   T-03 get_service_offerings: POST ${t03.http.path}
   Reads propertyList[].facilities.facilityDetails[] from the same process API as get_property_details and returns
   the get_service_offerings structuredContent (schemas/service-offerings-structured-content.schema.json 0.1.0).
-  No config of its own: HTTP_Listener and Property_Info_HTTP from global-config.xml, property-details-error-handler
+  No config of its own: common_HTTP_Listener_Config and Property_Info_HTTP from global-config.xml, property-details-error-handler
   from error-handlers.xml. Properties: the t03.* block in service-offerings.yaml, plus the process API keys it shares
   with get_property_details (property.path, property.timeout, property.clientId, property.clientSecret).
 -->
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <flow name="get-service-offerings">
-    <http:listener config-ref="HTTP_Listener" path="${t03.http.path}" allowedMethods="POST">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="${t03.http.path}" allowedMethods="POST">
       <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
       <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
     </http:listener>
