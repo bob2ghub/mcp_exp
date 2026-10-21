@@ -13,5 +13,6 @@ var r = vars.request
 	checkout: r.checkout,
 	adults: r.adults,
 	children: r.children,
-	currency: r.currency
+	// Always sent: calls with a currency succeed, and a service-offerings call without one got a 400.
+	currency: r.currency default p('default.currency')
 }

@@ -95,7 +95,8 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 	checkin: vars.servicesRequest.checkin,
 	checkout: vars.servicesRequest.checkout,
 	adults: vars.servicesRequest.adults,
-	children: vars.servicesRequest.children
+	children: vars.servicesRequest.children,
+	currency: p('default.currency')
 }]]]></http:body>
       <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
       <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>

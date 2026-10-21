@@ -11,6 +11,11 @@
       <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'PROPERTY_NOT_FOUND', message: vars.errorMessage default 'Property not found.', retryable: false}]"/>
       <flow-ref name="format-and-log-error"/>
     </on-error-propagate>
+    <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED_REQUEST', message: 'The process API rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="format-and-log-error"/>
+    </on-error-propagate>
     <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[504]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Property details service timed out. Retry later.', retryable: true}]"/>
@@ -28,6 +33,15 @@
     </on-error-propagate>
   </error-handler>
   <sub-flow name="format-and-log-error">
+    <!-- For a downstream HTTP error, log its status, description and (first 1000 characters of) its response body. -->
+    <try>
+      <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- if (error.errorType.namespace == "HTTP") write({event: "xapi.downstream.error", correlationId: vars.traceId default correlationId, status: error.errorMessage.attributes.statusCode default null, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false}) else ""]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", correlationId: vars.traceId default correlationId, detail: error.description}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
     <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "get_property_details", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
     <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
   </sub-flow>
