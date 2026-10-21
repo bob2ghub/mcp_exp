@@ -23,16 +23,23 @@
 
   <!-- Validates the tool arguments and applies server defaults; result in vars.request. -->
   <sub-flow name="validate-request">
+    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
     <try>
-      <ee:transform>
-        <ee:variables><ee:set-variable variableName="validation" resource="dwl/validate-request.dwl"/></ee:variables>
-      </ee:transform>
+      <set-payload value="#[output application/java --- payload]"/>
       <error-handler>
         <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
-          <set-variable variableName="validation" value="#[{errors: ['Request body must be valid JSON.']}]"/>
+          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
         </on-error-continue>
       </error-handler>
     </try>
+    <choice>
+      <when expression="#[vars.errorMessage != null]">
+        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables><ee:set-variable variableName="validation" resource="dwl/validate-request.dwl"/></ee:variables>
+    </ee:transform>
     <choice>
       <when expression="#[not isEmpty(vars.validation.errors default [])]">
         <set-variable variableName="errorMessage" value="#[vars.validation.errors joinBy ' ']"/>

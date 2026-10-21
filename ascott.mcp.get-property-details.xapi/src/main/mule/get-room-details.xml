@@ -24,10 +24,23 @@
 
   <!-- Tool arguments -> vars.roomsRequest, with the same defaults as get_property_details. -->
   <sub-flow name="rooms-validate-request">
+    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
     <try>
-      <ee:transform>
-        <ee:variables>
-          <ee:set-variable variableName="roomsValidation"><![CDATA[%dw 2.0
+      <set-payload value="#[output application/java --- payload]"/>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[vars.errorMessage != null]">
+        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="roomsValidation"><![CDATA[%dw 2.0
 output application/java
 import try from dw::Runtime
 import days from dw::core::Periods
@@ -94,14 +107,8 @@ var errors = [
 		language: language
 	}
 }]]></ee:set-variable>
-        </ee:variables>
-      </ee:transform>
-      <error-handler>
-        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
-          <set-variable variableName="roomsValidation" value="#[{errors: ['Request body must be valid JSON.']}]"/>
-        </on-error-continue>
-      </error-handler>
-    </try>
+      </ee:variables>
+    </ee:transform>
     <choice>
       <when expression="#[not isEmpty(vars.roomsValidation.errors default [])]">
         <set-variable variableName="errorMessage" value="#[vars.roomsValidation.errors joinBy ' ']"/>

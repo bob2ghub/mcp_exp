@@ -27,10 +27,23 @@
 
   <!-- Tool arguments -> vars.servicesRequest. propertyCode is required: meta.property_code echoes it (digits only). -->
   <sub-flow name="services-validate-request">
+    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
     <try>
-      <ee:transform>
-        <ee:variables>
-          <ee:set-variable variableName="servicesValidation"><![CDATA[%dw 2.0
+      <set-payload value="#[output application/java --- payload]"/>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[vars.errorMessage != null]">
+        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="servicesValidation"><![CDATA[%dw 2.0
 output application/java
 fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
 fun matchesRe(s, re) = if (s is String) (s matches re) else false
@@ -47,14 +60,8 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 	] filter ($ != null),
 	request: {propertyCode: code, language: language}
 }]]></ee:set-variable>
-        </ee:variables>
-      </ee:transform>
-      <error-handler>
-        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
-          <set-variable variableName="servicesValidation" value="#[{errors: ['Request body must be valid JSON.']}]"/>
-        </on-error-continue>
-      </error-handler>
-    </try>
+      </ee:variables>
+    </ee:transform>
     <choice>
       <when expression="#[not isEmpty(vars.servicesValidation.errors default [])]">
         <set-variable variableName="errorMessage" value="#[vars.servicesValidation.errors joinBy ' ']"/>
