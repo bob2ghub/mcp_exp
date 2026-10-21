@@ -68,9 +68,19 @@
     <ee:transform>
       <ee:variables><ee:set-variable variableName="property" resource="dwl/unwrap-property.dwl"/></ee:variables>
     </ee:transform>
+    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
+    <try>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.property.response", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, propertyFields: if (vars.property is Object) (keysOf(vars.property) map ($ as String)) else typeOf(vars.property) as String}, "application/json", {indent: false})]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <!-- A 2xx without a recognisable property (no code and no name) is not a property: fail instead of returning defaults. -->
     <choice>
-      <when expression="#[!(vars.property is Object) or (vars.property.propertyCode == null and vars.property.property_code == null and vars.request.propertyCode == null)]">
-        <set-variable variableName="errorMessage" value="Property not found."/>
+      <when expression="#[!(vars.property is Object) or (vars.property.propertyCode == null and vars.property.property_code == null and vars.property.propertyName == null and vars.property.property_name == null)]">
+        <set-variable variableName="errorMessage" value="Property not found, or the property details response is not in the expected format."/>
         <raise-error type="APP:NOT_FOUND" description="Property not found"/>
       </when>
     </choice>
@@ -93,7 +103,7 @@
           <error-handler>
             <on-error-continue type="ANY" logException="false" enableNotifications="false">
               <set-variable variableName="pois" value="#[null]"/>
-              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", tool: "get_property_details", correlationId: vars.traceId, propertyCode: vars.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
+              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", tool: "get_property_details", correlationId: vars.traceId, propertyCode: vars.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
             </on-error-continue>
           </error-handler>
         </try>
