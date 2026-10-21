@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <!-- POST /api/v1/property-details: T-02 get_property_details. Returns the MCP structuredContent object. -->
   <flow name="get-property-details">
-    <http:listener config-ref="common_HTTP_Listener_Config" path="${http.path}" allowedMethods="POST">
-      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
-      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/property-details" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
-    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]"/>
-    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]"/>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt" />
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: "get_property_details", correlationId: vars.traceId}, "application/json", {indent: false})]'/>
-    <flow-ref name="validate-request"/>
-    <flow-ref name="get-property-info"/>
-    <set-variable variableName="propertyCode" value="#[(vars.property.propertyCode default vars.property.property_code default vars.request.propertyCode) as String]"/>
-    <flow-ref name="get-property-pois"/>
+    <flow-ref name="validate-request" doc:name="validate-request"/>
+    <flow-ref name="get-property-info" doc:name="get-property-info"/>
+    <set-variable variableName="propertyCode" value="#[(vars.property.propertyCode default vars.property.property_code default vars.request.propertyCode) as String]" doc:name="propertyCode"/>
+    <flow-ref name="get-property-pois" doc:name="get-property-pois"/>
     <ee:transform>
       <ee:message><ee:set-payload resource="dwl/map-structured-content.dwl"/></ee:message>
     </ee:transform>
@@ -23,30 +23,25 @@
 
   <!-- Validates the tool arguments and applies server defaults; result in vars.request. -->
   <sub-flow name="validate-request">
-    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
     <try>
-      <set-payload value="#[output application/java --- payload]"/>
+      <ee:transform>
+        <ee:variables><ee:set-variable variableName="validation" resource="dwl/validate-request.dwl"/></ee:variables>
+      </ee:transform>
       <error-handler>
-        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
-          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
-        </on-error-continue>
+        <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
+		  <logger level="ERROR" category="ascott.audit"
+		          message="#[output text/plain --- 'validate-request.dwl failed: ' ++ (error.description default '')]"/>
+		  <set-variable variableName="validation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="validation"/>
+		</on-error-continue>
       </error-handler>
     </try>
     <choice>
-      <when expression="#[vars.errorMessage != null]">
-        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
-      </when>
-    </choice>
-    <ee:transform>
-      <ee:variables><ee:set-variable variableName="validation" resource="dwl/validate-request.dwl"/></ee:variables>
-    </ee:transform>
-    <choice>
       <when expression="#[not isEmpty(vars.validation.errors default [])]">
-        <set-variable variableName="errorMessage" value="#[vars.validation.errors joinBy ' ']"/>
+        <set-variable variableName="errorMessage" value="#[vars.validation.errors joinBy ' ']" doc:name="errorMessage"/>
         <raise-error type="APP:BAD_REQUEST" description="Invalid get_property_details request"/>
       </when>
     </choice>
-    <set-variable variableName="request" value="#[vars.validation.request]"/>
+    <set-variable variableName="request" value="#[vars.validation.request]" doc:name="request"/>
   </sub-flow>
 
   <!-- Property details by code or name; result in vars.property. -->
@@ -54,33 +49,45 @@
     <ee:transform>
       <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
     </ee:transform>
-    <http:request config-ref="Property_Info_HTTP" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
-      <http:body>#[vars.propertyInfoRequest]</http:body>
-      <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
+    <!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_configuration1" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
+      <http:body><![CDATA[#[vars.propertyInfoRequest&#93;&#93;&#93;></http:body>
+      <http:headers><![CDATA[#[{
+'Content-Type': 'application/json', 
+'client_id': p('property.clientId'), 
+'client_secret': p('property.clientSecret'), 
+'messageId': vars.traceId, 
+'X-Correlation-ID': vars.traceId
+}&#93;&#93;&#93;></http:headers>
       <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
-    </http:request>
+    </http:request> [STUDIO] -->
+    <http:request method="POST" doc:name="Request Booking Search" doc:id="d00c80a9-5cc3-4b6a-863a-d4f2288d0f0a" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+			<http:body ><![CDATA[#[output application/json
+---
+payload]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.correlationId,
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+<!-- 	    <http:response-validator>
+        	<http:success-status-code-validator values="200..599" />
+    	</http:response-validator> -->
+		</http:request>
     <choice>
       <when expression="#[attributes.statusCode == 404]">
-        <set-variable variableName="errorMessage" value="Property not found."/>
+        <set-variable variableName="errorMessage" value="Property not found." doc:name="errorMessage"/>
         <raise-error type="APP:NOT_FOUND" description="Property not found"/>
       </when>
     </choice>
     <ee:transform>
       <ee:variables><ee:set-variable variableName="property" resource="dwl/unwrap-property.dwl"/></ee:variables>
     </ee:transform>
-    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
-    <try>
-      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.property.response", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, propertyFields: if (vars.property is Object) (keysOf(vars.property) map ($ as String)) else typeOf(vars.property) as String}, "application/json", {indent: false})]'/>
-      <error-handler>
-        <on-error-continue type="ANY" logException="false" enableNotifications="false">
-          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
-        </on-error-continue>
-      </error-handler>
-    </try>
-    <!-- A 2xx without a recognisable property (no code and no name) is not a property: fail instead of returning defaults. -->
     <choice>
-      <when expression="#[!(vars.property is Object) or (vars.property.propertyCode == null and vars.property.property_code == null and vars.property.propertyName == null and vars.property.property_name == null)]">
-        <set-variable variableName="errorMessage" value="Property not found, or the property details response is not in the expected format."/>
+      <when expression="#[!(vars.property is Object) or (vars.property.propertyCode == null and vars.property.property_code == null and vars.request.propertyCode == null)]">
+        <set-variable variableName="errorMessage" value="Property not found." doc:name="errorMessage"/>
         <raise-error type="APP:NOT_FOUND" description="Property not found"/>
       </when>
     </choice>
@@ -88,22 +95,30 @@
 
   <!-- POIs for the property; result in vars.pois. Optional: a failure leaves nearby[] out instead of failing the call. -->
   <sub-flow name="get-property-pois">
-    <set-variable variableName="pois" value="#[null]"/>
+    <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
     <choice>
       <when expression="#[(vars.request.maxPois default 0) > 0]">
         <try>
           <ee:transform>
             <ee:variables><ee:set-variable variableName="poiRequest" resource="dwl/poi-request.dwl"/></ee:variables>
           </ee:transform>
-          <http:request config-ref="Property_POI_HTTP" method="POST" path="${poi.path}" responseTimeout="${poi.timeout}" target="pois">
-            <http:body>#[vars.poiRequest]</http:body>
-            <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('poi.clientId'), 'client_secret': p('poi.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
+          <http:request config-ref="Property_POI_HTTP" method="POST" path="${poisystem.path}" responseTimeout="30000" target="pois" doc:name="POI-Request">
+            <http:body><![CDATA[#[vars.poiRequest]]]></http:body>
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('poisystem.clientSecret'),
+    "client_id" : Mule::p('poisystem.clientId'),
+	"messageId" : vars.traceId,
+	"X-Correlation-ID": vars.traceId
+}]]]></http:headers>
           </http:request>
-          <set-variable variableName="pois" value="#[output application/java --- vars.pois]"/>
+          <set-variable variableName="pois" value="#[output application/java --- vars.pois]" doc:name="pois"/>
           <error-handler>
             <on-error-continue type="ANY" logException="false" enableNotifications="false">
-              <set-variable variableName="pois" value="#[null]"/>
-              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", tool: "get_property_details", correlationId: vars.traceId, propertyCode: vars.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+              <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
+              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", tool: "get_property_details", correlationId: vars.traceId, propertyCode: vars.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
             </on-error-continue>
           </error-handler>
         </try>
