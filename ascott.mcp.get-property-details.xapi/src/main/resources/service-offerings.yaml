@@ -22,5 +22,8 @@ t03:
 #   clientId: "<client id>"
 #   clientSecret: "<client secret>"  # keep in secure properties
 #
+# The request also sends a default stay (the availability search returns no propertyList without one), using the
+# same keys as get_property_details: default.checkinOffsetDays, default.nights, default.adults, default.children.
+#
 # Property_Info_HTTP itself (global-config.xml) reads property.protocol, property.host, property.port
 # and property.basePath, which T-02 already needs.

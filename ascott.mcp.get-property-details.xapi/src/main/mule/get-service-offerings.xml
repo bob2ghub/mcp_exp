@@ -45,10 +45,14 @@
       <ee:variables>
         <ee:set-variable variableName="servicesValidation"><![CDATA[%dw 2.0
 output application/java
+import days from dw::core::Periods
 fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
 fun matchesRe(s, re) = if (s is String) (s matches re) else false
 
 var body = if (payload is Object) payload else {}
+// The availability search returns no propertyList without a stay, so send the same defaults as get_property_details.
+var checkin = (now() as Date) + days(p('default.checkinOffsetDays') as Number)
+var checkout = checkin + days(p('default.nights') as Number)
 var code = text(body.propertyCode)
 var language = if (body.language == null) p('t03.defaultlanguage') else text(body.language)
 ---
@@ -58,7 +62,14 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 		if (code == null) "propertyCode is required." else if (!matchesRe(code, /^[0-9]{1,20}$/)) "propertyCode must be 1 to 20 digits." else null,
 		if (!matchesRe(language, /^[a-z]{2}(-[A-Za-z]{2,4})?$/)) "language must be a language code such as en or zh-CN." else null
 	] filter ($ != null),
-	request: {propertyCode: code, language: language}
+	request: {
+		propertyCode: code,
+		language: language,
+		checkin: checkin as String {format: "yyyy-MM-dd"},
+		checkout: checkout as String {format: "yyyy-MM-dd"},
+		adults: p('default.adults') as Number,
+		children: p('default.children') as Number
+	}
 }]]></ee:set-variable>
       </ee:variables>
     </ee:transform>
@@ -80,7 +91,11 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 	version: p('t03.version'),
 	language: vars.servicesRequest.language,
 	channel: p('t03.channel'),
-	propertyCode: vars.servicesRequest.propertyCode
+	propertyCode: vars.servicesRequest.propertyCode,
+	checkin: vars.servicesRequest.checkin,
+	checkout: vars.servicesRequest.checkout,
+	adults: vars.servicesRequest.adults,
+	children: vars.servicesRequest.children
 }]]]></http:body>
       <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
       <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
@@ -108,6 +123,15 @@ var code = vars.servicesRequest.propertyCode
 (all filter ((c) -> text(c.propertyCode) == code))[0] default (if (sizeOf(all) == 1) all[0] else null)]]></ee:set-variable>
       </ee:variables>
     </ee:transform>
+    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
+    <try>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.property.response", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, propertyListSize: if (payload.propertyList is Array) sizeOf(payload.propertyList) else null, facilityFields: if (vars.servicesSource.facilities is Object) (keysOf(vars.servicesSource.facilities) map ($ as String)) else typeOf(vars.servicesSource.facilities) as String}, "application/json", {indent: false})]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
     <choice>
       <when expression="#[!(vars.servicesSource is Object)]">
         <set-variable variableName="errorMessage" value="Property not found."/>
