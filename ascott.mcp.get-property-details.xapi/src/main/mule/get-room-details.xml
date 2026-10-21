@@ -1,26 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  T-04 get_room_details_and_rates: POST ${rooms.http.path}
-  Self-contained: everything this endpoint needs is in this file, except HTTP_Listener (global-config.xml)
-  and the shared default.* / request.* properties. The global-property values below are defaults:
-  a configuration-properties file (properties or YAML) with the same keys overrides them.
+  T-04 get_room_details_and_rates: POST /api/v1/room-details
+  Calls booking search (HTTP_Request_Bookingsearch_config) with the same body as get_property_details
+  (dwl/property-info-request.dwl). Properties: rooms.maxRooms plus the shared app.*, default.* and request.* keys.
+  Uses common_HTTP_Listener_Config from global-config.xml.
   Response: one flat property row plus apartments[], one flat row per requested room x apartment.
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
-  <global-property name="rooms.http.path" value="/api/v1/room-details"/>
-  <!-- ASSUMED upstream: same mocking link as getpropertypois. Replace with the real room/rate search API. -->
-  <global-property name="rooms.protocol" value="HTTPS"/>
-  <global-property name="rooms.host" value="anypoint.mulesoft.com"/>
-  <global-property name="rooms.port" value="443"/>
-  <global-property name="rooms.basePath" value="/mocking/api/v1/links/7f9e4e4b-5b60-4ba7-9a80-8c260eaa9eed"/>
-  <global-property name="rooms.path" value="/getroomdetailsandrates"/>
-  <global-property name="rooms.clientId" value="25617"/>
-  <global-property name="rooms.clientSecret" value="625252"/>
-  <global-property name="rooms.timeout" value="8000"/>
-  <global-property name="rooms.maxRooms" value="9"/>
-
-  <http:request-config name="Room_Rates_HTTP" basePath="${rooms.basePath}"><http:request-connection host="${rooms.host}" port="${rooms.port}" protocol="${rooms.protocol}"/></http:request-config>
 
   <flow name="get-room-details">
     <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/room-details" allowedMethods="POST">
@@ -128,8 +115,9 @@ var errors = [
 
   <!-- Room and rate search for one property; the matching property object ends up in vars.roomsSource. -->
   <sub-flow name="rooms-get-rates">
-  
-      <ee:transform>
+    <!-- property-info-request.dwl builds the body from vars.request, not vars.roomsRequest. -->
+    <set-variable variableName="request" value="#[vars.roomsRequest]"/>
+    <ee:transform>
       <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
     </ee:transform>
     <http:request method="POST" doc:name="Request Booking Search" doc:id="5519f8f0-905d-4f65-9b6e-aa0c12f60dae" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >

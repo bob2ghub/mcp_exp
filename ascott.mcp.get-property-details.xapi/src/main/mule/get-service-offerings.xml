@@ -84,6 +84,8 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 
   <!-- Same process API call as get_property_details; the matching propertyList entry ends up in vars.servicesSource. -->
   <sub-flow name="services-get-facilities">
+    <!-- property-info-request.dwl builds the body from vars.request, not vars.servicesRequest. -->
+    <set-variable variableName="request" value="#[vars.servicesRequest]"/>
      <ee:transform>
       	<ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
     </ee:transform>
