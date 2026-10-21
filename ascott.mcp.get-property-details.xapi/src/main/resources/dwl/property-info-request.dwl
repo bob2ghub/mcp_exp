@@ -13,6 +13,6 @@ var r = vars.request
 	checkout: r.checkout,
 	adults: r.adults,
 	children: r.children,
-	// Only when the caller gives one: booking search rejects (400) currency "SGD" sent by default.
+	// Only when the caller gives one.
 	currency: r.currency
 }
