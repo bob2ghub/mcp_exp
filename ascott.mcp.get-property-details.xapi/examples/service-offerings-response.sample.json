@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "property_code": "50926",
+    "property_name": "Ascott Raffles Place Singapore",
+    "brand_code": "ascott-the-residence",
+    "country_code": "SG",
+    "phone": "+65 6277 8888",
+    "asset_base_url": "https://www.discoverasr.com",
+    "total_results": 2
+  },
+  "services": [
+    { "service_name": "Infinity Swimming Pool", "service_location": "19th Floor", "operating_hours": "<p>06:00 am to 11:00 pm</p>", "description": "<p>Heated pool with city views.</p>", "thumbnail_url": "/content/dam/ascott/50926/pool.jpg" },
+    { "service_name": "Residents' Lounge", "operating_hours": "<ul><li>Breakfast 07:00-10:30</li><li>Evening 18:00-20:00</li></ul>", "description": "<p>Breakfast and evening drinks.</p>", "thumbnail_url": "/content/dam/ascott/50926/lounge.jpg", "external_service_url": "https://www.discoverasr.com/en/ascott-the-residence/singapore/ascott-raffles-place-singapore/amenities" }
+  ]
+}

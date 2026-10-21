@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "9fd3ed4f-8b90-4863-940f-913c24d0db4b",
-    "name": "Ascott MCP xAPI - Property details & Room rates",
-    "description": "T-02 get_property_details (POST /api/v1/property-details) and T-04 get_room_details_and_rates (POST /api/v1/room-details). Set baseUrl for your environment (local Studio default: http://localhost:8083). Non-logged-in journey: no auth.",
+    "name": "Ascott MCP xAPI - Property details, Service offerings & Room rates",
+    "description": "T-02 get_property_details (POST /api/v1/property-details), T-03 get_service_offerings (POST /api/v1/service-offerings) and T-04 get_room_details_and_rates (POST /api/v1/room-details). Set baseUrl for your environment (local Studio default: http://localhost:8083). Non-logged-in journey: no auth.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -714,6 +714,425 @@
                 "api",
                 "v1",
                 "room-details"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "T-03 Service offerings",
+      "item": [
+        {
+          "name": "Service offerings - by property code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Only meta and services\", () => pm.expect(Object.keys(b).sort()).to.eql([\"meta\", \"services\"]));",
+                  "pm.test(\"meta\", () => {",
+                  "  pm.expect(b.meta.property_code).to.eql(pm.variables.get(\"propertyCode\"));",
+                  "  pm.expect(b.meta.property_name).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.meta.brand_code).to.be.a(\"string\").and.not.empty;",
+                  "  if (\"country_code\" in b.meta) pm.expect(b.meta.country_code).to.match(/^[A-Z]{2}$/);",
+                  "  pm.expect(b.meta.total_results).to.eql(b.services.length);",
+                  "});",
+                  "const allowed = [\"service_name\",\"service_location\",\"operating_hours\",\"description\",\"thumbnail_url\",\"contact_number\",\"external_service_url\"];",
+                  "pm.test(\"services[] are flat rows with the schema fields only\", () => {",
+                  "  b.services.forEach(s => {",
+                  "    pm.expect(s.service_name).to.be.a(\"string\").and.not.empty;",
+                  "    Object.entries(s).forEach(([k, v]) => {",
+                  "      pm.expect(allowed, \"unexpected field \" + k).to.include(k);",
+                  "      pm.expect(v).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    if (s.external_service_url) pm.expect(s.external_service_url).to.match(/^https?:\\/\\//);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "propertyList[].facilities.facilityDetails[] -> services[].",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"language\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - default language",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Only meta and services\", () => pm.expect(Object.keys(b).sort()).to.eql([\"meta\", \"services\"]));",
+                  "pm.test(\"meta\", () => {",
+                  "  pm.expect(b.meta.property_code).to.eql(pm.variables.get(\"propertyCode\"));",
+                  "  pm.expect(b.meta.property_name).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.meta.brand_code).to.be.a(\"string\").and.not.empty;",
+                  "  if (\"country_code\" in b.meta) pm.expect(b.meta.country_code).to.match(/^[A-Z]{2}$/);",
+                  "  pm.expect(b.meta.total_results).to.eql(b.services.length);",
+                  "});",
+                  "const allowed = [\"service_name\",\"service_location\",\"operating_hours\",\"description\",\"thumbnail_url\",\"contact_number\",\"external_service_url\"];",
+                  "pm.test(\"services[] are flat rows with the schema fields only\", () => {",
+                  "  b.services.forEach(s => {",
+                  "    pm.expect(s.service_name).to.be.a(\"string\").and.not.empty;",
+                  "    Object.entries(s).forEach(([k, v]) => {",
+                  "      pm.expect(allowed, \"unexpected field \" + k).to.include(k);",
+                  "      pm.expect(v).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    if (s.external_service_url) pm.expect(s.external_service_url).to.match(/^https?:\\/\\//);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "language defaults to en.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - 400 missing propertyCode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Error envelope\", () => {",
+                  "  pm.expect(b.success).to.eql(false);",
+                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
+                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
+                  "});",
+                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"propertyCode is required\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "T-03 needs the code: meta.property_code echoes it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyName\": \"{{propertyName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - 400 non-numeric propertyCode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Error envelope\", () => {",
+                  "  pm.expect(b.success).to.eql(false);",
+                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
+                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
+                  "});",
+                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"digits\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"SG-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - 400 bad language",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Error envelope\", () => {",
+                  "  pm.expect(b.success).to.eql(false);",
+                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
+                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
+                  "});",
+                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"language\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"language\": \"english\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - 400 invalid JSON",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Error envelope\", () => {",
+                  "  pm.expect(b.success).to.eql(false);",
+                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
+                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
+                  "});",
+                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"valid JSON\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"propertyCode\": \"50926\",",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Service offerings - 404 unknown property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 when the process API has no such property\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"PROPERTY_NOT_FOUND\", () => pm.expect(pm.response.json().error.code).to.eql(\"PROPERTY_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Depends on the process API returning 404 or no matching propertyList entry. The mocking service may return its example instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"00000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/service-offerings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "service-offerings"
               ]
             }
           },

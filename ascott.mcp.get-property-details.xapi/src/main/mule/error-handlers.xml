@@ -28,7 +28,7 @@
     </on-error-propagate>
   </error-handler>
   <sub-flow name="format-and-log-error">
-    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: "get_property_details", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "get_property_details", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
     <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
   </sub-flow>
 </mule>

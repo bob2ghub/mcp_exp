@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-03 get_service_offerings: POST ${t03.http.path}
+  Reads propertyList[].facilities.facilityDetails[] from the same process API as get_property_details and returns
+  the get_service_offerings structuredContent (schemas/service-offerings-structured-content.schema.json 0.1.0).
+  No config of its own: HTTP_Listener and Property_Info_HTTP from global-config.xml, property-details-error-handler
+  from error-handlers.xml. Properties: the t03.* block in service-offerings.yaml, plus the process API keys it shares
+  with get_property_details (property.path, property.timeout, property.clientId, property.clientSecret).
+-->
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <flow name="get-service-offerings">
+    <http:listener config-ref="HTTP_Listener" path="${t03.http.path}" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="toolName" value="get_service_offerings"/>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]'/>
+    <flow-ref name="services-validate-request"/>
+    <flow-ref name="services-get-facilities"/>
+    <flow-ref name="services-map-response"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, totalResults: payload.meta.total_results, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
+    <error-handler ref="property-details-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.servicesRequest. propertyCode is required: meta.property_code echoes it (digits only). -->
+  <sub-flow name="services-validate-request">
+    <try>
+      <ee:transform>
+        <ee:variables>
+          <ee:set-variable variableName="servicesValidation"><![CDATA[%dw 2.0
+output application/java
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun matchesRe(s, re) = if (s is String) (s matches re) else false
+
+var body = if (payload is Object) payload else {}
+var code = text(body.propertyCode)
+var language = if (body.language == null) p('t03.defaultlanguage') else text(body.language)
+---
+{
+	errors: [
+		if (!(payload is Object)) "Request body must be a JSON object." else null,
+		if (code == null) "propertyCode is required." else if (!matchesRe(code, /^[0-9]{1,20}$/)) "propertyCode must be 1 to 20 digits." else null,
+		if (!matchesRe(language, /^[a-z]{2}(-[A-Za-z]{2,4})?$/)) "language must be a language code such as en or zh-CN." else null
+	] filter ($ != null),
+	request: {propertyCode: code, language: language}
+}]]></ee:set-variable>
+        </ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="servicesValidation" value="#[{errors: ['Request body must be valid JSON.']}]"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[not isEmpty(vars.servicesValidation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[vars.servicesValidation.errors joinBy ' ']"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_service_offerings request"/>
+      </when>
+    </choice>
+    <set-variable variableName="servicesRequest" value="#[vars.servicesValidation.request]"/>
+  </sub-flow>
+
+  <!-- Same process API call as get_property_details; the matching propertyList entry ends up in vars.servicesSource. -->
+  <sub-flow name="services-get-facilities">
+    <http:request config-ref="Property_Info_HTTP" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
+      <http:body><![CDATA[#[output application/json
+---
+{
+	version: p('t03.version'),
+	language: vars.servicesRequest.language,
+	channel: p('t03.channel'),
+	propertyCode: vars.servicesRequest.propertyCode
+}]]]></http:body>
+      <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request>
+    <choice>
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="Property not found."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="servicesSource"><![CDATA[%dw 2.0
+// propertyList[] entry whose propertyCode matches the request; a single entry is taken as is.
+output application/java
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
+	else if (v is Object) (if (v.propertyList is Array) (v.propertyList filter ($ is Object))
+		else if ((v.propertyCode != null) or (v.facilities != null)) [v]
+		else flatten(valuesOf(v) map candidates($)))
+	else []
+var all = candidates(payload)
+var code = vars.servicesRequest.propertyCode
+---
+(all filter ((c) -> text(c.propertyCode) == code))[0] default (if (sizeOf(all) == 1) all[0] else null)]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[!(vars.servicesSource is Object)]">
+        <set-variable variableName="errorMessage" value="Property not found."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- vars.servicesSource -> {meta, services[]}: one flat row per facilities.facilityDetails[] item, upstream order. -->
+  <sub-flow name="services-map-response">
+    <ee:transform>
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun firstVal(o, keys) = if (o is Object) ((keys map ((k) -> o[k])) filter ($ != null))[0] else null
+fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
+fun matchesRe(s, re) = if (s is String) (s matches re) else false
+fun objects(v) = if (v is Array) (v filter ($ is Object)) else if (v is Object) [v] else []
+fun slug(v) = do {
+	var s = text(v)
+	var out = if (s == null) "" else ((lower(s) replace /[^a-z0-9]+/ with "-") replace /^-+|-+$/ with "")
+	---
+	if (out == "") null else out
+}
+
+var src = vars.servicesSource
+var assetBaseUrl = p('t03.assetbaseurl')
+// facilityUrl must be an absolute URI; site-relative paths are resolved against asset.baseUrl.
+fun absoluteUrl(v) = do {
+	var s = text(v)
+	---
+	if (s == null) null
+	else if (matchesRe(s, /^https?:\/\/\S+$/)) s
+	else if (matchesRe(s, /^\/\S*$/)) assetBaseUrl ++ s
+	else null
+}
+var facilitiesIn = firstVal(src, ["facilities"])
+var details = objects(if (facilitiesIn is Object) firstVal(facilitiesIn, ["facilityDetails", "facility_details"]) else facilitiesIn)
+var services = details map ((f) -> {
+	service_name: firstText(f, ["title", "name"]),
+	service_location: firstText(f, ["location"]),
+	operating_hours: firstText(f, ["operatingHours", "operating_hours"]),
+	description: firstText(f, ["description"]),
+	thumbnail_url: firstText(f, ["thumbnailImage", "thumbnail", "image"]),
+	contact_number: firstText(f, ["contactNumber", "phone"]),
+	external_service_url: absoluteUrl(firstVal(f, ["facilityUrl", "url"]))
+}) filter ($.service_name != null)
+var countryCode = upper(firstText(src, ["countryCode", "country_code"]) default "")
+---
+{
+	meta: {
+		property_code: vars.servicesRequest.propertyCode,
+		property_name: firstText(src, ["propertyEnName", "propertyName", "property_name"]) default vars.servicesRequest.propertyCode,
+		brand_code: slug(firstText(src, ["brand", "brandCode", "brand_code"])) default slug(firstText(src, ["brandName"])) default "ascott",
+		country_code: if (matchesRe(countryCode, /^[A-Z]{2}$/)) countryCode else null,
+		phone: firstText(src, ["phone", "phoneNumber"]),
+		asset_base_url: assetBaseUrl,
+		total_results: sizeOf(services)
+	},
+	services: services
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </sub-flow>
+</mule>

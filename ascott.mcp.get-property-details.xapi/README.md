@@ -66,6 +66,24 @@ Import into Anypoint Studio (Mule 4.12 EE, Java 17) and run. The only dependency
 
 `python -I tests/check_contracts.py` (needs `pip install jsonschema`) validates the example requests and `examples/response.sample.json` against the schemas. `response.sample.json` is the expected output for the two `examples/upstream-*.sample.json` payloads, so it is the fixture to compare against when you run the app in Studio against a stub.
 
+## T-03 service offerings (`get-service-offerings.xml`)
+
+`POST http://<host>:8083/api/v1/service-offerings` with `{"propertyCode": "50926", "language": "en"}` (`examples/service-offerings-request.json`). `propertyCode` is required and must be digits, because `meta.property_code` echoes it.
+
+It calls the same process API as `get_property_details`, through the same `Property_Info_HTTP` config. From the response it takes `propertyList[]`, picks the entry whose `propertyCode` matches, and maps each `facilities.facilityDetails[]` item to one flat `services[]` row, in upstream order. The output follows `schemas/service-offerings-structured-content.schema.json` (0.1.0): `{meta: {...}, services: [...]}`.
+
+| `services[]` field | Upstream `facilityDetails` field |
+|---|---|
+| `service_name` | `title` (items without one are dropped) |
+| `service_location` | `location` |
+| `operating_hours` | `operatingHours` (HTML, as is) |
+| `description` | `description` (HTML, as is) |
+| `thumbnail_url` | `thumbnailImage` |
+| `contact_number` | `contactNumber` (not sent by upstream today) |
+| `external_service_url` | `facilityUrl`, made absolute with `t03.assetbaseurl` when it is site-relative |
+
+An empty `services[]` with `total_results: 0` is a valid result. The flow adds no listener or request config of its own, and it reuses `property-details-error-handler`. Its properties are the `t03` block in `service-offerings.yaml`, plus the `property.*` request keys it shares with T-02.
+
 ## T-04 room details and rates (`get-room-details.xml`)
 
 `POST http://<host>:8083/api/v1/room-details`, for example with `examples/room-details-request.json`. The fields are the same as `get_property_details` (minus `maxPois`), plus `rooms` (1 to 9, default 1).

@@ -26,5 +26,6 @@ results = [
     check("get-property-details-request.schema.json", "request.json"),
     check("get-property-details-request.schema.json", "request-by-name.json"),
     check("structured-content.schema.json", "response.sample.json"),
+    check("service-offerings-structured-content.schema.json", "service-offerings-response.sample.json"),
 ]
 sys.exit(0 if all(results) else 1)
