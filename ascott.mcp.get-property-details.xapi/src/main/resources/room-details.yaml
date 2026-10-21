@@ -1,6 +1,6 @@
 # T-04 get_room_details_and_rates (get-room-details.xml)
-# Append to the existing environment YAML. These values override the global-property
-# defaults inside get-room-details.xml.
+# Append to the existing environment YAML.
+# Required: get-room-details.xml and get-room-details-global-config.xml have no defaults.
 
 # ---------- New keys: only this endpoint uses them
 rooms:

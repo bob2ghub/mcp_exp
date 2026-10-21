@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Global elements for T-04 get_room_details_and_rates (get-room-details.xml).
+  Every value comes from the rooms.* keys in room-details.yaml. Append those keys to the environment YAML
+  the app already loads; no extra configuration-properties element is needed for them.
+-->
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+  <http:request-config name="Room_Rates_HTTP" basePath="${rooms.basePath}">
+    <http:request-connection host="${rooms.host}" port="${rooms.port}" protocol="${rooms.protocol}"/>
+  </http:request-config>
+</mule>
