@@ -1,0 +1,41 @@
+# T-04 get_room_details_and_rates (get-room-details.xml)
+# Append to the existing environment YAML. These values override the global-property
+# defaults inside get-room-details.xml.
+
+# ---------- New keys: only this endpoint uses them
+rooms:
+  http:
+    path: "/api/v1/room-details"
+  protocol: "HTTPS"
+  host: "anypoint.mulesoft.com"
+  port: "443"
+  basePath: "/mocking/api/v1/links/7f9e4e4b-5b60-4ba7-9a80-8c260eaa9eed"
+  path: "/getroomdetailsandrates"     # ASSUMED path: replace with the real room/rate search API
+  clientId: "25617"
+  clientSecret: "625252"              # move to secure properties outside local/mock
+  timeout: "8000"                     # ms
+  maxRooms: "9"
+
+# ---------- Shared keys: get-room-details.xml reads these too.
+# Add only the ones your YAML does not already have. A second "app:", "default:",
+# "request:" or "http:" block in the same file is a duplicate key.
+#
+# http:
+#   host: "0.0.0.0"
+#   port: "8083"
+#
+# app:
+#   version: "v1"
+#   channel: "mcp"
+#
+# default:
+#   language: "en"
+#   adults: "1"
+#   children: "0"
+#   checkinOffsetDays: "1"
+#   nights: "1"
+#
+# request:
+#   maxAdults: "10"
+#   maxChildren: "10"
+#   maxNights: "90"
