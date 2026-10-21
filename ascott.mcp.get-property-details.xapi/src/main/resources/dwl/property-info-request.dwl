@@ -13,6 +13,6 @@ var r = vars.request
 	checkout: r.checkout,
 	adults: r.adults,
 	children: r.children,
-	// Always sent: calls with a currency succeed, and a service-offerings call without one got a 400.
-	currency: r.currency default p('default.currency')
+	// Only when the caller gives one: booking search rejects (400) currency "SGD" sent by default.
+	currency: r.currency
 }
