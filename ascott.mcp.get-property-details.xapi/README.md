@@ -88,7 +88,7 @@ An empty `services[]` with `total_results: 0` is a valid result. The flow adds n
 
 `POST http://<host>:8083/api/v1/room-details`, for example with `examples/room-details-request.json`. The fields are the same as `get_property_details` (minus `maxPois`), plus `rooms` (1 to 9, default 1).
 
-The flows, inline DataWeave and the error handler are in `get-room-details.xml`. Its upstream request config, `Room_Rates_HTTP`, is in `get-room-details-global-config.xml`. All of its properties are in `room-details.yaml`: the new `rooms.*` keys, plus the shared `http.*`, `app.*`, `default.*` and `request.*` keys. Neither XML file sets defaults, so those keys must be in the YAML the app loads. It shares only `HTTP_Listener` with T-02.
+The flows, inline DataWeave and the error handler are in `get-room-details.xml`. Its upstream request config, `Room_Rates_HTTP`, is in `get-room-details-global-config.xml`. All of its properties are in `room-details.yaml`: the new `rooms.*` keys, plus the shared `http.*`, `app.*`, `default.*` and `request.*` keys. Neither XML file sets defaults, so those keys must be in the YAML the app loads. It shares only `common_HTTP_Listener_Config` with T-02.
 
 The response is flat. The property row (`property_code`, `property_name`, `country`, `city`, `currency`, `property_type`, `check_in_time`, `check_out_time`, `children_and_extra_bed*`, the four rates, and the stay) comes first. Then `apartments[]` has one row per requested room and apartment: `room_key` (`room0`), `room_index`, `apartment_index`, and then the apartment's own fields. Nested objects are flattened into prefixed snake_case keys, so `rate.perNight` becomes `rate_per_night`.
 
