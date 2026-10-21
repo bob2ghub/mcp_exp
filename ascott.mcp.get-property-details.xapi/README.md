@@ -66,8 +66,17 @@ Import into Anypoint Studio (Mule 4.12 EE, Java 17) and run. The only dependency
 
 `python -I tests/check_contracts.py` (needs `pip install jsonschema`) validates the example requests and `examples/response.sample.json` against the schemas. `response.sample.json` is the expected output for the two `examples/upstream-*.sample.json` payloads, so it is the fixture to compare against when you run the app in Studio against a stub.
 
+## T-04 room details and rates (`get-room-details.xml`)
+
+`POST http://<host>:8083/api/v1/room-details`, for example with `examples/room-details-request.json`. The fields are the same as `get_property_details` (minus `maxPois`), plus `rooms` (1 to 9, default 1).
+
+Everything for this endpoint is in that one file: the listener flow, an upstream request config, inline DataWeave and its own error handler. Its upstream settings are `global-property` defaults (`rooms.*`), which any properties or YAML file with the same keys overrides. It shares only `HTTP_Listener` and the `default.*`, `request.*` and `app.*` properties.
+
+The response is flat. The property row (`property_code`, `property_name`, `country`, `city`, `currency`, `property_type`, `check_in_time`, `check_out_time`, `children_and_extra_bed*`, the four rates, and the stay) comes first. Then `apartments[]` has one row per requested room and apartment: `room_key` (`room0`), `room_index`, `apartment_index`, and then the apartment's own fields. Nested objects are flattened into prefixed snake_case keys, so `rate.perNight` becomes `rate_per_night`.
+
 ## Open items
 
 - **Property details endpoint.** `property.*` currently points to the same Anypoint mocking link as the POI API, with path `/getpropertydetails`. This is an assumption. Set the real URL, credentials and request contract.
 - **Response shapes are assumed.** `examples/upstream-property-details.sample.json` follows the PRD packet field names. The POI parser accepts `{properties: [{propertyCode, pois: [...]}]}`, a top-level `pois` array, or bare ODX POI objects. Confirm both against the real APIs.
+- **Room rates endpoint.** `rooms.*` points to the mocking link with the assumed path `/getroomdetailsandrates`, and the body sends `propertyCode` as an array (like `getpropertypois`). Confirm both. The apartment fields are passed through as they come, so the row columns depend on the real response.
 - **Credentials.** `client_id` and `client_secret` are plain properties holding the mock values. Move them to secure properties before deploying beyond local.
