@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   T-04 get_room_details_and_rates: POST ${rooms.http.path}
-  Global elements (Room_Rates_HTTP) are in get-room-details-global-config.xml; properties are in room-details.yaml (rooms.*)
-  plus the shared http.*, app.*, default.* and request.* keys. Uses common_HTTP_Listener_Config from global-config.xml.
+  Calls booking search through get_property_details' get-property-info sub-flow, so it needs no request config of its own
+  (get-room-details-global-config.xml / Room_Rates_HTTP is no longer used). Properties: rooms.http.path and rooms.maxRooms,
+  plus the shared app.*, default.* and request.* keys. Uses common_HTTP_Listener_Config from global-config.xml.
   Response: one flat property row plus apartments[], one flat row per requested room x apartment.
 -->
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
@@ -118,56 +119,13 @@ var errors = [
     <set-variable variableName="roomsRequest" value="#[vars.roomsValidation.request]"/>
   </sub-flow>
 
-  <!-- Room and rate search for one property; the matching property object ends up in vars.roomsSource. -->
+  <!-- Same booking search call as get_property_details (its response carries the property fields and apartments[]):
+       reuses the get-property-info sub-flow, so request, credentials and not-found handling are identical.
+       The property object ends up in vars.roomsSource. -->
   <sub-flow name="rooms-get-rates">
-    <http:request config-ref="Room_Rates_HTTP" method="POST" path="${rooms.path}" responseTimeout="${rooms.timeout}">
-      <http:body><![CDATA[#[output application/json skipNullOn="everywhere"
-var r = vars.roomsRequest
----
-{
-	version: p('app.version'),
-	language: r.language,
-	channel: p('app.channel'),
-	propertyCode: if (r.propertyCode != null) [r.propertyCode] else null,
-	propertyName: if (r.propertyCode == null) r.propertyName else null,
-	checkin: r.checkin,
-	checkout: r.checkout,
-	adults: r.adults,
-	children: r.children,
-	rooms: r.rooms,
-	currency: r.currency
-}]]]></http:body>
-      <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('rooms.clientId'), 'client_secret': p('rooms.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
-      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
-    </http:request>
-    <choice>
-      <when expression="#[attributes.statusCode == 404]">
-        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
-        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
-      </when>
-    </choice>
-    <ee:transform>
-      <ee:variables>
-        <ee:set-variable variableName="roomsSource"><![CDATA[%dw 2.0
-// The property object, whatever envelope it arrives in: the first object that has propertyCode or apartments,
-// preferring the one whose propertyCode matches the request.
-output application/java
-fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
-fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
-	else if (v is Object) (if ((v.propertyCode != null) or (v.apartments != null)) [v] else flatten(valuesOf(v) map candidates($)))
-	else []
-var all = candidates(payload)
-var code = vars.roomsRequest.propertyCode
----
-if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code))[0] default all[0])]]></ee:set-variable>
-      </ee:variables>
-    </ee:transform>
-    <choice>
-      <when expression="#[!(vars.roomsSource is Object)]">
-        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
-        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
-      </when>
-    </choice>
+    <set-variable variableName="request" value="#[vars.roomsRequest]"/>
+    <flow-ref name="get-property-info"/>
+    <set-variable variableName="roomsSource" value="#[vars.property]"/>
   </sub-flow>
 
   <!-- vars.roomsSource -> flat response. Nested objects become prefixed snake_case keys; nulls and blanks are dropped. -->
