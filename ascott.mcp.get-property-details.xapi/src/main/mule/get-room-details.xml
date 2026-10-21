@@ -1,47 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   T-04 get_room_details_and_rates: POST ${rooms.http.path}
-  Calls booking search through get_property_details' get-property-info sub-flow, so it needs no request config of its own
-  (get-room-details-global-config.xml / Room_Rates_HTTP is no longer used). Properties: rooms.http.path and rooms.maxRooms,
-  plus the shared app.*, default.* and request.* keys. Uses common_HTTP_Listener_Config from global-config.xml.
+  Self-contained: everything this endpoint needs is in this file, except HTTP_Listener (global-config.xml)
+  and the shared default.* / request.* properties. The global-property values below are defaults:
+  a configuration-properties file (properties or YAML) with the same keys overrides them.
   Response: one flat property row plus apartments[], one flat row per requested room x apartment.
 -->
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <global-property name="rooms.http.path" value="/api/v1/room-details"/>
+  <!-- ASSUMED upstream: same mocking link as getpropertypois. Replace with the real room/rate search API. -->
+  <global-property name="rooms.protocol" value="HTTPS"/>
+  <global-property name="rooms.host" value="anypoint.mulesoft.com"/>
+  <global-property name="rooms.port" value="443"/>
+  <global-property name="rooms.basePath" value="/mocking/api/v1/links/7f9e4e4b-5b60-4ba7-9a80-8c260eaa9eed"/>
+  <global-property name="rooms.path" value="/getroomdetailsandrates"/>
+  <global-property name="rooms.clientId" value="25617"/>
+  <global-property name="rooms.clientSecret" value="625252"/>
+  <global-property name="rooms.timeout" value="8000"/>
+  <global-property name="rooms.maxRooms" value="9"/>
+
+  <http:request-config name="Room_Rates_HTTP" basePath="${rooms.basePath}"><http:request-connection host="${rooms.host}" port="${rooms.port}" protocol="${rooms.protocol}"/></http:request-config>
 
   <flow name="get-room-details">
-    <http:listener config-ref="common_HTTP_Listener_Config" path="${rooms.http.path}" allowedMethods="POST">
-      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
-      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/room-details" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
-    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]"/>
-    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]"/>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: "get_room_details_and_rates", correlationId: vars.traceId}, "application/json", {indent: false})]'/>
-    <flow-ref name="rooms-validate-request"/>
-    <flow-ref name="rooms-get-rates"/>
-    <flow-ref name="rooms-map-response"/>
+    <flow-ref name="rooms-validate-request" doc:name="rooms-validate-request"/>
+    <flow-ref name="rooms-get-rates" doc:name="rooms-get-rates"/>
+    <flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: "get_room_details_and_rates", correlationId: vars.traceId, propertyCode: payload.property_code, apartmentCount: payload.apartment_count, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
     <error-handler ref="rooms-error-handler"/>
   </flow>
 
   <!-- Tool arguments -> vars.roomsRequest, with the same defaults as get_property_details. -->
   <sub-flow name="rooms-validate-request">
-    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
     <try>
-      <set-payload value="#[output application/java --- payload]"/>
-      <error-handler>
-        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
-          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
-        </on-error-continue>
-      </error-handler>
-    </try>
-    <choice>
-      <when expression="#[vars.errorMessage != null]">
-        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
-      </when>
-    </choice>
-    <ee:transform>
-      <ee:variables>
-        <ee:set-variable variableName="roomsValidation"><![CDATA[%dw 2.0
+      <ee:transform>
+        <ee:variables>
+          <ee:set-variable variableName="roomsValidation"><![CDATA[%dw 2.0
 output application/java
 import try from dw::Runtime
 import days from dw::core::Periods
@@ -108,8 +109,14 @@ var errors = [
 		language: language
 	}
 }]]></ee:set-variable>
-      </ee:variables>
-    </ee:transform>
+        </ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="roomsValidation" value="#[{errors: ['Request body must be valid JSON.']}]"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
     <choice>
       <when expression="#[not isEmpty(vars.roomsValidation.errors default [])]">
         <set-variable variableName="errorMessage" value="#[vars.roomsValidation.errors joinBy ' ']"/>
@@ -119,13 +126,88 @@ var errors = [
     <set-variable variableName="roomsRequest" value="#[vars.roomsValidation.request]"/>
   </sub-flow>
 
-  <!-- Same booking search call as get_property_details (its response carries the property fields and apartments[]):
-       reuses the get-property-info sub-flow, so request, credentials and not-found handling are identical.
-       The property object ends up in vars.roomsSource. -->
+  <!-- Room and rate search for one property; the matching property object ends up in vars.roomsSource. -->
   <sub-flow name="rooms-get-rates">
-    <set-variable variableName="request" value="#[vars.roomsRequest]"/>
-    <flow-ref name="get-property-info"/>
-    <set-variable variableName="roomsSource" value="#[vars.property]"/>
+  
+      <ee:transform>
+      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform>
+    <http:request method="POST" doc:name="Request Booking Search" doc:id="5519f8f0-905d-4f65-9b6e-aa0c12f60dae" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,404" />
+			</http:response-validator>
+		</http:request>
+  
+  
+  <!-- [STUDIO:"Transform Message"]<ee:transform>
+      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform> [STUDIO] -->
+    <logger level="INFO" doc:name="Logger" doc:id="dc54bba4-0cf3-4004-90d1-be2c904b2701" />
+		<!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_Bookingsearch_config" method="POST" path="/v3/checkpropertyavailabilitys" responseTimeout="30000">
+      <http:body><![CDATA[#[output application/json skipNullOn="everywhere"
+var r = vars.roomsRequest
+&#45;&#45;-
+{
+	"version": p('app.version'),
+	"language": r.language,
+	"channel": p('app.channel'),
+	"propertyCode": if (r.propertyCode != null) [r.propertyCode&#93; else null,
+	"propertyName": if (r.propertyCode == null) r.propertyName else null,
+	"checkin": r.checkin,
+	"checkout": r.checkout,
+	"adults": r.adults,
+	"children": r.children,
+	"rooms": r.rooms,
+	"currency": r.currency
+}&#93;&#93;&#93;></http:body>
+      <http:headers><![CDATA[#[output application/java
+&#45;&#45;-
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid'),
+	"X-Correlation-ID": vars.traceId
+}&#93;&#93;&#93;></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request> [STUDIO] -->
+    <choice>
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="roomsSource"><![CDATA[%dw 2.0
+// The property object, whatever envelope it arrives in: the first object that has propertyCode or apartments,
+// preferring the one whose propertyCode matches the request.
+output application/java
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
+	else if (v is Object) (if ((v.propertyCode != null) or (v.apartments != null)) [v] else flatten(valuesOf(v) map candidates($)))
+	else []
+var all = candidates(payload)
+var code = vars.roomsRequest.propertyCode
+---
+if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code))[0] default all[0])]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[!(vars.roomsSource is Object)]">
+        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
   </sub-flow>
 
   <!-- vars.roomsSource -> flat response. Nested objects become prefixed snake_case keys; nulls and blanks are dropped. -->
