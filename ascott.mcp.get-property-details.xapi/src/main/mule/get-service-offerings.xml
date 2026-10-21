@@ -3,9 +3,9 @@
   T-03 get_service_offerings: POST ${t03.http.path}
   Reads propertyList[].facilities.facilityDetails[] from the same process API as get_property_details and returns
   the get_service_offerings structuredContent (schemas/service-offerings-structured-content.schema.json 0.1.0).
-  No config of its own: common_HTTP_Listener_Config and Property_Info_HTTP from global-config.xml, property-details-error-handler
-  from error-handlers.xml. Properties: the t03.* block in service-offerings.yaml, plus the process API keys it shares
-  with get_property_details (property.path, property.timeout, property.clientId, property.clientSecret).
+  No config of its own: common_HTTP_Listener_Config from global-config.xml, the get-property-info sub-flow (and so the
+  request config and credentials) from get-property-details.xml, property-details-error-handler from error-handlers.xml.
+  Properties: the t03.* block in service-offerings.yaml, plus default.* for the stay sent with the request.
 -->
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
@@ -82,63 +82,12 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
     <set-variable variableName="servicesRequest" value="#[vars.servicesValidation.request]"/>
   </sub-flow>
 
-  <!-- Same process API call as get_property_details; the matching propertyList entry ends up in vars.servicesSource. -->
+  <!-- Same call as get_property_details: reuses its get-property-info sub-flow (request body, headers, request config,
+       not-found handling), so the two calls cannot drift apart. The property object ends up in vars.servicesSource. -->
   <sub-flow name="services-get-facilities">
-    <http:request config-ref="HTTP_Request_Bookingsearch_config" method="POST" path="/v3/checkpropertyavailability" responseTimeout="${property.timeout}">
-      <http:body><![CDATA[#[output application/json
----
-{
-	version: p('t03.version'),
-	language: vars.servicesRequest.language,
-	channel: p('t03.channel'),
-	propertyCode: vars.servicesRequest.propertyCode,
-	checkin: vars.servicesRequest.checkin,
-	checkout: vars.servicesRequest.checkout,
-	adults: vars.servicesRequest.adults,
-	children: vars.servicesRequest.children,
-	currency: p('default.currency')
-}]]]></http:body>
-      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]]]></http:headers>
-      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
-    </http:request>
-    <choice>
-      <when expression="#[attributes.statusCode == 404]">
-        <set-variable variableName="errorMessage" value="Property not found."/>
-        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
-      </when>
-    </choice>
-    <ee:transform>
-      <ee:variables>
-        <ee:set-variable variableName="servicesSource"><![CDATA[%dw 2.0
-// propertyList[] entry whose propertyCode matches the request; a single entry is taken as is.
-output application/java
-fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
-fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
-	else if (v is Object) (if (v.propertyList is Array) (v.propertyList filter ($ is Object))
-		else if ((v.propertyCode != null) or (v.facilities != null)) [v]
-		else flatten(valuesOf(v) map candidates($)))
-	else []
-var all = candidates(payload)
-var code = vars.servicesRequest.propertyCode
----
-(all filter ((c) -> text(c.propertyCode) == code))[0] default (if (sizeOf(all) == 1) all[0] else null)]]></ee:set-variable>
-      </ee:variables>
-    </ee:transform>
-    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
-    <try>
-      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.property.response", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, propertyListSize: if (payload.propertyList is Array) sizeOf(payload.propertyList) else null, facilityFields: if (vars.servicesSource.facilities is Object) (keysOf(vars.servicesSource.facilities) map ($ as String)) else typeOf(vars.servicesSource.facilities) as String}, "application/json", {indent: false})]'/>
-      <error-handler>
-        <on-error-continue type="ANY" logException="false" enableNotifications="false">
-          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
-        </on-error-continue>
-      </error-handler>
-    </try>
-    <choice>
-      <when expression="#[!(vars.servicesSource is Object)]">
-        <set-variable variableName="errorMessage" value="Property not found."/>
-        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
-      </when>
-    </choice>
+    <set-variable variableName="request" value="#[vars.servicesRequest ++ {propertyName: null, currency: null}]"/>
+    <flow-ref name="get-property-info"/>
+    <set-variable variableName="servicesSource" value="#[vars.property]"/>
   </sub-flow>
 
   <!-- vars.servicesSource -> {meta, services[]}: one flat row per facilities.facilityDetails[] item, upstream order. -->

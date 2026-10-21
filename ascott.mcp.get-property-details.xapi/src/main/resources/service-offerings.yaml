@@ -6,24 +6,9 @@
 # ---------- New keys: only this endpoint uses them
 t03:
   http.path: "/api/v1/service-offerings"
-  version: "v1"                                  # sent as "version" to the process API
-  channel: "mcp"                                 # sent as "channel" to the process API
   defaultlanguage: "en"                          # when the request has no language (lower case: en, zh-CN)
   assetbaseurl: "https://www.discoverasr.com"    # meta.asset_base_url; also prefixes site-relative facilityUrl
 
-# ---------- Shared with T-02 get_property_details (same process API endpoint, Property_Info_HTTP).
-# These are the request-level keys the T-03 call reads. They belong in the EXISTING "property:" block
-# (which already holds currency, language, buyPointsCurrency, ...). Add only the ones that are missing;
-# a second "property:" block in the same file is a duplicate key.
-#
-# property:
-#   path: "/getpropertydetails"      # process API resource path (ASSUMED: confirm the real one)
-#   timeout: "8000"                  # ms
-#   clientId: "<client id>"
-#   clientSecret: "<client secret>"  # keep in secure properties
-#
-# The request also sends a default stay (the availability search returns no propertyList without one), using the
-# same keys as get_property_details: default.checkinOffsetDays, default.nights, default.adults, default.children.
-#
-# Property_Info_HTTP itself (global-config.xml) reads property.protocol, property.host, property.port
-# and property.basePath, which T-02 already needs.
+# ---------- Shared with T-02 get_property_details
+# T-03 calls the process API through get_property_details' own get-property-info sub-flow, so it uses exactly the
+# same request config, credentials, app.version / app.channel and default.* keys. Nothing else to add for it.
