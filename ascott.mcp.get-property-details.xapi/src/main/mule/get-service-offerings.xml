@@ -84,7 +84,7 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 
   <!-- Same process API call as get_property_details; the matching propertyList entry ends up in vars.servicesSource. -->
   <sub-flow name="services-get-facilities">
-    <http:request config-ref="Property_Info_HTTP" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
+    <http:request config-ref="HTTP_Request_Bookingsearch_config" method="POST" path="/v3/checkpropertyavailability" responseTimeout="${property.timeout}">
       <http:body><![CDATA[#[output application/json
 ---
 {
@@ -98,7 +98,7 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
 	children: vars.servicesRequest.children,
 	currency: p('default.currency')
 }]]]></http:body>
-      <http:headers>#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]</http:headers>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'client_id': p('property.clientId'), 'client_secret': p('property.clientSecret'), 'messageId': vars.traceId, 'X-Correlation-ID': vars.traceId}]]]></http:headers>
       <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
     </http:request>
     <choice>
