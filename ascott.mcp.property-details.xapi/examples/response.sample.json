@@ -1,0 +1,57 @@
+{
+  "property_code": "50926",
+  "property_name": "Ascott Raffles Place Singapore",
+  "brand_code": "ascott-the-residence",
+  "brand_name": "Ascott The Residence",
+  "brand_logo_url": "",
+  "banner_image_url": "/content/dam/ascott/50926/banner-mobile.jpg",
+  "thumbnail_url": "/content/dam/ascott/50926/thumbnail.jpg",
+  "property_type": "Serviced Apartments",
+  "asr_participating": true,
+  "tags": [
+    { "propertyTagTitle": "CBD", "propertyTagPresent": true }
+  ],
+  "description_title": "Singapore Serviced Apartments",
+  "description": "<p>Heritage residence in the heart of Raffles Place.</p>",
+  "pricing": {
+    "availability_status": "available",
+    "per_night_rate_pref_curr": 312.5,
+    "total_stay_rate_pref_curr": 937.5,
+    "currency": "SGD",
+    "based_on": { "checkin": "2026-11-12", "checkout": "2026-11-15", "adults": 2, "children": 0 }
+  },
+  "location": {
+    "city": "Singapore",
+    "country": "Singapore",
+    "country_code": "SG",
+    "address": "2 Finlayson Green, Singapore 049247",
+    "coordinates": { "latitude": 1.2823, "longitude": 103.852 }
+  },
+  "amenities": {
+    "facility_groups": [
+      {
+        "entity_name": "facilities-amenities",
+        "entity_title": "Facilities & Amenities with Icon",
+        "facilities": [
+          { "description": "Pool", "imagePath": "/icons/icon-pool.svg", "enabled": true },
+          { "description": "Gym", "imagePath": "/icons/icon-gym.svg", "enabled": true }
+        ]
+      }
+    ]
+  },
+  "reviews": { "average_ratings": 4.6, "total_number_of_reviews": 128 },
+  "hotel_information": { "check_in_time": "15:00:00", "check_out_time": "12:00:00" },
+  "nearby": [
+    {
+      "poi_id": "poi-50926-01",
+      "title": "Green Oasis - CapitaSpring",
+      "category": "Landmarks & Outdoors",
+      "type": "Viewpoint",
+      "icon_code": "🌳",
+      "coordinates": { "latitude": 1.2836, "longitude": 103.8502 },
+      "address": "88 Market St, Singapore 048948",
+      "distance_minutes": 5
+    }
+  ],
+  "asset_base_url": "https://www.discoverasr.com"
+}

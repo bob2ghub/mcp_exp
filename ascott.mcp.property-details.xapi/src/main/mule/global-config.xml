@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+  <configuration-properties file="config.yaml"/>
+
+  <http:listener-config name="Property_Details_HTTP_Listener">
+    <http:listener-connection host="${http.host}" port="${http.port}"/>
+  </http:listener-config>
+
+  <!-- Same name as the request config the ODX booking search flow uses. -->
+  <http:request-config name="HTTP_Request_Bookingsearch_config" basePath="${https.bookingsearchprocessapi.basePath}">
+    <http:request-connection protocol="${https.bookingsearchprocessapi.protocol}" host="${https.bookingsearchprocessapi.host}" port="${https.bookingsearchprocessapi.port}"/>
+  </http:request-config>
+
+  <http:request-config name="Property_POI_HTTP" basePath="${poi.basePath}">
+    <http:request-connection protocol="${poi.protocol}" host="${poi.host}" port="${poi.port}"/>
+  </http:request-config>
+</mule>

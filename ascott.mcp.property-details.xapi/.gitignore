@@ -1,0 +1,8 @@
+target/
+.mule/
+.settings/
+.classpath
+.project
+logs/
+*.local.yaml
+__pycache__/

@@ -1,0 +1,62 @@
+# ascott.mcp.property-details.xapi: T-02 get_property_details
+# Every key the app reads is here; no flow has a hard-coded default.
+
+# HTTP listener the MCP API calls. Non-logged-in journey: no auth, no user context.
+http:
+  host: "0.0.0.0"
+  port: "8083"
+  path: "/api/v1/property-details"
+
+# Booking search process API, as called by ODX_Booking_Search_Result_Apartment_Rate_Details_V3.xml:
+# PUT {basePath}/v3/checkpropertyavailability with client_id, client_secret and messageId headers.
+# Key names under "https.bookingsearchprocessapi" match the ODX flow, so the values can be copied from that app's config.
+https:
+  bookingsearchprocessapi:
+    protocol: "HTTPS"
+    host: "REPLACE-WITH-BOOKING-SEARCH-PROCESS-API-HOST"
+    port: "443"
+    basePath: ""
+    path: "/v3/checkpropertyavailability"
+    clientid: "REPLACE-WITH-CLIENT-ID"
+    clientsecret: "REPLACE-WITH-CLIENT-SECRET"   # move to secure properties outside local
+    timeout: "6000"                              # ms, same as the ODX flow
+    # ODX: rate plans are tagged MOBILE / WEB, so "mcp" matches none. Send "mobile" like the Mobile experience API.
+    channel: "mobile"
+    # ODX: an empty userCountry makes the process API's minBaseRate fail (500). MCP has no user, so send a fixed country.
+    userCountry: "SG"
+
+# ODX flow defaults (property.language / property.currency in the ODX flow)
+property:
+  language: "en"
+  currency: "SGD"
+
+# Property POI API
+poi:
+  protocol: "HTTPS"
+  host: "anypoint.mulesoft.com"
+  port: "443"
+  basePath: "/mocking/api/v1/links/7f9e4e4b-5b60-4ba7-9a80-8c260eaa9eed"
+  path: "/getpropertypois"
+  clientid: "25617"
+  clientsecret: "625252"                         # move to secure properties outside local
+  timeout: "5000"                                # ms
+  version: "v1"
+  channel: "mcp"
+  maxPerProperty: "5"                            # the schema caps nearby[] at 5
+  walkingMetresPerMinute: "80"                   # used only when a POI has distanceMetres but no distanceMinutes
+
+# Applied when the tool call leaves a field out
+default:
+  adults: "1"
+  children: "0"
+  checkinOffsetDays: "1"                         # checkin = today + 1
+  nights: "1"                                    # checkout = checkin + 1
+
+request:
+  maxAdults: "10"
+  maxChildren: "10"
+  maxNights: "90"
+
+# Origin the widget resolves relative image paths against
+asset:
+  baseUrl: "https://www.discoverasr.com"
