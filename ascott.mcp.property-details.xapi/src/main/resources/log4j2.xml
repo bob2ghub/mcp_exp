@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+  <Appenders>
+    <Console name="Console"><PatternLayout pattern="%d{ISO8601} %-5p [%c] %m%n"/></Console>
+    <RollingFile name="Audit" fileName="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}ascott-property-details-xapi-audit.jsonl" filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}ascott-property-details-xapi-audit-%i.jsonl.gz">
+      <PatternLayout pattern="%m%n"/>
+      <Policies><SizeBasedTriggeringPolicy size="10 MB"/></Policies>
+      <DefaultRolloverStrategy max="5"/>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Logger name="ascott.audit" level="INFO" additivity="false"><AppenderRef ref="Console"/><AppenderRef ref="Audit"/></Logger>
+    <Logger name="org.mule.service.http.impl.service.HttpMessageLogger" level="OFF"/>
+    <Logger name="org.mule.extension.http.internal.HttpMessageLogger" level="OFF"/>
+    <Root level="INFO"><AppenderRef ref="Console"/></Root>
+  </Loggers>
+</Configuration>

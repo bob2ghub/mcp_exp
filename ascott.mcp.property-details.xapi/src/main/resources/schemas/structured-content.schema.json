@@ -1,0 +1,677 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_property_details:structured-content:0.5.0",
+  "title": "Get property details structuredContent",
+  "description": "The `structuredContent` of the `get_property_details` MCP tool: one property, everything the T-02 inline card and full-screen page render. Base: PRD T-02 section 6.1 'Illustrative data packet — canonical output', field names verbatim (snake_case, nested as in the packet). On top of the PRD, the additions the built widget needs, each marked 'ADDED' in its description: `brand_code` and `nearby[]` (same meaning as T-01), `pricing.availability_status` / `next_available_date` (T-01's on-request handling), `reviews.individual_reviews` as a real array (PRD OQ-02 placeholder), `asset_base_url`, and two UI-only optional blocks the PRD does not have: `accessibility_note`, `awards` (user decision 2026-10-10). Left out: `pet_policy` (the client has no such data, 2026-10-15) and the PRD's `points_of_interest` placeholder (replaced by `nearby[]`). `best_rate_guaranteed` was a PARAMETER GAP and is accepted since 0.3.0. `services[]` was removed in 0.4.0: the 'Rooms and services' cards are the same on every property (text and image), so the widget holds them. 0.5.0 adds the optional `location.city`, `location.country` and `location.country_code` (the property page link). 0.5.0, provisional (2026-10-18).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "property_code",
+    "property_name",
+    "brand_code",
+    "brand_name",
+    "brand_logo_url",
+    "thumbnail_url",
+    "property_type",
+    "asr_participating",
+    "pricing",
+    "location",
+    "amenities",
+    "reviews",
+    "hotel_information"
+  ],
+  "properties": {
+    "property_code": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `propertyCode`, e.g. \"50926\". The same code as T-01's `property_code`."
+    },
+    "property_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `propertyName`."
+    },
+    "brand_code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "ADDED (same as T-01). The upstream `brand` slug, passed through verbatim, e.g. \"ascott-the-residence\". The widget maps it to its bundled brand lockup and colour; `brand_name` is display text only. See find-properties/README.md §1.",
+      "examples": [
+        "ascott-the-residence",
+        "somerset-serviced-residence",
+        "citadines",
+        "lyf"
+      ]
+    },
+    "brand_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `brandName`, display text, e.g. \"Ascott The Residence\"."
+    },
+    "brand_logo_url": {
+      "type": "string",
+      "description": "PRD `brandlogo`: upstream path or URL; \"\" when there is none. A fallback only: the widget prefers its bundled lockup for `brand_code`."
+    },
+    "banner_image_url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `bannerImageMobile`: the hero image. Upstream path, resolved by the widget against `asset_base_url`. Optional: many properties have none."
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `newPropertyThumbnail`. Required: the hero falls back to it when `gallery` and `banner_image_url` are absent (EC partial data)."
+    },
+    "property_type": {
+      "type": "string",
+      "description": "PRD `propertyType`, e.g. \"Serviced Apartments\"; \"\" when unknown."
+    },
+    "asr_participating": {
+      "type": "boolean",
+      "description": "PRD `asrParticipating`."
+    },
+    "email": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `email`. Shown in the full-screen header."
+    },
+    "phone": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `phone` (bookingsearchresultv2, else getpropertyinfo). Shown in the full-screen header."
+    },
+    "tags": {
+      "type": "array",
+      "description": "PRD `tag[]`. The widget shows the titles of tags with `propertyTagPresent: true` as chips (inline card). Plain titles, no emoji.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "propertyTagTitle",
+          "propertyTagPresent"
+        ],
+        "description": "One tag chip. Field names are the PRD packet's, camelCase as written there.",
+        "properties": {
+          "propertyTagTitle": {
+            "type": "string",
+            "minLength": 1,
+            "description": "e.g. \"CBD\", \"Business-friendly\"."
+          },
+          "propertyTagPresent": {
+            "type": "boolean",
+            "description": "Only `true` tags are shown."
+          }
+        }
+      }
+    },
+    "description_title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `descriptionTitle`, e.g. \"Singapore Serviced Apartments\"."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PRD `description`: CMS HTML (the PRD's type is 'String (HTML)'). The widget renders it as plain text, stripping tags; it never injects HTML."
+    },
+    "gallery": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/galleryImage"
+      },
+      "description": "PRD `gallery[]` → path, gallery_image, gallery_type, title. The hero carousel. Optional (partial data); when absent the hero uses `banner_image_url`, then `thumbnail_url`."
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability_status",
+        "currency",
+        "based_on"
+      ],
+      "description": "PRD `pricing`, plus T-01's availability handling.",
+      "properties": {
+        "availability_status": {
+          "type": "string",
+          "enum": [
+            "available",
+            "on_request"
+          ],
+          "description": "ADDED (same as T-01). `available`: `per_night_rate_pref_curr` is required and shown. `on_request`: no rate is shown; `next_available_date` may say when it is bookable."
+        },
+        "per_night_rate_pref_curr": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "PRD `perNightRatePrefCurr`, decimal string upstream, a number here. The 'from … / night' figure."
+        },
+        "total_stay_rate_pref_curr": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "PRD `totalStayRatePrefCurr`."
+        },
+        "strikethrough_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "PRD `strikethroughRate`."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "PRD `currency`, ISO 4217. Every rate uses it. (T-01 calls the same field `currency_code`; the PRD packet names differ and each contract follows its own PRD.)"
+        },
+        "next_available_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ADDED (same as T-01). Only with `on_request`."
+        },
+        "based_on": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checkin",
+            "checkout",
+            "adults",
+            "children"
+          ],
+          "description": "PRD `based_on`: the stay and guests the rates were quoted for, after server defaults.",
+          "properties": {
+            "checkin": {
+              "type": "string",
+              "format": "date",
+              "description": "The stay the rates are for."
+            },
+            "checkout": {
+              "type": "string",
+              "format": "date"
+            },
+            "adults": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "children": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "address",
+        "coordinates"
+      ],
+      "description": "PRD `location`.",
+      "properties": {
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED 0.5.0, optional. Same as T-01 `properties[].location.city`. Not shown by the widget; for the model."
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED 0.5.0, optional. Same as T-01 `properties[].location.country`, e.g. \"Singapore\". Not shown by the widget; for the model."
+        },
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ADDED 0.5.0, optional. ISO 3166-1 alpha-2, upper case, e.g. \"SG\" (upstream `countryCode`). The widget builds the fullscreen \"Open in\" link to the property's page on discoverasr.com from it (`/{language}/{brand_code}/{country}/{property}`); without it the link falls back to the site's search."
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `address`. 'Where are we?'."
+        },
+        "local_address": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `localAddress` (getpropertyinfo), the localised address when it differs."
+        },
+        "coordinates": {
+          "$ref": "#/$defs/coordinates"
+        },
+        "map_image_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `mapImage`: upstream static map image. Optional: the widget can draw the map from `coordinates`."
+        },
+        "getting_to_property": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description"
+          ],
+          "description": "PRD `gettingToProperty` → title, description.",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Heading."
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "description": "CMS HTML; rendered as plain text."
+            }
+          }
+        },
+        "public_transport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description"
+          ],
+          "description": "PRD `publicTransport` → title, description.",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Heading."
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "description": "CMS HTML; rendered as plain text."
+            }
+          }
+        }
+      }
+    },
+    "amenities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facility_groups"
+      ],
+      "description": "PRD `amenities`.",
+      "properties": {
+        "facility_groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entity_name",
+              "facilities"
+            ],
+            "description": "PRD `facilityGroup[]`.",
+            "properties": {
+              "entity_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"facilities-amenities\"."
+              },
+              "entity_title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"Facilities & Amenities with Icon\"."
+              },
+              "facilities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "description",
+                    "imagePath"
+                  ],
+                  "description": "One facility, PRD `facilities[]`.",
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Label, e.g. \"Pool\". De-duplicated by the server (see find-properties/README.md §2)."
+                    },
+                    "imagePath": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Upstream icon path. The widget's icon KEY is the file name (\"icon-pool\"); the image is never loaded (T-01 decision)."
+                    },
+                    "charge": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "e.g. \"free\", \"paid\". Optional: null on every website row."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Only enabled facilities are shown."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "description": "The inline amenity row and the 'Property highlights' grid use the facilities of every group, in order. May be empty."
+        }
+      }
+    },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "average_ratings",
+        "total_number_of_reviews"
+      ],
+      "description": "PRD `reviews`.",
+      "properties": {
+        "average_ratings": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "PRD `averageRatings` (v1/propertyreviews)."
+        },
+        "total_number_of_reviews": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRD `totalNumberOfReviews`."
+        },
+        "score_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. \"Excellent\". In the PRD packet, not in the §6 table; source to confirm."
+        },
+        "individual_reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reviewer_name",
+              "rating",
+              "text"
+            ],
+            "description": "One review card. ADDED shape: the PRD lists reviewer name, rating, date, source and text but no field names (OQ-02).",
+            "properties": {
+              "reviewer_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"Andy Andrea\"; the widget derives the avatar initials."
+              },
+              "rating": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 5,
+                "description": "Per-review score, 0–5."
+              },
+              "posted_date": {
+                "type": "string",
+                "format": "date",
+                "description": "The widget shows month and year (\"Posted July 2027\")."
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"Expedia\" (\"on Expedia\")."
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Review body; truncated by the card."
+              }
+            }
+          },
+          "description": "ADDED as an array. The PRD packet has a string placeholder here ('PENDING OQ-02'). Optional: without it the Ratings & Reviews section shows the summary only."
+        }
+      }
+    },
+    "hotel_information": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "description": "PRD `hotel_information`. Every field optional (partial data); the widget shows a cell only for a field that is present, and hides the whole Hotel Information section when none is. Cell titles are the widget's own translated labels, not data. 0.3.0 (2026-10-15): `best_rate_guaranteed` added (was a PARAMETER GAP, PRD OQ-05). `pet_policy` (PRD AC-08 / OQ-04) is deliberately NOT accepted: the client has no pet policy data (user decision 2026-10-15).",
+      "properties": {
+        "check_in_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$",
+          "description": "PRD `checkInTime`, 24-hour \"15:00:00\". The widget formats it for the locale."
+        },
+        "check_out_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$",
+          "description": "PRD `checkOutTime`."
+        },
+        "staff_languages": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "languages"
+          ],
+          "description": "PRD `staffLanguages` → title, languages[].",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "e.g. \"Language(s) our staff speak\". Accepted for compatibility but NOT shown since 0.3.0: the cell title is the widget's translated label, so it follows the user's language."
+            },
+            "languages": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"English\"."
+              }
+            }
+          }
+        },
+        "cancellation_policy": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `cancellationPolicy`, CMS HTML, rendered as plain text. The 'Cancellation and Pre-payment' cell."
+        },
+        "best_rate_guaranteed": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED 0.3.0 (2026-10-15, user decision): the Best Rate Guaranteed text, plain text, e.g. \"Applicable under property's Terms and conditions\". Shown as the value under the widget's 'Best Rate Guaranteed' title; absent = no cell. PRD OQ-05: source to be confirmed by MuleSoft. Sent in the language of the response, not translated by the widget.",
+          "examples": [
+            "Applicable under property's Terms and conditions"
+          ]
+        }
+      }
+    },
+    "nearby": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/pointOfInterest"
+      },
+      "description": "ADDED (same as T-01 `nearby[]`, same POI source). Replaces the PRD's `points_of_interest` placeholder (API GAP, OQ-07): up to 5 POIs for 'What's nearby?'."
+    },
+    "asset_base_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "ADDED (T-01 has it as `meta.asset_base_url`). Origin the widget resolves relative image paths against; default https://www.discoverasr.com."
+    },
+    "accessibility_note": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "body"
+      ],
+      "description": "ADDED, UI-only (user decision 2026-10-10): the 'Accessible Property' note under Hotel Information (Figma 1495:12026). Not in the PRD; field name ours; MuleSoft to find a source.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. \"Accessible Property\"."
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plain text."
+        }
+      }
+    },
+    "awards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "image"
+        ],
+        "description": "One award badge.",
+        "properties": {
+          "image": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Award badge image, upstream path."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Accessible name, e.g. \"Travellers' Choice 2025\"."
+          }
+        }
+      },
+      "description": "ADDED, UI-only (user decision 2026-10-10): the mobile AWARDS strip (Figma 572:54916). Not in the PRD; field name ours."
+    }
+  },
+  "$defs": {
+    "coordinates": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Copied verbatim from contracts/find-properties/structured-content.ui.schema.json `$defs`, so a POI / image / coordinate means the same thing in T-01 and T-02. Change both together. Required in both versions and genuinely needed, but note the gap is on OUR side: `PropertyCardVM` carries no latitude/longitude, so the preview scatters pins at hard-coded percentages (FindPropertiesView.tsx:174). Wiring the real Google Map means adding these to the view model — nothing is missing from the contract.",
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "galleryImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "gallery_type",
+        "title"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The image the carousel renders. Upstream path verbatim, resolved like every image field (see `meta.asset_base_url`)."
+        },
+        "gallery_image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Not consumed."
+        },
+        "gallery_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Not consumed. Required in 0.1.0; kept so the two versions stay comparable."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Used as the slide's alt text, falling back to `property_name`."
+        }
+      },
+      "description": "Copied verbatim from contracts/find-properties/structured-content.ui.schema.json `$defs`, so a POI / image / coordinate means the same thing in T-01 and T-02. Change both together. "
+    },
+    "pointOfInterest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "poi_id",
+        "title",
+        "category",
+        "type",
+        "icon_code",
+        "coordinates"
+      ],
+      "description": "Copied verbatim from contracts/find-properties/structured-content.ui.schema.json `$defs`, so a POI / image / coordinate means the same thing in T-01 and T-02. Change both together. One point of interest near a property, feeding both POI surfaces: the panel row and the map callout. REWRITTEN to mirror the real upstream shape — the ODX `pois[]` array that MuleSoft will call, supplied by the customer 2026-10-01. Before that it was modelled from the preview fixture, which turned out to be both poorer (no id, category, type or distance) and richer (a prose `description` and an `emoji` that ODX does not have) than the real thing. Field names are snake_case here rather than ODX's camelCase, and `coordinates` is a nested object of NUMBERS rather than two top-level strings, because both are already this contract's house style and splitting it per-field would leave one response internally inconsistent — property coordinates nested numbers, POI coordinates flat strings. The per-field provenance below is the mapping specification for MuleSoft. Note that ODX also supplies `distanceMetres`, which this schema deliberately does NOT accept — the only place in either contract where an available upstream field is refused rather than passed through; see find-properties/README.md for the decision and its one consequence.",
+      "properties": {
+        "poi_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `poiId`, e.g. \"poi-50926-01\". The stable identity: React key for the panel row, selection id for the callout. Note the value is namespaced by the property code — `50926` is this property's `property_code` — which is independent evidence that ODX treats POIs as belonging to a property rather than to the search area, and so corroborates modelling them per property rather than response-level.",
+          "examples": [
+            "poi-50926-01",
+            "poi-50926-02"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `poiName`. Named `title` and not `label` — which is what `PropertyNearbyPOI` calls it — on two grounds: `MapCallout`'s own prop is `title`, and \"label\" is UI vocabulary describing where a string is painted rather than what it is. A data contract should name the thing. The view-side rename is listed in find-properties/README.md.",
+          "examples": [
+            "Green Oasis - CapitaSpring",
+            "Singapore Chinatown"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `poiCategory`, the coarse tier of a two-level taxonomy. Confirmed to be the SAME taxonomy as the legend table pasted into the T-01 Figma frame (node 1006:60836), whose five observed categories are listed in `examples` below. Deliberately a plain string and NOT an `enum`, unlike `brand_code` — the legend is a rasterised image rather than a text node, so it cannot be transcribed with certainty, and it carries no Food or Dining category even though the design's own map callouts are restaurants and bars and `CategoryPin` ships a `Food` variant. Either the pasted table is partial or dining POIs arrive by another route; until that is answered, an enum would reject valid payloads. Tighten it to an enum once the taxonomy is confirmed complete.",
+          "examples": [
+            "Entertainment",
+            "Shopping",
+            "Wellness",
+            "Hotels",
+            "Landmarks & Outdoors"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `poiType`, the fine tier. 21 values observed in the Figma legend: Theme park; Shopping mall, Boutique, Bookstore, Artisan market, Florist, Home goods; Spa, Gym, Yoga studio, Aquatics; Luxury hotel, Boutique hotel, Budget hotel, Resort; Park, Bridge, Temple, Heritage building, Beach, Viewpoint. Same reason as `category` for staying a string.",
+          "examples": [
+            "Viewpoint",
+            "Artisan market"
+          ]
+        },
+        "icon_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `iconCode`, which is an EMOJI (e.g. \"🌳\", \"🛍️\"), not a snake_case code — corrected 2026-10-03 when the customer supplied the upstream value list (mock-mcp/mock-data/poi_icon_code.json, 70 distinct). Pass it through verbatim; the widget renders it as the POI marker as-is. This retires the earlier plan of a widget-owned `icon_code` → emoji table keyed off the rasterised Figma legend: upstream already chooses the glyph. Deliberately no `pattern` or `enum`: emoji include variation selectors and multi-code-point sequences that a regex would have to enumerate, and a closed list written from one sample would reject valid payloads (the `brand_code` lesson). MuleSoft must NOT map it to a name.",
+          "examples": [
+            "🌳",
+            "🛍️",
+            "🥟"
+          ]
+        },
+        "coordinates": {
+          "$ref": "#/$defs/coordinates",
+          "description": "ODX `latitude` and `longitude`, which arrive as decimal STRINGS (\"1.2876\") and must be converted to numbers per this contract's normalization rule. Required: a POI is placed on the map exactly as a property pin is — `FindPropertiesView.tsx:185` states it, \"At runtime the map projects them from POI coordinates\" — and the preview only hides that because `CALLOUT_POSITIONS` drops two callouts at hard-coded percentages lifted from the Figma frame."
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ODX `poiAddress`. Not consumed by any T-01 surface; kept because it costs nothing to pass through and the model may cite it in prose.",
+          "examples": [
+            "88 Market St, Singapore 048948",
+            "Chinatown, Singapore"
+          ]
+        },
+        "distance_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "ADDED 1.1.0 (T-01) / 0.2.0 (T-02), 2026-10-15, user decision: walking time from the property to this POI, in whole minutes. Optional: a POI without it is still shown, without a walk time. MuleSoft supplies the value already in minutes; the widget does not convert. Rendered as \"- {n} mins walk\" after the POI name (Figma T-02 inline 1630:41645). Upstream ODX has `distanceMetres` (metres, not minutes); how the minutes are derived is MuleSoft's to confirm.",
+          "examples": [
+            5,
+            12
+          ]
+        }
+      }
+    }
+  }
+}

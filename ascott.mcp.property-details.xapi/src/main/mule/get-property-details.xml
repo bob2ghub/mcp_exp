@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <!-- POST /api/v1/property-details: T-02 get_property_details. Returns the tool's structuredContent
+       (schemas/structured-content.schema.json 0.5.0) or {success: false, correlationId, error}. -->
+  <flow name="get-property-details">
+    <http:listener config-ref="Property_Details_HTTP_Listener" path="${http.path}" allowedMethods="POST" doc:name="POST property-details">
+      <http:response statusCode="#[vars.httpStatus default 200]">
+        <http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers>
+      </http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]">
+        <http:body><![CDATA[#[payload]]]></http:body>
+        <http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers>
+      </http:error-response>
+    </http:listener>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: "get_property_details", correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="xapi.start"/>
+    <flow-ref name="validate-request" doc:name="validate-request"/>
+    <flow-ref name="resolve-property-code" doc:name="resolve-property-code"/>
+    <flow-ref name="booking-search" doc:name="booking-search"/>
+    <flow-ref name="get-property-pois" doc:name="get-property-pois"/>
+    <ee:transform doc:name="map-response">
+      <ee:message><ee:set-payload resource="dwl/map-response.dwl"/></ee:message>
+    </ee:transform>
+    <!-- Fields the schema requires and that have no sensible default: fail rather than return an invalid card. -->
+    <set-variable variableName="missingFields" value="#[[('thumbnail_url') if (payload.thumbnail_url == null), ('location.address') if (payload.location.address == null), ('location.coordinates') if (payload.location.coordinates == null)]]" doc:name="missingFields"/>
+    <choice doc:name="Complete?">
+      <when expression="#[not isEmpty(vars.missingFields)]">
+        <set-variable variableName="errorMessage" value="#['The property data is missing: ' ++ (vars.missingFields joinBy ', ') ++ '.']" doc:name="errorMessage"/>
+        <raise-error type="APP:UPSTREAM_INCOMPLETE" description="Booking search response is missing required property fields"/>
+      </when>
+    </choice>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: "get_property_details", correlationId: vars.traceId, propertyCode: payload.property_code, availability: payload.pricing.availability_status, nearbyCount: sizeOf(payload.nearby default []), elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="xapi.success"/>
+    <error-handler ref="property-details-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.request, with server defaults applied. -->
+  <sub-flow name="validate-request">
+    <try doc:name="Try">
+      <ee:transform doc:name="validate-request.dwl">
+        <ee:variables><ee:set-variable variableName="validation" resource="dwl/validate-request.dwl"/></ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="validation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="validation"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice doc:name="Valid?">
+      <when expression="#[not isEmpty(vars.validation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[vars.validation.errors joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_property_details request"/>
+      </when>
+    </choice>
+    <set-variable variableName="request" value="#[vars.validation.request]" doc:name="request"/>
+  </sub-flow>
+
+  <!-- The booking search takes property codes only. A request by name is resolved from property-codes.json. -->
+  <sub-flow name="resolve-property-code">
+    <choice doc:name="Name only?">
+      <when expression="#[vars.request.propertyCode == null]">
+        <ee:transform doc:name="resolve-property-code.dwl">
+          <ee:variables><ee:set-variable variableName="resolved" resource="dwl/resolve-property-code.dwl"/></ee:variables>
+        </ee:transform>
+        <choice doc:name="Found?">
+          <when expression="#[vars.resolved.propertyCode == null]">
+            <set-variable variableName="errorMessage" value="#[vars.resolved.message]" doc:name="errorMessage"/>
+            <raise-error type="APP:NOT_FOUND" description="No property matches propertyName"/>
+          </when>
+        </choice>
+        <set-variable variableName="request" value="#[output application/java --- (vars.request - 'propertyCode') ++ {propertyCode: vars.resolved.propertyCode}]" doc:name="request"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- PUT /v3/checkpropertyavailability, as in ODX_Booking_Search_Result_Apartment_Rate_Details_V3.xml.
+       The propertyList[] entry for the requested code ends up in vars.property. -->
+  <sub-flow name="booking-search">
+    <ee:transform doc:name="booking-search-request.dwl">
+      <ee:variables><ee:set-variable variableName="bookingSearchRequest" resource="dwl/booking-search-request.dwl"/></ee:variables>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", correlationId: vars.traceId, body: vars.bookingSearchRequest}, "application/json", {indent: false})]' doc:name="xapi.bookingsearch.request"/>
+    <http:request config-ref="HTTP_Request_Bookingsearch_config" method="PUT" path="${https.bookingsearchprocessapi.path}" responseTimeout="${https.bookingsearchprocessapi.timeout}" doc:name="Request Booking Search">
+      <http:body><![CDATA[#[vars.bookingSearchRequest]]]></http:body>
+      <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type": "application/json",
+	"client_id": Mule::p('https.bookingsearchprocessapi.clientid'),
+	"client_secret": Mule::p('https.bookingsearchprocessapi.clientsecret'),
+	"messageId": vars.traceId
+}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request>
+    <choice doc:name="404?">
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="#['Property ' ++ vars.request.propertyCode ++ ' was not found.']" doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Booking search returned 404"/>
+      </when>
+    </choice>
+    <try doc:name="Try">
+      <ee:transform doc:name="select-property.dwl">
+        <ee:variables><ee:set-variable variableName="property" resource="dwl/select-property.dwl"/></ee:variables>
+      </ee:transform>
+      <!-- Field names only (no values), so an unexpected response format can be diagnosed from the log. -->
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.response", correlationId: vars.traceId, status: attributes.statusCode, propertyCount: sizeOf(payload.propertyList default []), propertyFields: if (vars.property is Object) (keysOf(vars.property) map ($ as String)) else []}, "application/json", {indent: false})]' doc:name="xapi.bookingsearch.response"/>
+      <error-handler>
+        <on-error-propagate type="MULE:EXPRESSION" logException="true" enableNotifications="false">
+          <set-variable variableName="errorMessage" value="The booking search response is not valid JSON." doc:name="errorMessage"/>
+          <raise-error type="APP:UPSTREAM_INVALID" description="Booking search response is not readable JSON"/>
+        </on-error-propagate>
+      </error-handler>
+    </try>
+    <choice doc:name="Property in propertyList?">
+      <when expression="#[vars.property == null]">
+        <set-variable variableName="errorMessage" value="#['Property ' ++ vars.request.propertyCode ++ ' was not found, or has no data for the requested stay.']" doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Property not in booking search propertyList"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- POIs for the property -> vars.pois. Optional: any failure leaves nearby[] out instead of failing the call. -->
+  <sub-flow name="get-property-pois">
+    <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
+    <choice doc:name="POIs wanted?">
+      <when expression="#[vars.request.maxPois > 0]">
+        <try doc:name="Try">
+          <http:request config-ref="Property_POI_HTTP" method="POST" path="${poi.path}" responseTimeout="${poi.timeout}" target="pois" doc:name="Request POIs">
+            <http:body><![CDATA[#[output application/json
+---
+{
+	version: p('poi.version'),
+	language: vars.request.language,
+	channel: p('poi.channel'),
+	propertyCode: [vars.request.propertyCode],
+	maxPoisPerProperty: vars.request.maxPois
+}]]]></http:body>
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type": "application/json",
+	"client_id": Mule::p('poi.clientid'),
+	"client_secret": Mule::p('poi.clientsecret'),
+	"messageId": vars.traceId
+}]]]></http:headers>
+          </http:request>
+          <!-- Parse here so a non-JSON body is handled by this try, not by the mapping. -->
+          <set-variable variableName="pois" value="#[output application/java --- vars.pois]" doc:name="pois"/>
+          <error-handler>
+            <on-error-continue type="ANY" logException="false" enableNotifications="false">
+              <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
+              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", correlationId: vars.traceId, propertyCode: vars.request.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]' doc:name="xapi.poi.unavailable"/>
+            </on-error-continue>
+          </error-handler>
+        </try>
+      </when>
+    </choice>
+  </sub-flow>
+</mule>
