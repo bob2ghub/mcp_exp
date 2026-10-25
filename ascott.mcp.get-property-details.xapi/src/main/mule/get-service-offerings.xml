@@ -90,7 +90,7 @@ var language = if (body.language == null) p('t03.defaultlanguage') else text(bod
       	<ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
     </ee:transform>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
-    <http:request method="PUT" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+    <http:request method="POST" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
 			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
 			<http:headers><![CDATA[#[output application/java
 ---

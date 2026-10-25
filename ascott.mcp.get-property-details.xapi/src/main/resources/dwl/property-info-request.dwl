@@ -1,5 +1,5 @@
 %dw 2.0
-// Request to booking search PUT /v3/checkpropertyavailability, built from vars.request (the validated tool
+// Request to booking search POST /v3/checkpropertyavailability (PUT returns 405), built from vars.request (the validated tool
 // arguments). Mirrors the reference caller ODX_Booking_Search_Result_Apartment_Rate_Details_V3.xml ("Request
 // Payload"), which follows the Mobile experience API. Only fields an anonymous MCP user can have are filled.
 output application/json skipNullOn="everywhere"
