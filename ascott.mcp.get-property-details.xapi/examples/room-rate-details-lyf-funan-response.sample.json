@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "property_code": "8791",
+    "property_name": "lyf Funan Singapore",
+    "brand_code": "lyf",
+    "country_code": "SG",
+    "asset_base_url": "https://www.discoverasr.com",
+    "checkin_date": "2026-11-15",
+    "checkout_date": "2026-11-18",
+    "noOfadults": 2,
+    "noOfchildren": 1,
+    "noOfRooms": 1,
+    "currency": "SGD",
+    "total_results": 3
+  },
+  "rooms": [
+    {
+      "room_code": "2BRM",
+      "room_name": "All Together (2 Bedroom)",
+      "room_category": "2 Bedroom",
+      "ranking": 6,
+      "description": "The All Together (2 Bedroom) apartment at lyf Funan.",
+      "bed_type": "2 Queen-size beds",
+      "max_person_in_room": "Max 4 pax",
+      "max_occupancy": 4,
+      "size_sqm": 41,
+      "units_remaining": 4,
+      "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/2BRM-thumbnail.jpg",
+      "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/2BRM-banner.jpg",
+      "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/2BRM.jpg",
+      "gallery": [
+        {
+          "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-2-bedroom/Queen_Bed-HR.jpg.transform/cap-lowres/image.jpg"
+        }
+      ],
+      "amenity_groups": [
+        {
+          "group": "bathroom",
+          "amenities": [
+            "Towels",
+            "Bathroom with separate shower (third bedroom)"
+          ]
+        },
+        {
+          "group": "kitchen",
+          "amenities": [
+            "Shared kitchenette"
+          ]
+        }
+      ],
+      "rate_plans": [
+        {
+          "rate_plan_code": "GADV10",
+          "rate_plan_name": "Advance Purchase Rate",
+          "description": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+          "per_night_rate": 359.7,
+          "total_stay_rate": 1079.1,
+          "strikethrough_rate": 1199,
+          "save_percentage": 70,
+          "earn_asr_points": 9000,
+          "non_refundable": false,
+          "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+          "is_app_exclusive": true
+        },
+        {
+          "rate_plan_code": "ZZFLEX",
+          "rate_plan_name": "Best Flexible Rate",
+          "description": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+          "per_night_rate": 1199,
+          "total_stay_rate": 3597,
+          "earn_asr_points": 30000,
+          "non_refundable": false,
+          "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+          "is_app_exclusive": false
+        }
+      ]
+    },
+    {
+      "room_code": "4BRM",
+      "room_name": "All Together (4 Bedroom)",
+      "room_category": "4 Bedroom",
+      "ranking": 7,
+      "description": "The All Together (4 Bedroom) apartment at lyf Funan.",
+      "bed_type": "2 Queen-size beds & 2 Super single-size beds",
+      "max_person_in_room": "Max 6 pax",
+      "max_occupancy": 6,
+      "size_sqm": 70,
+      "units_remaining": 9,
+      "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/4BRM-thumbnail.jpg",
+      "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/4BRM-banner.jpg",
+      "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/4BRM.jpg",
+      "gallery": [
+        {
+          "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-4-bedroom/Living_Dining_Kitchen-HR.jpg.transform/cap-lowres/image.jpg"
+        }
+      ],
+      "amenity_groups": [
+        {
+          "group": "bathroom",
+          "amenities": [
+            "Towels",
+            "Bathroom with separate shower (third bedroom)"
+          ]
+        },
+        {
+          "group": "kitchen",
+          "amenities": [
+            "Shared kitchenette",
+            "Refrigerator"
+          ]
+        }
+      ],
+      "rate_plans": [
+        {
+          "rate_plan_code": "ZZFLEX",
+          "rate_plan_name": "Best Flexible Rate",
+          "description": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+          "per_night_rate": 1570.69,
+          "total_stay_rate": 4712.07,
+          "earn_asr_points": 39300,
+          "non_refundable": false,
+          "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+          "is_app_exclusive": false
+        }
+      ]
+    },
+    {
+      "room_code": "6BRM",
+      "room_name": "All Together (6 Bedroom Duplex)",
+      "room_category": "4 Bedroom",
+      "ranking": 8,
+      "description": "The All Together (6 Bedroom Duplex) apartment at lyf Funan.",
+      "bed_type": "3 Queen-size beds & 3 Super single-size beds",
+      "max_person_in_room": "Max 9 pax",
+      "max_occupancy": 9,
+      "size_sqm": 105,
+      "units_remaining": 3,
+      "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/6BRM-thumbnail.jpg",
+      "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/6BRM-banner.jpg",
+      "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/6BRM.jpg",
+      "gallery": [
+        {
+          "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-6-bedroom-duplex/Overview-HR.jpg.transform/cap-lowres/image.jpg"
+        }
+      ],
+      "amenity_groups": [
+        {
+          "group": "bathroom",
+          "amenities": [
+            "Towels",
+            "Bathroom with separate shower (third bedroom)"
+          ]
+        },
+        {
+          "group": "kitchen",
+          "amenities": [
+            "Shared kitchenette"
+          ]
+        }
+      ],
+      "rate_plans": [
+        {
+          "rate_plan_code": "ZZFLEX",
+          "rate_plan_name": "Best Flexible Rate",
+          "description": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+          "per_night_rate": 1774.52,
+          "total_stay_rate": 5323.56,
+          "earn_asr_points": 44400,
+          "non_refundable": false,
+          "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+          "is_app_exclusive": false
+        }
+      ]
+    }
+  ]
+}

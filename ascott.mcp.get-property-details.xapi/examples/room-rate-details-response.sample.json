@@ -20,7 +20,12 @@
       "room_name": "Studio Premier",
       "ranking": 1,
       "rate_plans": [
-        {"rate_plan_code": "ZZFLEX", "rate_plan_name": "Best Flexible Rate", "per_night_rate": 212.4, "total_stay_rate": 424.8}
+        {
+          "rate_plan_code": "ZZFLEX",
+          "rate_plan_name": "Best Flexible Rate",
+          "per_night_rate": 212.4,
+          "total_stay_rate": 424.8
+        }
       ]
     },
     {
@@ -34,11 +39,40 @@
       "size_sqm": 35,
       "units_remaining": 4,
       "thumbnail_url": "/content/dam/tal/sample/1br-thumb.jpg",
-      "gallery": [{"path": "/content/dam/tal/sample/1br-lowres.jpg"}],
-      "amenity_groups": [{"group": "kitchen", "amenities": ["Kitchenette"]}],
+      "gallery": [
+        {
+          "path": "/content/dam/tal/sample/1br-lowres.jpg"
+        }
+      ],
+      "amenity_groups": [
+        {
+          "group": "kitchen",
+          "amenities": [
+            "Kitchenette"
+          ]
+        }
+      ],
       "rate_plans": [
-        {"rate_plan_code": "ZZADV", "rate_plan_name": "Advance Purchase", "per_night_rate": 177, "total_stay_rate": 354, "strikethrough_rate": 212.4, "save_percentage": 15, "non_refundable": true, "is_app_exclusive": true},
-        {"rate_plan_code": "ZZFLEX", "rate_plan_name": "Best Flexible Rate", "per_night_rate": 236, "total_stay_rate": 472, "earn_asr_points": 472, "non_refundable": false, "cancellation_description": "Cancel 24hrs prior to arrival.", "is_app_exclusive": false}
+        {
+          "rate_plan_code": "ZZADV",
+          "rate_plan_name": "Advance Purchase",
+          "per_night_rate": 177,
+          "total_stay_rate": 354,
+          "strikethrough_rate": 354,
+          "save_percentage": 50,
+          "non_refundable": true,
+          "is_app_exclusive": true
+        },
+        {
+          "rate_plan_code": "ZZFLEX",
+          "rate_plan_name": "Best Flexible Rate",
+          "per_night_rate": 236,
+          "total_stay_rate": 472,
+          "earn_asr_points": 472,
+          "non_refundable": false,
+          "cancellation_description": "Cancel 24hrs prior to arrival.",
+          "is_app_exclusive": false
+        }
       ]
     }
   ]

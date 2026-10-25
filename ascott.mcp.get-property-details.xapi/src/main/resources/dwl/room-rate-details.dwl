@@ -22,13 +22,14 @@ fun slug(v) = do {
 	if (s == "") null else s
 }
 
-// Prices are taxes and fees included: stay + tax, per night = that / nights. Strikethrough on the same basis.
+// Prices are taxes and fees included: stay + tax, per night = that / nights. Upstream's strikethrough is for the
+// whole stay before tax (lyf Funan sample: 3000 for 3 nights, save 70% against 900), so it gets the same tax and / nights.
 fun ratePlan(rp) = do {
 	var stay = num(rp.totalStayRatePrefCurr)
 	var total = if (stay == null) null else stay + (num(rp.totalTaxPrefCurrency) default 0)
 	var perNight = if (total == null) null else total / nights
 	var taxFactor = if ((stay != null) and (stay > 0)) total / stay else 1
-	var strike = do { var s = num(rp.strikethroughRatePrefCurr) --- if (s == null) null else s * taxFactor }
+	var strike = do { var s = num(rp.strikethroughRatePrefCurr) --- if (s == null) null else s * taxFactor / nights }
 	var hasStrike = (strike != null) and (perNight != null) and (strike > perNight)
 	var save = num(rp.savePercentage)
 	var channel = upper(text(rp.ratePlanChannel) default "")
@@ -46,6 +47,16 @@ fun ratePlan(rp) = do {
 		cancellation_description: text(rp.cancellationDescription),
 		is_app_exclusive: if (channel == "") null else channel == "MOBILE"
 	}
+}
+
+// Only rates an anonymous user arriving from ChatGPT can book: no member rates (template AOA, "ASR Member Rate")
+// and no comparison / test rates (names ending "ACRS Compare").
+fun bookable(rp) = do {
+	var template = upper(text(rp.ratePlanTemplate) default "")
+	var templateName = lower(text(rp.ratePlanTemplateName) default "")
+	var name = lower(text(rp.ratePlanName) default "")
+	---
+	!((template == "AOA") or (templateName contains "member") or (name contains "acrs compare"))
 }
 
 fun room(a) = {
@@ -72,13 +83,13 @@ fun room(a) = {
 	},
 	amenity_groups: do {
 		var groups = (objects(a.amenityGroups)
-			map ((g) -> {group: text(g.refAmenityGroup), amenities: (objects(g.amenities) map text($.description)) filter ($ != null)}))
+			map ((g) -> {group: text(g.refAmenityGroup), amenities: (objects(g.amenities) map (text($.description) default text($.name))) filter ($ != null)}))
 			filter ((g) -> (g.group != null) and !isEmpty(g.amenities))
 		---
 		if (isEmpty(groups)) null else groups
 	},
-	// Every rate is kept until the 'Which rates' filter (test / member-only rates) is defined; cheapest first.
-	rate_plans: (objects(a.ratePlan) map ratePlan($)
+	// Bookable rates only, cheapest first.
+	rate_plans: (objects(a.ratePlan) filter bookable($) map ratePlan($)
 		filter ((p) -> (p.rate_plan_code != null) and (p.rate_plan_name != null) and (p.per_night_rate != null) and (p.total_stay_rate != null)))
 		orderBy $.per_night_rate
 }

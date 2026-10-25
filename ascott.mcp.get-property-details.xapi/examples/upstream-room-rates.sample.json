@@ -22,16 +22,55 @@
               "noOfUnitRemaining": "4",
               "thumbnailImage": "/content/dam/tal/sample/1br-thumb.jpg",
               "imageGalleryItems": [
-                {"galleryType": "image", "path": "/content/dam/tal/sample/1br.jpg", "galleryImage": "/content/dam/tal/sample/1br-lowres.jpg", "title": ""},
-                {"galleryType": "video", "path": "/content/dam/tal/sample/1br.mp4"}
+                {
+                  "galleryType": "image",
+                  "path": "/content/dam/tal/sample/1br.jpg",
+                  "galleryImage": "/content/dam/tal/sample/1br-lowres.jpg",
+                  "title": ""
+                },
+                {
+                  "galleryType": "video",
+                  "path": "/content/dam/tal/sample/1br.mp4"
+                }
               ],
               "amenityGroups": [
-                {"refAmenityGroup": "kitchen", "amenities": [{"description": "Kitchenette", "charge": "free"}]},
-                {"refAmenityGroup": null, "amenities": [null]}
+                {
+                  "refAmenityGroup": "kitchen",
+                  "amenities": [
+                    {
+                      "description": "Kitchenette",
+                      "charge": "free"
+                    }
+                  ]
+                },
+                {
+                  "refAmenityGroup": null,
+                  "amenities": [
+                    null
+                  ]
+                }
               ],
               "ratePlan": [
-                {"ratePlanCode": "ZZFLEX", "ratePlanName": "Best Flexible Rate", "totalStayRatePrefCurr": "400.00", "totalTaxPrefCurrency": "72.00", "ratePlanChannel": "WEB", "nonRefundable": false, "cancellationDescription": "Cancel 24hrs prior to arrival.", "earnASRpoints": "472"},
-                {"ratePlanCode": "ZZADV", "ratePlanName": "Advance Purchase", "totalStayRatePrefCurr": "300.00", "totalTaxPrefCurrency": "54.00", "strikethroughRatePrefCurr": "180.00", "savePercentage": "15", "ratePlanChannel": "MOBILE", "nonRefundable": true}
+                {
+                  "ratePlanCode": "ZZFLEX",
+                  "ratePlanName": "Best Flexible Rate",
+                  "totalStayRatePrefCurr": "400.00",
+                  "totalTaxPrefCurrency": "72.00",
+                  "ratePlanChannel": "WEB",
+                  "nonRefundable": false,
+                  "cancellationDescription": "Cancel 24hrs prior to arrival.",
+                  "earnASRpoints": "472"
+                },
+                {
+                  "ratePlanCode": "ZZADV",
+                  "ratePlanName": "Advance Purchase",
+                  "totalStayRatePrefCurr": "300.00",
+                  "totalTaxPrefCurrency": "54.00",
+                  "strikethroughRatePrefCurr": "600.00",
+                  "savePercentage": "50",
+                  "ratePlanChannel": "MOBILE",
+                  "nonRefundable": true
+                }
               ]
             },
             {
@@ -39,7 +78,12 @@
               "apartmentName": "Studio Premier",
               "ranking": "1",
               "ratePlan": [
-                {"ratePlanCode": "ZZFLEX", "ratePlanName": "Best Flexible Rate", "totalStayRatePrefCurr": "360.00", "totalTaxPrefCurrency": "64.80"}
+                {
+                  "ratePlanCode": "ZZFLEX",
+                  "ratePlanName": "Best Flexible Rate",
+                  "totalStayRatePrefCurr": "360.00",
+                  "totalTaxPrefCurrency": "64.80"
+                }
               ]
             },
             {

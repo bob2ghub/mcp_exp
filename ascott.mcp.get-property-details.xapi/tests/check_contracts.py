@@ -28,5 +28,6 @@ results = [
     check("structured-content.schema.json", "response.sample.json"),
     check("service-offerings-structured-content.schema.json", "service-offerings-response.sample.json"),
     check("room-rate-details-structured-content.schema.json", "room-rate-details-response.sample.json"),
+    check("room-rate-details-structured-content.schema.json", "room-rate-details-lyf-funan-response.sample.json"),
 ]
 sys.exit(0 if all(results) else 1)
