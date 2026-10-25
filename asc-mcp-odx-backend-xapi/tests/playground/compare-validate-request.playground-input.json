@@ -1,0 +1,15 @@
+{
+  "propertyCodes": [
+    "8790",
+    "8791",
+    "8790",
+    "50926",
+    "1234",
+    "5678"
+  ],
+  "checkinDate": "2026-11-15",
+  "checkoutDate": "2026-11-18",
+  "noOfadults": "2",
+  "currencyCode": "sgd",
+  "maxRate": 200
+}

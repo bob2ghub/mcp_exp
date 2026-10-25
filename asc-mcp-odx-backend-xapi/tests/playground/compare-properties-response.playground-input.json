@@ -1,0 +1,467 @@
+{
+  "compareRequest": {
+    "propertyCodes": [
+      "8790",
+      "8791",
+      "99999"
+    ],
+    "droppedPropertyCodes": [],
+    "checkin": "2026-11-15",
+    "checkout": "2026-11-18",
+    "nights": 3,
+    "adults": 2,
+    "children": 0,
+    "currency": "SGD",
+    "language": "en"
+  },
+  "lookups": [
+    {
+      "code": "8790",
+      "status": "ok",
+      "source": "batch",
+      "property": {
+        "propertyCode": "8790",
+        "propertyName": "Citadines Balestier Singapore",
+        "brand": "citadines",
+        "countryCode": "SG",
+        "isAllAvail": true,
+        "apartments": [
+          {
+            "room0": [
+              {
+                "apartmentType": "1BREX",
+                "apartmentName": "One-Bedroom Executive",
+                "apartmentCategoryCode": "1 Bedroom",
+                "ranking": "2",
+                "bedType": "1 Queen-size bed",
+                "maxPersonInRoom": "Max 2 pax",
+                "maxOccupancy": "2",
+                "dimension": "35",
+                "noOfUnitRemaining": "4",
+                "thumbnailImage": "/content/dam/tal/sample/1br-thumb.jpg",
+                "imageGalleryItems": [
+                  {
+                    "galleryType": "image",
+                    "path": "/content/dam/tal/sample/1br.jpg",
+                    "galleryImage": "/content/dam/tal/sample/1br-lowres.jpg",
+                    "title": ""
+                  },
+                  {
+                    "galleryType": "video",
+                    "path": "/content/dam/tal/sample/1br.mp4"
+                  }
+                ],
+                "amenityGroups": [
+                  {
+                    "refAmenityGroup": "kitchen",
+                    "amenities": [
+                      {
+                        "description": "Kitchenette",
+                        "charge": "free"
+                      }
+                    ]
+                  },
+                  {
+                    "refAmenityGroup": null,
+                    "amenities": [
+                      null
+                    ]
+                  }
+                ],
+                "ratePlan": [
+                  {
+                    "ratePlanCode": "ZZFLEX",
+                    "ratePlanName": "Best Flexible Rate",
+                    "totalStayRatePrefCurr": "400.00",
+                    "totalTaxPrefCurrency": "72.00",
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "cancellationDescription": "Cancel 24hrs prior to arrival.",
+                    "earnASRpoints": "472"
+                  },
+                  {
+                    "ratePlanCode": "ZZADV",
+                    "ratePlanName": "Advance Purchase",
+                    "totalStayRatePrefCurr": "300.00",
+                    "totalTaxPrefCurrency": "54.00",
+                    "strikethroughRatePrefCurr": "600.00",
+                    "savePercentage": "50",
+                    "ratePlanChannel": "MOBILE",
+                    "nonRefundable": true
+                  }
+                ]
+              },
+              {
+                "apartmentType": "0BRSP",
+                "apartmentName": "Studio Premier",
+                "ranking": "1",
+                "ratePlan": [
+                  {
+                    "ratePlanCode": "ZZFLEX",
+                    "ratePlanName": "Best Flexible Rate",
+                    "totalStayRatePrefCurr": "360.00",
+                    "totalTaxPrefCurrency": "64.80"
+                  }
+                ]
+              },
+              {
+                "apartmentType": "1BRPR",
+                "apartmentName": "One-Bedroom Premier",
+                "ranking": "3",
+                "ratePlan": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "code": "8791",
+      "status": "ok",
+      "source": "single",
+      "property": {
+        "propertyCode": "8791",
+        "propertyName": "lyf Funan Singapore",
+        "brand": "lyf",
+        "countryCode": "SG",
+        "currency": "SGD",
+        "propertyType": "Coliving",
+        "apartments": [
+          {
+            "room0": [
+              {
+                "roomInformation": "The All Together (2 Bedroom) apartment at lyf Funan.",
+                "apartmentType": "2BRM",
+                "apartmentName": "All Together (2 Bedroom)",
+                "apartmentCategoryCode": "2 Bedroom",
+                "ranking": 6,
+                "bedType": "2 Queen-size beds",
+                "maxPersonInRoom": "Max 4 pax",
+                "dimension": "41",
+                "bannerImageMobile": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/2BRM-banner.jpg",
+                "floorPlanPath": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/2BRM.jpg",
+                "thumbnailImage": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/2BRM-thumbnail.jpg",
+                "maxOccupancy": "4",
+                "noOfUnitRemaining": "4",
+                "ratePlan": [
+                  {
+                    "ratePlanName": "Advance Purchase Rate",
+                    "ratePlanCode": "GADV10",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "NON-ASR",
+                    "ratePlanTemplateName": "NON-ASR APP Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "MOBILE",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "300.00",
+                    "totalStayRatePrefCurr": "900.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "179.10",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "9000",
+                    "savePercentage": "70",
+                    "strikethroughRatePrefCurr": "3000.00"
+                  },
+                  {
+                    "ratePlanName": "Best Flexible Rate",
+                    "ratePlanCode": "ZZFLEX",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "IBE",
+                    "ratePlanTemplateName": "Public Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1000.00",
+                    "totalStayRatePrefCurr": "3000.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "597.00",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "30000"
+                  },
+                  {
+                    "ratePlanName": "Best Flexi Rate_ACRS Compare",
+                    "ratePlanCode": "ZZFLEXACRS",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "IBE",
+                    "ratePlanTemplateName": "Public Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1600.00",
+                    "totalStayRatePrefCurr": "4800.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "955.20",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "48000"
+                  },
+                  {
+                    "ratePlanName": "Best Flexi Rate with breakfast_ACRS Compare",
+                    "ratePlanCode": "FXBASEBB",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "AOA",
+                    "ratePlanTemplateName": "ASR Member Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1600.00",
+                    "totalStayRatePrefCurr": "4800.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "940.28",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "48000"
+                  }
+                ],
+                "amenityGroups": [
+                  {
+                    "refAmenityGroup": "balcony",
+                    "amenities": []
+                  },
+                  {
+                    "refAmenityGroup": "bathroom",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Towels",
+                        "enable": true
+                      },
+                      {
+                        "charge": "free",
+                        "name": "Bathroom with separate shower (third bedroom)",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "refAmenityGroup": "kitchen",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Shared kitchenette",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "amenities": [
+                      {
+                        "enable": false,
+                        "is_active": false
+                      }
+                    ]
+                  }
+                ],
+                "imageGalleryItems": [
+                  {
+                    "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-2-bedroom/Queen_Bed-HR.jpg",
+                    "galleryImage": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-2-bedroom/Queen_Bed-HR.jpg.transform/cap-lowres/image.jpg",
+                    "galleryType": "image"
+                  }
+                ]
+              },
+              {
+                "roomInformation": "The All Together (4 Bedroom) apartment at lyf Funan.",
+                "apartmentType": "4BRM",
+                "apartmentName": "All Together (4 Bedroom)",
+                "apartmentCategoryCode": "4 Bedroom",
+                "ranking": 7,
+                "bedType": "2 Queen-size beds & 2 Super single-size beds",
+                "maxPersonInRoom": "Max 6 pax",
+                "dimension": "70",
+                "bannerImageMobile": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/4BRM-banner.jpg",
+                "floorPlanPath": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/4BRM.jpg",
+                "thumbnailImage": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/4BRM-thumbnail.jpg",
+                "maxOccupancy": "6",
+                "noOfUnitRemaining": "9",
+                "ratePlan": [
+                  {
+                    "ratePlanName": "Best Flexible Rate",
+                    "ratePlanCode": "ZZFLEX",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "IBE",
+                    "ratePlanTemplateName": "Public Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1310.00",
+                    "totalStayRatePrefCurr": "3930.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "782.07",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "39300"
+                  },
+                  {
+                    "ratePlanName": "Best Flexi Rate_ACRS Compare",
+                    "ratePlanCode": "ZZFLEXACRS",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "IBE",
+                    "ratePlanTemplateName": "Public Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1910.00",
+                    "totalStayRatePrefCurr": "5730.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "1140.27",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "57300"
+                  },
+                  {
+                    "ratePlanName": "Best Flexi Rate with breakfast_ACRS Compare",
+                    "ratePlanCode": "FXBASEBB",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "AOA",
+                    "ratePlanTemplateName": "ASR Member Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1910.00",
+                    "totalStayRatePrefCurr": "5730.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "1125.35",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "57300"
+                  }
+                ],
+                "amenityGroups": [
+                  {
+                    "refAmenityGroup": "balcony",
+                    "amenities": []
+                  },
+                  {
+                    "refAmenityGroup": "bathroom",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Towels",
+                        "enable": true
+                      },
+                      {
+                        "charge": "free",
+                        "name": "Bathroom with separate shower (third bedroom)",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "refAmenityGroup": "kitchen",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Shared kitchenette",
+                        "enable": true
+                      },
+                      {
+                        "charge": "free",
+                        "description": "Refrigerator",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "amenities": [
+                      {
+                        "enable": false,
+                        "is_active": false
+                      }
+                    ]
+                  }
+                ],
+                "imageGalleryItems": [
+                  {
+                    "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-4-bedroom/Living_Dining_Kitchen-HR.jpg",
+                    "galleryImage": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-4-bedroom/Living_Dining_Kitchen-HR.jpg.transform/cap-lowres/image.jpg",
+                    "galleryType": "image"
+                  }
+                ]
+              },
+              {
+                "roomInformation": "The All Together (6 Bedroom Duplex) apartment at lyf Funan.",
+                "apartmentType": "6BRM",
+                "apartmentName": "All Together (6 Bedroom Duplex)",
+                "apartmentCategoryCode": "4 Bedroom",
+                "ranking": 8,
+                "bedType": "3 Queen-size beds & 3 Super single-size beds",
+                "maxPersonInRoom": "Max 9 pax",
+                "dimension": "105",
+                "bannerImageMobile": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/6BRM-banner.jpg",
+                "floorPlanPath": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/floor-plan/6BRM.jpg",
+                "thumbnailImage": "/assets/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/6BRM-thumbnail.jpg",
+                "maxOccupancy": "9",
+                "noOfUnitRemaining": "3",
+                "ratePlan": [
+                  {
+                    "ratePlanName": "Best Flexible Rate",
+                    "ratePlanCode": "ZZFLEX",
+                    "ratePlanDescription": "Rate includes internet access and once a week housekeeping for stays of 7 nights and above.",
+                    "ratePlanTemplate": "IBE",
+                    "ratePlanTemplateName": "Public Rate",
+                    "isTaxInclusive": false,
+                    "ratePlanChannel": "WEB",
+                    "nonRefundable": false,
+                    "perNightRatePrefCurr": "1480.00",
+                    "totalStayRatePrefCurr": "4440.00",
+                    "currency": "SGD",
+                    "totalTaxPrefCurrency": "883.56",
+                    "cancellationDescription": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1 night rental penalty charge for stays less than 29 nights only.",
+                    "earnASRpoints": "44400"
+                  }
+                ],
+                "amenityGroups": [
+                  {
+                    "refAmenityGroup": "balcony",
+                    "amenities": []
+                  },
+                  {
+                    "refAmenityGroup": "bathroom",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Towels",
+                        "enable": true
+                      },
+                      {
+                        "charge": "free",
+                        "name": "Bathroom with separate shower (third bedroom)",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "refAmenityGroup": "kitchen",
+                    "amenities": [
+                      {
+                        "charge": "free",
+                        "description": "Shared kitchenette",
+                        "enable": true
+                      }
+                    ]
+                  },
+                  {
+                    "amenities": [
+                      {
+                        "enable": false,
+                        "is_active": false
+                      }
+                    ]
+                  }
+                ],
+                "imageGalleryItems": [
+                  {
+                    "path": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-6-bedroom-duplex/Overview-HR.jpg",
+                    "galleryImage": "/content/dam/tal/media/images/properties/singapore/singapore/lyf-funan-singapore/apartmenttypes/all-together-6-bedroom-duplex/Overview-HR.jpg.transform/cap-lowres/image.jpg",
+                    "galleryType": "image"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "code": "99999",
+      "status": "not_found",
+      "source": "single"
+    }
+  ]
+}
