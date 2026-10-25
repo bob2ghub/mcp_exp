@@ -81,7 +81,7 @@
           <flow-ref name="compare-single-lookup" doc:name="compare-single-lookup"/>
         </parallel-foreach>
         <!-- Parallel For Each returns one message per code; keep their payloads. -->
-        <set-variable variableName="singleResults" value="#[output application/java --- (payload default []) map ((m) -> if (m.payload != null) m.payload else m)]" doc:name="singleResults"/>
+        <set-variable variableName="singleResults" value="#[output application/java --- (payload default []) map ((m) -> m.payload default m)]" doc:name="singleResults"/>
       </when>
     </choice>
     <ee:transform doc:name="lookups">
@@ -93,7 +93,7 @@ output application/java
 	var single = ((vars.singleResults default []) filter ((r) -> r.code == c))[0]
 	var hit = ((vars.batchList default []) filter ((e) -> ((e.propertyCode default '') as String) == c))[0]
 	---
-	if (single != null) single else {code: c, status: "ok", source: "batch", property: hit}
+	single default {code: c, status: "ok", source: "batch", property: hit}
 })]]></ee:set-variable>
         <ee:set-variable variableName="lookupSummary"><![CDATA[%dw 2.0
 output application/java

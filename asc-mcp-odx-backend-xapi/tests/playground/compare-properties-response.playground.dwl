@@ -76,7 +76,7 @@ fun entry(lookup) = do {
 	var groups = objects(facilitiesSrc.facilityGroup default src.facilityGroup default obj(src.amenities).facilityGroup)
 	// The icon group ("Facilities & Amenities with Icon") first.
 	var orderedGroups = (groups filter (text($.entityName) == "facilities-amenities")) ++ (groups filter (text($.entityName) != "facilities-amenities"))
-	var amenities = ((flatten(orderedGroups map objects($.facilities)) filter (bool($.enabled) != false)) map ((f) -> {
+	var amenities = ((flatten(orderedGroups map objects($.facilities)) filter (bool($.enabled) default true)) map ((f) -> {
 		label: firstText(f, ["description", "name"]),
 		icon_url: firstText(f, ["imagePath", "icon"])
 	}) filter ($.label != null)) distinctBy lower($.label)
