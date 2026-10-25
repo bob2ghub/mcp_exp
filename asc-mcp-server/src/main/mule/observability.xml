@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+  <sub-flow name="log-start">
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]"/>
+    <set-variable variableName="traceId" value="#[correlationId]"/>
+    <logger level="INFO" category="ascott.audit" message='#[output text/plain --- write({event: "tool.start", correlationId: vars.traceId, tool: vars.toolName, mode: p("data.mode")}, "application/json", {indent: false})]'/>
+  </sub-flow>
+  <sub-flow name="log-success">
+    <logger level="INFO" category="ascott.audit" message='#[output text/plain --- write({event: "tool.success", correlationId: vars.traceId, tool: vars.toolName, durationMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
+  </sub-flow>
+  <sub-flow name="wrap-success">
+    <set-payload value='#[output application/json --- {success: true, correlationId: vars.traceId, mode: p("data.mode"), data: payload}]'/>
+    <flow-ref name="log-success"/>
+  </sub-flow>
+  <sub-flow name="log-failure">
+    <logger level="ERROR" category="ascott.audit" message='#[output text/plain --- write({event: "tool.failure", correlationId: vars.traceId default correlationId, tool: vars.toolName default "unknown", category: vars.publicError.category, code: vars.publicError.code, retryable: vars.publicError.retryable, durationMs: (now() as Number {unit: "milliseconds"}) - (vars.startedAt default (now() as Number {unit: "milliseconds"}))}, "application/json", {indent: false})]'/>
+  </sub-flow>
+</mule>

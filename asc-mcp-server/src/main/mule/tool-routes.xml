@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+  <flow name="route-findPropertiesByLocation" doc:id="180f63ea-0d9a-40a2-9910-e698d8e06c7a">
+    <set-variable variableName="toolName" value="findPropertiesByLocation" doc:name="toolName-findPropertiesByLocation"/>
+    <flow-ref name="log-xapi-start" doc:name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="CONNECT" path="/findPropertiesByLocation" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER" doc:name="odx-findproperty-call">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{
+'Content-Type': 'application/json', 
+'X-Correlation-ID': vars.traceId, 
+'Idempotency-Key': payload.idempotencyKey default ''
+}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]" doc:name="statusCode"/>
+    <flow-ref name="check-process-response" doc:name="check-process-response"/>
+    <flow-ref name="log-xapi-success" doc:name="log-xapi-success"/>
+  </flow>
+  <flow name="route-getPropertyDetails">
+    <set-variable variableName="toolName" value="getPropertyDetails"/>
+    <flow-ref name="log-xapi-start" doc:name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/getPropertyDetails" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER" doc:name="odx-getpropertyDetails-call">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]" doc:name="statusCode"/>
+    <flow-ref name="check-process-response" doc:name="check-process-response"/>
+    <flow-ref name="log-xapi-success" doc:name="log-xapi-success"/>
+  </flow>
+  <flow name="route-getServiceOfferings">
+    <set-variable variableName="toolName" value="getServiceOfferings"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/getServiceOfferings" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <flow name="route-getRoomAndRateDetails">
+    <set-variable variableName="toolName" value="getRoomAndRateDetails"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/getRoomAndRateDetails" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <flow name="route-getPromotionsAndDeals">
+    <set-variable variableName="toolName" value="getPromotionsAndDeals"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/getPromotionsAndDeals" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <flow name="route-compareProperties">
+    <set-variable variableName="toolName" value="compareProperties"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/compareProperties" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <flow name="route-compareRoomsAndRates">
+    <set-variable variableName="toolName" value="compareRoomsAndRates"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/compareRoomsAndRates" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <flow name="route-createBooking">
+    <set-variable variableName="toolName" value="createBooking"/>
+    <flow-ref name="log-xapi-start"/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/createBooking" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- payload]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': payload.idempotencyKey default ''}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,400,404,409,422"/></http:response-validator>
+    </http:request>
+    <set-variable variableName="processStatus" value="#[attributes.statusCode]"/>
+    <flow-ref name="check-process-response"/>
+    <flow-ref name="log-xapi-success"/>
+  </flow>
+  <sub-flow name="check-process-response">
+    <choice><when expression="#[vars.processStatus &gt;= 400]">
+      <set-variable variableName="httpStatus" value="#[vars.processStatus]" doc:name="httpStatus"/>
+      <raise-error type="APP:FUNCTIONAL" description="Process API business rejection"/>
+    </when></choice>
+    <set-variable variableName="httpStatus" value="#[vars.processStatus]" doc:name="processStatus"/>
+  </sub-flow>
+  <sub-flow name="log-xapi-start"><logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: vars.toolName, correlationId: vars.traceId, durationMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="Audit Logger"/></sub-flow>
+  <sub-flow name="log-xapi-success"><logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, durationMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="sucess Logger"/></sub-flow>
+</mule>
