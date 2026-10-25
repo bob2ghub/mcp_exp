@@ -61,7 +61,7 @@
 }&#93;&#93;&#93;></http:headers>
       <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
     </http:request> [STUDIO] -->
-    <http:request method="POST" doc:name="Request Booking Search" doc:id="d00c80a9-5cc3-4b6a-863a-d4f2288d0f0a" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+    <http:request method="PUT" doc:name="Request Booking Search" doc:id="d00c80a9-5cc3-4b6a-863a-d4f2288d0f0a" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
 			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
 			<http:headers><![CDATA[#[output application/java
 ---
@@ -69,6 +69,7 @@
 	"Content-Type" : "application/json",
 	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
     "messageId" : vars.traceId,
+    "country" : Mule::p('default.userCountry') default "SG",
 	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
 }]]]></http:headers>
 			<http:response-validator>

@@ -121,7 +121,7 @@ var errors = [
       <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
     </ee:transform>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
-    <http:request method="POST" doc:name="Request Booking Search" doc:id="5519f8f0-905d-4f65-9b6e-aa0c12f60dae" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+    <http:request method="PUT" doc:name="Request Booking Search" doc:id="5519f8f0-905d-4f65-9b6e-aa0c12f60dae" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
 			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
 			<http:headers><![CDATA[#[output application/java
 ---
@@ -129,6 +129,7 @@ var errors = [
 	"Content-Type" : "application/json",
 	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
     "messageId" : vars.traceId,
+    "country" : Mule::p('default.userCountry') default "SG",
 	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
 }]]]></http:headers>
 			<http:response-validator>

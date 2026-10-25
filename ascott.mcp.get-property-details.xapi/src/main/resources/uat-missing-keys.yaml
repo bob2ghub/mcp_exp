@@ -8,6 +8,7 @@ default:
   children: "0"
   checkinOffsetDays: "1"    # default checkin = today + 1
   nights: "1"               # default checkout = checkin + 1
+  userCountry: "SG"         # booking search userCountry / "country" header; it fails (500) when empty
 
 request:
   maxAdults: "10"
