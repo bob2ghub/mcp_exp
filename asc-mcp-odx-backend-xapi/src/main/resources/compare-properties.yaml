@@ -11,7 +11,8 @@ t06:
   nights: "1"                   # PRD default check-out: check-in + 1 (today + 31)
   adults: "1"                   # PRD default noOfadults
   children: "0"                 # PRD default noOfchildren
-  batchLookup: "true"           # "true": first try one booking search call with several codes; "false": always one by one
+  batchLookup: "false"          # "false": one booking search call per code (same call as T-02). "true": first try one call
+                                # with several codes (propertyListing true); UAT returned slim entries that way (2026-10-25)
   batchSize: "3"                # codes per batch call (the reference caller allows at most 3 with propertyListing true)
   maxConcurrency: "4"           # parallel one-by-one calls
   maxAmenityHighlights: "6"     # amenity chips per card

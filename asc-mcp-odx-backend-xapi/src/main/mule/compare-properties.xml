@@ -5,7 +5,7 @@
   compare_properties structuredContent (schemas/T06-compare-properties.structured-content.schema.json 0.2.0).
   It only puts the properties together: no comparison, ranking, filtering or recommendation (the model and widget do that).
 
-  Lookup: when t06.batchLookup is "true", one booking search call with up to t06.batchSize codes and propertyListing true
+  Lookup: when t06.batchLookup is "true" (default "false"), one booking search call with up to t06.batchSize codes and propertyListing true
   (the reference caller allows at most 3 codes that way, and exactly 1 with propertyListing false). Any code the batch call
   does not return with room data, or every code when that call fails or batchLookup is "false", is then looked up one by one
   through get-property-common-info (get-common-details.xml), in parallel.
@@ -71,8 +71,9 @@
         <flow-ref name="compare-batch-lookup" doc:name="compare-batch-lookup"/>
       </when>
     </choice>
-    <!-- A code the batch call did not return, or returned without apartments, is fetched on its own. -->
-    <set-variable variableName="missingCodes" value="#[output application/java --- (vars.compareRequest.propertyCodes default []) filter ((c) -> isEmpty((vars.batchList default []) filter ((e) -> (((e.propertyCode default '') as String) == c) and (e.apartments is Array))))]" doc:name="missingCodes"/>
+    <!-- A code the batch call did not return with full details (apartments and location) is fetched on its own:
+         with propertyListing true booking search can answer with a slim listing entry (code and name only). -->
+    <set-variable variableName="missingCodes" value="#[output application/java --- (vars.compareRequest.propertyCodes default []) filter ((c) -> isEmpty((vars.batchList default []) filter ((e) -> (((e.propertyCode default '') as String) == c) and (e.apartments is Array) and (e.location is Object))))]" doc:name="missingCodes"/>
     <set-variable variableName="singleResults" value="#[[]]" doc:name="singleResults"/>
     <choice>
       <when expression="#[not isEmpty(vars.missingCodes default [])]">
@@ -144,7 +145,7 @@ output application/json
         </http:response-validator>
       </http:request>
       <set-variable variableName="batchList" value="#[output application/java --- if (attributes.statusCode == 404) [] else if ((payload is Object) and (payload.propertyList is Array)) (payload.propertyList filter ($ is Object)) else []]" doc:name="batchList"/>
-      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.batch", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, requested: vars.batchCodes, returned: (vars.batchList default []) map ((e) -> {code: e.propertyCode, hasApartments: e.apartments is Array})}, "application/json", {indent: false})]' doc:name="compare.batch"/>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.batch", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, requested: vars.batchCodes, returned: (vars.batchList default []) map ((e) -> {code: e.propertyCode, hasApartments: e.apartments is Array, hasLocation: e.location is Object, fields: if (e is Object) (keysOf(e) map ($ as String)) else []})}, "application/json", {indent: false})]' doc:name="compare.batch"/>
       <error-handler>
         <on-error-continue type="ANY" logException="false" enableNotifications="false">
           <set-variable variableName="batchList" value="#[[]]" doc:name="batchList"/>
