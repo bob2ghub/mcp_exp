@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+  <!-- POIs for the property; result in vars.pois. Optional: a failure leaves nearby[] out instead of failing the call. -->
+  <sub-flow name="get-property-pois">
+    <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
+    <choice>
+      <when expression="#[(vars.request.maxPois default 0) > 0]">
+        <try>
+          <ee:transform>
+            <ee:variables><ee:set-variable variableName="poiRequest" resource="dwl/poi-request.dwl"/></ee:variables>
+          </ee:transform>
+          <http:request config-ref="Property_POI_HTTP" method="POST" path="${poisystem.path}" responseTimeout="30000" target="pois" doc:name="POI-Request">
+            <http:body><![CDATA[#[vars.poiRequest]]]></http:body>
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('poisystem.clientsecret'),
+    "client_id" : Mule::p('poisystem.clientid'),
+	"messageId" : vars.traceId,
+	"X-Correlation-ID": vars.traceId
+}]]]></http:headers>
+          </http:request>
+          <set-variable variableName="pois" value="#[output application/java --- vars.pois]" doc:name="pois"/>
+          <error-handler>
+            <on-error-continue type="ANY" logException="false" enableNotifications="false">
+              <set-variable variableName="pois" value="#[null]" doc:name="pois"/>
+              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.poi.unavailable", tool: "get_property_details", correlationId: vars.traceId, propertyCode: vars.propertyCode, error: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+            </on-error-continue>
+          </error-handler>
+        </try>
+      </when>
+    </choice>
+  </sub-flow>
+	
+</mule>

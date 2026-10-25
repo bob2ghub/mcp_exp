@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_service_offerings:structured-content:0.1.0",
+  "title": "Get service offerings — structuredContent",
+  "description": "The `structuredContent` of the `get_service_offerings` MCP tool: one property's amenities, for the T-03 inline carousel (Figma `D_InLine_Light_T-03` 1495:12054, the 2026-10-19 redesign). Follows the redesign, NOT PRD T-03 §6 (user decision 2026-10-19): the PRD describes bookable services with time slots and booking links and puts amenities out of scope, but the redesign shows the property's amenities, and the upstream data that exists is `facilities.facilityDetails` (title, description, location, operatingHours, thumbnailImage, facilityUrl). PRD field names are kept where the meaning matches (`meta`, `service_name`, `service_location`, `description`, `contact_number`, `external_service_url`); the rest is marked ADDED. Booking slots, price, category, tags, gallery and the deal banner are left out (service-offerings/README.md, 'Departures from the PRD'). 0.1.0, provisional (2026-10-19).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "services"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "property_code",
+        "property_name",
+        "brand_code",
+        "total_results"
+      ],
+      "description": "PRD §6.1 `meta`: the resolved property, once per response. `applied_filters` and `attribution` are left out: there are no filters, and ChatGPT shows the app's own attribution.",
+      "properties": {
+        "property_code": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "PRD `meta.property_code`, the input's `propertyCode` echoed."
+        },
+        "property_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `meta.property_name`. The ENGLISH name (upstream `propertyName` / `propertyEnName`): the widget builds the website link from it."
+        },
+        "brand_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED (same as T-01 and T-02). The upstream `brand` slug verbatim, e.g. \"ascott-the-residence\". The widget builds the website link from it."
+        },
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ADDED, optional (same as T-02 `location.country_code`). ISO 3166-1 alpha-2, upstream `countryCode`, e.g. \"SG\". With `brand_code` and `property_name` the widget links \"View Details\" to the property's amenities page, `https://www.discoverasr.com/{language}/{brand_code}/{country}/{property}/amenities`; without it the link falls back to the site's search."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED, optional. The property's phone number (upstream `phone`, e.g. \"+65 6577 1688\"). For the model, e.g. to offer the property's contact (PRD SM-08); the cards show a phone only from `services[].contact_number`."
+        },
+        "asset_base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "ADDED (T-01 `meta.asset_base_url`, T-02 `asset_base_url`). Origin the widget resolves relative image paths against; default https://www.discoverasr.com."
+        },
+        "total_results": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRD `meta.total_results`: the length of `services`. 0 is a valid result (PRD EC-01), not an error."
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "description": "The property's amenities, in the upstream order (upstream `facilities.facilityDetails`). Empty when the property has none (PRD EC-01).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service_name"
+        ],
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `service_name` ← upstream `title`, e.g. \"Infinity Swimming Pool\". The card title, one line."
+          },
+          "service_location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `service_location` ← upstream `location`, e.g. \"19th Floor\". Optional: omit when upstream is empty (about a third are)."
+          },
+          "operating_hours": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ADDED ← upstream `operatingHours`, CMS HTML passed through verbatim, e.g. \"<p>06:00 am to 11:00 pm</p>\" or a list of meal periods. NOT the PRD's `operating_hours[]` objects or its `operating_hours_summary`: upstream has one HTML field for both. The widget shows a one-line value as it is and a multi-period one as \"Hours vary by service and day\". Optional: omit when empty."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `description` ← upstream `description`, CMS HTML verbatim; the widget reduces it to plain text and shows three lines. Optional."
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ADDED ← upstream `thumbnailImage`, an upstream path resolved against `meta.asset_base_url`. The card photo (the PRD's `gallery[]` has one image here). Optional (PRD EC-09): the card shows a blank square without it."
+          },
+          "contact_number": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `contact_number`, optional and RESERVED: upstream `facilityDetails` has no phone today (user decision 2026-10-19 to keep the field for when it does). The card shows it as a `tel:` link."
+          },
+          "external_service_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "PRD `external_service_url` ← upstream `facilityUrl` when it is not empty (it is empty in every sampled item). Optional; the widget's \"View Details\" uses the property's amenities page today."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-04 get_room_details_and_rates: POST /api/v1/room-details
+  Calls booking search (HTTP_Request_Bookingsearch_config) with the same body as get_property_details
+  (dwl/property-info-request.dwl). Properties: rooms.maxRooms plus the shared app.*, default.* and request.* keys.
+  Uses common_HTTP_Listener_Config from global-config.xml.
+  Response: one flat property row plus apartments[], one flat row per requested room x apartment.
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+
+  <flow name="get-room-details">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/room-details" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04.start", tool: "get_room_details_and_rates", correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T04-START"/>
+    <flow-ref name="common-validate-request" doc:name="rooms-validate-request" doc:id="38b9dabd-7786-4e09-9fea-5aaeb53b7841"/>
+    <logger level="INFO" doc:name="valicated request-payload " doc:id="52d3b3a2-efd9-4a09-8cbd-29e3d26ecb2c" message="#[payload]"/>
+		<flow-ref name="rooms-get-rates" doc:name="rooms-get-rates"/>
+    <logger level="INFO" doc:name="Logger" doc:id="6e2f87ce-031a-49b4-a6c6-bb6f8c9d4b17" message='#["Process API call completed."]'/>
+		<flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04.success", tool: "get_room_details_and_rates", correlationId: vars.traceId, propertyCode: payload.property_code, apartmentCount: payload.apartment_count, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
+    <error-handler ref="rooms-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.roomsRequest, with the same defaults as get_property_details. -->
+  <!-- [STUDIO:"rooms-validate-request"]<sub-flow name="rooms-validate-request">
+    <try>
+      <ee:transform>
+        <ee:variables>
+          <ee:set-variable variableName="roomsValidation"><![CDATA[%dw 2.0
+output application/java
+import try from dw::Runtime
+import days from dw::core::Periods
+
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun number(v) = if (v is Number) v else if ((v is String) and !isBlank(v)) try(() -> trim(v) as Number).result else null
+fun isWhole(n) = if (n is Number) (n mod 1) == 0 else false
+fun inRange(n, lo, hi) = if (isWhole(n)) (n >= lo and n <= hi) else false
+fun matchesRe(s, re) = if (s is String) (s matches re) else false
+fun parseDate(v) = if (v is String) try(() -> trim(v) as Date {format: "yyyy-MM-dd"}) else {success: false}
+fun isoDate(d) = if (d is Date) d as String {format: "yyyy-MM-dd"} else null
+fun intOrDefault(v, dflt) = if (v == null) dflt else number(v)
+
+var body = if (payload is Object) payload else {}
+var today = now() as Date
+var maxAdults = p('request.maxAdults') as Number
+var maxChildren = p('request.maxChildren') as Number
+var maxNights = p('request.maxNights') as Number
+var maxRooms = p('rooms.maxRooms') as Number
+
+var code = text(body.propertyCode)
+var name = text(body.propertyName)
+var checkinTry = if (body.checkin == null) {success: true, result: today + days(p('default.checkinOffsetDays') as Number)} else parseDate(body.checkin)
+var checkin = checkinTry.result
+var checkoutTry = if (body.checkout != null) parseDate(body.checkout)
+	else if (checkin != null) {success: true, result: checkin + days(p('default.nights') as Number)}
+	else {success: true}
+var checkout = checkoutTry.result
+var nights = if ((checkin != null) and (checkout != null)) daysBetween(checkin, checkout) else null
+var adults = intOrDefault(body.adults, p('default.adults') as Number)
+var children = intOrDefault(body.children, p('default.children') as Number)
+var rooms = intOrDefault(body.rooms, 1)
+var language = if (body.language == null) p('default.language') else text(body.language)
+var currency = if (body.currency == null) null else upper(text(body.currency) default "")
+
+var errors = [
+	if (!(payload is Object)) "Request body must be a JSON object." else null,
+	if ((code == null) and (name == null)) "Provide propertyCode or propertyName." else null,
+	if (code == null) null else if (!matchesRe(code, /^[A-Za-z0-9_-&#93;{1,20}$/)) "propertyCode must be 1 to 20 letters, digits, hyphens or underscores." else null,
+	if (name == null) null else if (sizeOf(name) > 200) "propertyName must be at most 200 characters." else null,
+	if (!checkinTry.success) "checkin must be a date in yyyy-MM-dd format." else null,
+	if (!checkoutTry.success) "checkout must be a date in yyyy-MM-dd format." else null,
+	if (checkin == null) null else if (checkin < today) "checkin cannot be in the past." else null,
+	if (nights == null) null else if (nights < 1) "checkout must be after checkin." else if (nights > maxNights) "The stay cannot be longer than $(maxNights) nights." else null,
+	if (!inRange(adults, 1, maxAdults)) "adults must be a whole number from 1 to $(maxAdults)." else null,
+	if (!inRange(children, 0, maxChildren)) "children must be a whole number from 0 to $(maxChildren)." else null,
+	if (!inRange(rooms, 1, maxRooms)) "rooms must be a whole number from 1 to $(maxRooms)." else null,
+	if (!matchesRe(language, /^[a-z&#93;{2}(-[A-Za-z&#93;{2,4})?$/)) "language must be a language code such as en or zh-CN." else null,
+	if (currency == null) null else if (!matchesRe(currency, /^[A-Z&#93;{3}$/)) "currency must be an ISO 4217 code such as SGD." else null
+&#93; filter ($ != null)
+&#45;&#45;-
+{
+	errors: errors,
+	request: {
+		propertyCode: code,
+		propertyName: name,
+		checkin: isoDate(checkin),
+		checkout: isoDate(checkout),
+		nights: nights,
+		adults: if (isWhole(adults)) floor(adults) else adults,
+		children: if (isWhole(children)) floor(children) else children,
+		rooms: if (isWhole(rooms)) floor(rooms) else rooms,
+		currency: currency,
+		language: language
+	}
+}&#93;&#93;></ee:set-variable>
+        </ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="roomsValidation" value="#[{errors: ['Request body must be valid JSON.'&#93;}&#93;"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[not isEmpty(vars.roomsValidation.errors default [&#93;)&#93;">
+        <set-variable variableName="errorMessage" value="#[vars.roomsValidation.errors joinBy ' '&#93;"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_room_details_and_rates request"/>
+      </when>
+    </choice>
+    <set-variable variableName="roomsRequest" value="#[vars.roomsValidation.request&#93;"/>
+  </sub-flow> [STUDIO] -->
+
+  <!-- Room and rate search for one property; the matching property object ends up in vars.roomsSource. -->
+  <sub-flow name="rooms-get-rates">
+    <!-- property-info-request.dwl builds the body from vars.request, not vars.roomsRequest. -->
+    <set-variable variableName="request" value="#[vars.validation.request]"/>
+    <ee:transform doc:name="request-payload">
+      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
+    <http:request method="POST" doc:name="Request Booking Search" doc:id="154efbb1-57c8-418f-925a-197868ea4a88" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+    "country" : Mule::p('default.userCountry') default "SG",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,404" />
+			</http:response-validator>
+		</http:request>
+  
+  
+  <!-- [STUDIO:"Transform Message"]<ee:transform>
+      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform> [STUDIO] -->
+    <logger level="INFO" doc:name="Logger" doc:id="8db9e7cb-51fb-4ee2-99db-371edbe8a797" />
+		<!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_Bookingsearch_config" method="POST" path="/v3/checkpropertyavailabilitys" responseTimeout="30000">
+      <http:body><![CDATA[#[output application/json skipNullOn="everywhere"
+var r = vars.roomsRequest
+&#45;&#45;-
+{
+	"version": p('app.version'),
+	"language": r.language,
+	"channel": p('app.channel'),
+	"propertyCode": if (r.propertyCode != null) [r.propertyCode&#93; else null,
+	"propertyName": if (r.propertyCode == null) r.propertyName else null,
+	"checkin": r.checkin,
+	"checkout": r.checkout,
+	"adults": r.adults,
+	"children": r.children,
+	"rooms": r.rooms,
+	"currency": r.currency
+}&#93;&#93;&#93;></http:body>
+      <http:headers><![CDATA[#[output application/java
+&#45;&#45;-
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid'),
+	"X-Correlation-ID": vars.traceId
+}&#93;&#93;&#93;></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request> [STUDIO] -->
+    <choice>
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="roomsSource"><![CDATA[%dw 2.0
+// The property object, whatever envelope it arrives in: the first object that has propertyCode or apartments,
+// preferring the one whose propertyCode matches the request.
+output application/java
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
+	else if (v is Object) (if ((v.propertyCode != null) or (v.apartments != null)) [v] else flatten(valuesOf(v) map candidates($)))
+	else []
+var all = candidates(payload)
+var code = vars.roomsRequest.propertyCode
+---
+if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code))[0] default all[0])]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[!(vars.roomsSource is Object)]">
+        <set-variable variableName="errorMessage" value="No rooms found for this property."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- vars.roomsSource -> flat response. Nested objects become prefixed snake_case keys; nulls and blanks are dropped. -->
+  <sub-flow name="rooms-map-response">
+    <ee:transform>
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+import try from dw::Runtime
+import underscore from dw::core::Strings
+import some from dw::core::Arrays
+
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if ((v is Number) or (v is Boolean)) (v as String) else null
+fun number(v) = if (v is Number) v else if ((v is String) and !isBlank(v)) try(() -> trim(v) as Number).result else null
+fun firstVal(o, keys) = if (o is Object) ((keys map ((k) -> o[k])) filter ($ != null))[0] else null
+fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
+fun snake(k) = underscore(k as String)
+// Blank strings -> null; numeric strings stay strings (codes such as "0012" must not change).
+fun clean(v) = if (v is String) text(v) else v
+// {a: {bC: 1}, d: [{eF: 2}]} -> {a_b_c: 1, d: [{e_f: 2}]}
+fun flatObj(o: Object, prefix: String): Object = o mapObject ((v, k) ->
+	if (v is Object) flatObj(v, prefix ++ snake(k) ++ "_")
+	else {(prefix ++ snake(k)): if (v is Array) (v map ((item) -> if (item is Object) flatObj(item, "") else clean(item))) else clean(v)})
+
+var req = vars.roomsRequest
+var src = vars.roomsSource
+
+// apartments: [{room0: [apt, ...], room1: [...]}] -> one row per room x apartment.
+// A group without roomN keys is treated as one apartment for room 0.
+fun roomIndex(k) = do { var m = (k as String) match /^[Rr]oom(\d+)$/ --- if (isEmpty(m)) null else m[1] as Number }
+fun asList(v) = if (v is Array) (v filter ($ is Object)) else if (v is Object) [v] else []
+var apartmentGroups = asList(firstVal(src, ["apartments", "Apartments"]))
+var apartments = flatten(apartmentGroups map ((group) ->
+	if ((keysOf(group) map ($ as String)) some ((k) -> roomIndex(k) != null))
+		flatten(group pluck ((items, key) ->
+			if (roomIndex(key) == null) []
+			else (asList(items) map ((apt, i) -> {room_key: key as String, room_index: roomIndex(key), apartment_index: i} ++ flatObj(apt, "")))))
+	else [{room_key: "room0", room_index: 0, apartment_index: 0} ++ flatObj(group, "")]
+)) orderBy ((row) -> row.room_index * 1000 + row.apartment_index)
+
+var childrenAndExtraBed = firstVal(src, ["childrenAndExtraBed", "children_and_extra_bed"])
+---
+{
+	property_code: firstText(src, ["propertyCode", "property_code"]) default req.propertyCode,
+	property_name: firstText(src, ["propertyName", "property_name"]) default req.propertyName,
+	country: firstText(src, ["country", "countryName"]),
+	country_code: upper(firstText(src, ["countryCode", "country_code"]) default ""),
+	city: firstText(src, ["city", "cityName"]),
+	currency: upper(firstText(src, ["currency", "currencyCode"]) default ""),
+	pref_currency: req.currency,
+	property_type: firstText(src, ["propertyType", "property_type"]),
+	check_in_time: firstText(src, ["checkInTime", "checkinTime", "check_in_time"]),
+	check_out_time: firstText(src, ["checkOutTime", "checkoutTime", "check_out_time"]),
+	(if (childrenAndExtraBed is Object) flatObj(childrenAndExtraBed, "children_and_extra_bed_")
+	 else {children_and_extra_bed: if (childrenAndExtraBed is Array) (childrenAndExtraBed map ((item) -> if (item is Object) flatObj(item, "") else clean(item))) else text(childrenAndExtraBed)}),
+	per_night_rate: number(firstVal(src, ["perNightRate", "per_night_rate"])),
+	total_stay_rate: number(firstVal(src, ["totalStayRate", "total_stay_rate"])),
+	per_night_rate_pref_curr: number(firstVal(src, ["perNightRatePrefCurr", "per_night_rate_pref_curr"])),
+	total_stay_rate_pref_curr: number(firstVal(src, ["totalStayRatePrefCurr", "total_stay_rate_pref_curr"])),
+	checkin: req.checkin,
+	checkout: req.checkout,
+	nights: req.nights,
+	adults: req.adults,
+	children: req.children,
+	rooms: req.rooms,
+	apartment_count: sizeOf(apartments),
+	apartments: apartments
+} mapObject ((v, k) -> if ((v is String) and isEmpty(v)) {} else {(k): v})]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </sub-flow>
+
+  <error-handler name="rooms-error-handler">
+    <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[400]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:NOT_FOUND" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[404]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'ROOMS_NOT_FOUND', message: vars.errorMessage default 'No rooms found for this property.', retryable: false}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[504]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Room and rate service timed out. Retry later.', retryable: true}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Room and rate service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY" logException="true" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[500]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
+  </error-handler>
+  <sub-flow name="rooms-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: "get_room_details_and_rates", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
+    <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
+  </sub-flow>
+</mule>

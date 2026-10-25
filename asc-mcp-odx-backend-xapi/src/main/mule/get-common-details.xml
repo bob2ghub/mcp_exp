@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+<sub-flow name="get-property-common-info" doc:id="315f897e-5abc-4365-b074-cd1ed1bf945b">
+    <ee:transform>
+      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
+    <!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_configuration1" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
+      <http:body><![CDATA[#[vars.propertyInfoRequest&#93;&#93;&#93;></http:body>
+      <http:headers><![CDATA[#[{
+'Content-Type': 'application/json', 
+'client_id': p('property.clientId'), 
+'client_secret': p('property.clientSecret'), 
+'messageId': vars.traceId, 
+'X-Correlation-ID': vars.traceId
+}&#93;&#93;&#93;></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request> [STUDIO] -->
+    <http:request method="POST" doc:name="Request Booking Search" doc:id="902e76de-eae1-4d96-9f20-d33b5dec4a41" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+    "country" : Mule::p('default.userCountry') default "SG",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,404" />
+			</http:response-validator>
+		</http:request>
+    <choice>
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="Property not found." doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="dd5ee475-e8f4-45b3-b7e2-e343ee7b8b5e" message='#["Process API Response - Positive"]'/>
+			</otherwise>
+    
+</choice>
+    <ee:transform doc:name="UI-response-Payload">
+      <ee:variables><ee:set-variable variableName="property" resource="dwl/unwrap-property.dwl"/></ee:variables>
+    </ee:transform>
+    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
+    <try>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain &#10;--- &#10;write(&#10;	{&#10;		event: "xapi.property.response", &#10;		tool: "get_property_details", &#10;		correlationId: vars.traceId, &#10;		status: attributes.statusCode, &#10;		topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, &#10;		propertyFields: if (vars.property is Object) (keysOf(vars.property) map ($ as String)) else typeOf(vars.property) as String&#10;	}, &#10;	"application/json", &#10;	{indent: false}&#10;)]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <!-- A 2xx without a recognisable property (no code and no name) is not a property: fail instead of returning defaults. -->
+    <choice>
+      <when expression="#[!(vars.property is Object) or (vars.property.propertyCode == null and vars.property.property_code == null and vars.property.propertyName == null and vars.property.property_name == null)]">
+        <set-variable variableName="errorMessage" value="Property not found, or the property details response is not in the expected format." doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>	
+	
+</mule>

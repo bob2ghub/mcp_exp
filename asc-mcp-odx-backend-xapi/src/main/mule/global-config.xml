@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<!-- 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="fc81675d-ed42-4099-88b5-81d8a752c4ac" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+ -->
+	 	<http:request-config name="HTTPS_Request_configuration-dynamic" doc:name="HTTP Request configuration" doc:id="9bdb96c4-a63b-46ca-9d3b-059a54d7b01d" >
+		<http:request-connection protocol="HTTPS" host="${https.aemsystem.host}" port="${https.aemsystem.port}">
+			<tls:context enabledProtocols="TLSv1.2">
+				<tls:trust-store path="AEMSystem_UAT.ts" password="REDACTED" type="jks" insecure="true" />
+			</tls:context>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="2095f9ef-6532-4e57-b626-8bf89db06c34" >
+		<http:request-connection protocol="HTTPS" host='#["mule-worker-internal-lodging-odx-aem-uat-app.sg-s1.cloudhub.io"]' port="8093">
+			<tls:context enabledProtocols="TLSv1.2">
+				<tls:trust-store insecure="true" path="AEMSystem_UAT.ts" password="REDACTED" type="jks"/>
+			</tls:context>
+		</http:request-connection>
+	</http:request-config>
+		<http:listener-config name="common_HTTP_Listener_Config">
+	    <http:listener-connection
+	        host="0.0.0.0"
+	        port="${http.port}"/>
+	</http:listener-config>
+	
+	<configuration-properties doc:name="Configuration properties" doc:id="1ee98a57-2151-4ed3-b67b-6893295434fe" file="uat.yaml" />
+<global-property doc:name="Global Property" doc:id="93413089-98f0-4fd5-9c17-279fb22a153d" name="mule-env" value="uat"/>
+	<configuration-properties doc:name="Configuration properties" doc:id="3337b6dc-e657-4749-b9c9-87942bc00db2" file="${mule-env}.yaml"/>
+	
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="80ee814e-b3aa-49e8-9382-eed466d491c3" file="config-secured-${mule-env}.yaml" key="REDACTED"/>
+	<http:request-config name="HTTP_Request_configuration_InternalCommonServices" doc:name="HTTP Request configuration" doc:id="d567932d-ea1f-4e43-9eed-daccdb55526a" responseTimeout="30000">
+		<http:request-connection protocol="HTTPS" host="${https.commonservices.host}" port="${https.commonservices.port}">
+			<tls:context enabledProtocols="TLSv1.2">
+				<tls:trust-store path="${https.commonservices.path}" password="${https.commonservices.keystorepwd}" type="jks" insecure="true"/>
+			</tls:context>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_Bookingsearch_config" doc:name="HTTP Request configuration" doc:id="5f5514c0-08d2-42f9-8c81-d7f4b4442bb4" basePath="${https.bookingsearchprocessapi.basepath}" responseTimeout="${https.bookingsearchprocessapi.responsetimeout}">
+		<http:request-connection protocol="HTTPS" host="${https.bookingsearchprocessapi.host}" port="${https.bookingsearchprocessapi.port}">
+			<tls:context enabledProtocols="TLSv1.2">
+				<tls:trust-store path="${https.bookingsearchprocessapi.path}" password="${https.bookingsearchprocessapi.keystorepwd}" type="jks" insecure="true"/>
+			</tls:context>
+		</http:request-connection>
+		<http:response-validator>
+			<http:success-status-code-validator values="${validation.successcodes}"/>
+		</http:response-validator>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_POI_System_config" doc:name="HTTP Request configuration" doc:id="bdf19753-d233-4e78-b94a-6f8f25d561a9" basePath="${poisystem.basepath}" responseTimeout="${poisystem.responsetimeout}">
+		<http:request-connection protocol="HTTPS" host="${poisystem.host}" port="${poisystem.port}">
+			<reconnection>
+				<reconnect frequency="${poisystem.reconnection.frequency}" count="${poisystem.reconnection.attempts}"/>
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<ee:object-store-caching-strategy name="Native_Booking_Caching_Strategy" doc:name="Caching Strategy" doc:id="3c0301b2-6225-4b69-a4f6-cea33b0b15ea" keyGenerationExpression="#[vars.cacheKey]" objectStore="Object_store_native_booking"/>
+	<os:object-store name="Object_store_native_booking" doc:name="Object store" doc:id="5bcf4dea-283d-4551-b20a-7565b92b673f" entryTtl="${nativebooking.cachingstrategy.ttlInHrs}" entryTtlUnit="HOURS" expirationInterval="${nativebooking.cachingstrategy.expirationIntervalInMins}"/>
+	<http:request-config name="Property_POI_HTTP" basePath="${poisystem.basepath}">
+		<http:request-connection host="${poisystem.host}" port="${poisystem.port}" protocol="${poisystem.protocol}"/>
+	</http:request-config>	
+</mule>
