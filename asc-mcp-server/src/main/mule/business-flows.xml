@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+  <sub-flow name="validate-business-input">
+    <choice>
+      <when expression="#[vars.args.checkIn?]">
+        <set-variable variableName="dates" value="#[%dw 2.0 &#10;import try from dw::Runtime &#10;output application/java &#10;--- &#10;try(() -&gt; {start: vars.args.checkIn as Date, end: vars.args.checkOut as Date})]"/>
+        <choice>
+          <when expression="#[not vars.dates.success]"><raise-error type="APP:VALIDATION" description="Dates must be valid calendar dates in YYYY-MM-DD format."/></when>
+          <when expression="#[vars.dates.result.start &lt; (now() as Date) or vars.dates.result.end &lt;= vars.dates.result.start]"><raise-error type="APP:VALIDATION" description="Check-in must not be in the past; check-out must be after check-in."/></when>
+          <when expression="#[daysBetween(vars.dates.result.start, vars.dates.result.end) &gt; 30]"><raise-error type="APP:VALIDATION" description="The maximum supported stay is 30 nights."/></when>
+        </choice>
+      </when>
+    </choice>
+    <choice>
+      <when expression="#[vars.toolName == 'createBooking' and vars.args.confirmed != true]"><raise-error type="APP:CONFIRMATION_REQUIRED" description="Explicit user confirmation of the quoted booking is required."/></when>
+    </choice>
+  </sub-flow>
+  <sub-flow name="search-properties:post:\v2\bookingpropertylist">
+    <set-variable variableName="odxPath" value="/properties" doc:name="odxPath"/>
+    <set-variable variableName="odxQuery" value="#[{location: vars.args.location, limit: vars.args.limit default 20}]" doc:name="odxQuery"/>
+    <flow-ref name="endpoint_CityorCountry-bookingpropertylist" doc:name="odx-get"/>
+  </sub-flow>
+  <sub-flow name="read-property">
+    <set-variable variableName="odxPath" value="#['/properties/' ++ vars.args.propertyId]" doc:name="odxPath" />
+    <set-variable variableName="odxQuery" value="#[{}]" doc:name="odxQuery" />
+    <flow-ref name="endpoint_CityorCountry-bookingpropertylist" doc:name="odx-get" />
+  </sub-flow>
+	<sub-flow name="read-services">
+    <set-variable variableName="odxPath" value="#['/properties/' ++ vars.args.propertyId ++ '/services']"/>
+    <set-variable variableName="odxQuery" value="#[{}]"/>
+    <flow-ref name="endpoint_CityorCountry-bookingpropertylist"/>
+  </sub-flow>
+  <sub-flow name="read-rates">
+    <set-variable variableName="odxPath" value="#['/properties/' ++ vars.args.propertyId ++ '/rates']"/>
+    <set-variable variableName="odxQuery" value="#[{checkIn: vars.args.checkIn, checkOut: vars.args.checkOut, adults: vars.args.adults}]"/>
+    <flow-ref name="endpoint_CityorCountry-bookingpropertylist"/>
+  </sub-flow>
+  <sub-flow name="read-promotions">
+    <set-variable variableName="odxPath" value="#['/properties/' ++ vars.args.propertyId ++ '/promotions']"/>
+    <set-variable variableName="odxQuery" value="#[{}]"/>
+    <flow-ref name="endpoint_CityorCountry-bookingpropertylist"/>
+  </sub-flow>
+  <sub-flow name="compare-properties">
+    <parallel-foreach collection="#[vars.args.propertyIds]" maxConcurrency="5" timeout="10000">
+      <set-variable variableName="args" value="#[{propertyId: payload}]"/>
+      <flow-ref name="read-property"/>
+    </parallel-foreach>
+    <set-payload value="#[output application/json --- {properties: payload map $.payload, comparisonPolicy: 'ALL_OR_NOTHING'}]"/>
+  </sub-flow>
+  <sub-flow name="compare-rates">
+    <parallel-foreach collection="#[vars.args.propertyIds]" maxConcurrency="5" timeout="10000">
+      <set-variable variableName="args" value="#[vars.args ++ {propertyId: payload}]"/>
+      <flow-ref name="read-rates"/>
+    </parallel-foreach>
+    <set-payload value="#[output application/json --- {properties: payload map $.payload, comparisonPolicy: 'ALL_OR_NOTHING'}]"/>
+  </sub-flow>
+  <sub-flow name="create-booking">
+    <set-variable variableName="odxPath" value="/bookings"/>
+    <logger level="INFO" category="ascott.audit" message='#[output text/plain --- write({event: "odx.start", correlationId: vars.traceId, tool: vars.toolName, operation: "POST_BOOKING"}, "application/json", {indent: false})]'/>
+    <http:request config-ref="MCP-EXP-HTTPconfig" method="POST" path="/bookings" responseTimeout="${odx.timeout}" requestStreamingMode="NEVER">
+      <http:body><![CDATA[#[output application/json --- vars.args]]]></http:body>
+      <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'Authorization': 'Bearer ' ++ p('odx.token'), 'X-Correlation-ID': vars.traceId, 'Idempotency-Key': vars.args.idempotencyKey}]]]></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,409,422"/></http:response-validator>
+    </http:request>
+    <flow-ref name="validate-odx-status"/>
+    <flow-ref name="log-odx-success"/>
+  </sub-flow>
+  <sub-flow name="endpoint_CityorCountry-bookingpropertylist">
+    <logger level="INFO" category="ascott.audit" message='#[output text/plain --- write({event: "odx.start", correlationId: vars.traceId, tool: vars.toolName, operation: "GET"}, "application/json", {indent: false})]' />
+    <logger level="INFO" doc:name="input params" doc:id="dc49731c-550e-4148-b8c9-38e4be3feee1" message="set city or country filter criteria" />
+		<set-variable value="" doc:name="searchBy-City-Country" doc:id="f4ca6475-79a4-4ce0-bdad-70ad4f692ef1" variableName="searchBy-City-Country" />
+		<http:request config-ref="MCP-EXP-HTTPconfig" method="GET" path="#[vars.odxPath]" responseTimeout="${odx.timeout}" doc:name="bookingpropertylist">
+      <http:headers><![CDATA[#[{'Authorization': 'Bearer ' ++ p('odx.token'), 'X-Correlation-ID': vars.traceId}]]]></http:headers>
+      <http:query-params><![CDATA[#[vars.odxQuery]]]></http:query-params>
+      <http:response-validator><http:success-status-code-validator values="200..299,409,422" /></http:response-validator>
+    </http:request>
+    <flow-ref name="validate-odx-status" doc:name="validate-odx-status" />
+    <flow-ref name="log-odx-success" doc:name="log-odx-success" />
+  </sub-flow>
+	<sub-flow name="endpoint-apartmentrateapi" doc:id="306fd37a-ba11-4ea4-b7ef-43396e5d90e8">
+		<logger level="INFO" doc:name="Logger" doc:id="00185e77-80b1-47ea-b65d-b20f955b079d" message='#[output text/plain --- write({event: "odx.start", correlationId: vars.traceId, tool: vars.toolName, operation: "GET"}, "application/json", {indent: false})]' category="ascott.audit" />
+		<logger level="INFO" doc:name="input params" doc:id="536e698b-1311-4ba4-9d22-e4d8e7d40ce4" message="set city or country filter criteria" />
+		<set-variable value="" doc:name="searchBy-City-Country" doc:id="b16fca96-f9e1-4d60-b2f3-bdf726ba4e57" variableName="searchBy-City-Country" />
+		<http:request method="GET" doc:name="bookingpropertylist" doc:id="372249b0-0000-439d-b6d2-697a1835a80e" config-ref="MCP-EXP-HTTPconfig" path="#[vars.odxPath]" responseTimeout="${odx.timeout}">
+			<http:headers><![CDATA[#[{'Authorization': 'Bearer ' ++ p('odx.token'), 'X-Correlation-ID': vars.traceId}]]]></http:headers>
+			<http:query-params><![CDATA[#[vars.odxQuery]]]></http:query-params>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,409,422" />
+			</http:response-validator>
+		</http:request>
+		<flow-ref doc:name="validate-odx-status" doc:id="54114063-af7b-4608-83d2-99316b245a15" name="validate-odx-status" />
+		<flow-ref doc:name="log-odx-success" doc:id="a26c93f3-bac5-42db-aaab-c4cd8c5e4d34" name="log-odx-success" />
+	</sub-flow>
+	<sub-flow name="endpoint-getPropertyInfo" doc:id="b38ee105-7880-4ed0-a6ca-a697da701d2a">
+		<logger level="INFO" doc:name="Logger" doc:id="6ac85ba6-a697-472d-8e01-d31dd5ac3a8e" message='#[output text/plain --- write({event: "odx.start", correlationId: vars.traceId, tool: vars.toolName, operation: "GET"}, "application/json", {indent: false})]' category="ascott.audit" />
+		<logger level="INFO" doc:name="input params" doc:id="84a7eb51-8930-4e81-bc9e-84c80cd59254" message="set city or country filter criteria" />
+		<set-variable value="" doc:name="searchBy-City-Country" doc:id="6caec024-5005-4e58-8560-c6e98b521998" variableName="searchBy-City-Country" />
+		<http:request method="GET" doc:name="bookingpropertylist" doc:id="b826618f-0637-4bcf-b56d-2fe6770b93c0" config-ref="MCP-EXP-HTTPconfig" path="#[vars.odxPath]" responseTimeout="${odx.timeout}">
+			<http:headers><![CDATA[#[{'Authorization': 'Bearer ' ++ p('odx.token'), 'X-Correlation-ID': vars.traceId}]]]></http:headers>
+			<http:query-params><![CDATA[#[vars.odxQuery]]]></http:query-params>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,409,422" />
+			</http:response-validator>
+		</http:request>
+		<flow-ref doc:name="validate-odx-status" doc:id="9cc37099-6107-4366-852a-3bf2ac976c0f" name="validate-odx-status" />
+		<flow-ref doc:name="log-odx-success" doc:id="f715123b-f566-4b09-ac24-e315b1196962" name="log-odx-success" />
+	</sub-flow>
+	<sub-flow name="endpoint-userReview" doc:id="af23633b-f7d9-40e4-a147-f50a77010200">
+		<logger level="INFO" doc:name="Logger" doc:id="3d8b2f9e-40e3-4d4f-9f45-95bd2e6cf028" message='#[output text/plain --- write({event: "odx.start", correlationId: vars.traceId, tool: vars.toolName, operation: "GET"}, "application/json", {indent: false})]' category="ascott.audit" />
+		<logger level="INFO" doc:name="input params" doc:id="5bbf62f1-f05c-49fe-ad7f-c672f7aee4b5" message="set city or country filter criteria" />
+		<set-variable value="" doc:name="searchBy-City-Country" doc:id="51e3c3b1-ce21-4b79-9e4c-48848a817bb4" variableName="searchBy-City-Country" />
+		<http:request method="GET" doc:name="user_review_data" doc:id="ed295ca2-ec7f-4a9a-bf34-1f852a84da85" config-ref="MCP-EXP-HTTPconfig" path="#[vars.odxPath]" responseTimeout="${odx.timeout}">
+			<http:headers><![CDATA[#[{'Authorization': 'Bearer ' ++ p('odx.token'), 'X-Correlation-ID': vars.traceId}]]]></http:headers>
+			<http:query-params><![CDATA[#[vars.odxQuery]]]></http:query-params>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,409,422" />
+			</http:response-validator>
+		</http:request>
+		<flow-ref doc:name="validate-odx-status" doc:id="63459463-7719-49b8-9e9c-af02700c79bd" name="validate-odx-status" />
+		<flow-ref doc:name="log-odx-success" doc:id="3ed9dd66-a71d-4209-a6ad-c55efaf581c5" name="log-odx-success" />
+	</sub-flow>
+	<sub-flow name="log-odx-success">
+    <logger level="INFO" category="ascott.audit" message='#[output text/plain --- write({event: "odx.success", correlationId: vars.traceId, tool: vars.toolName, status: attributes.statusCode}, "application/json", {indent: false})]'/>
+  </sub-flow>
+	<sub-flow name="validate-odx-status">
+    <choice>
+      <when expression="#[attributes.statusCode == 409]"><raise-error type="APP:CONFLICT" description="Booking conflict. Recheck quote and idempotency key."/></when>
+      <when expression="#[attributes.statusCode == 422]"><raise-error type="APP:VALIDATION" description="Downstream business validation failed."/></when>
+    </choice>
+  </sub-flow>
+</mule>

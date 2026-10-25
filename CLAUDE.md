@@ -6,6 +6,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 
 - **Base code: `asc-mcp-odx-backend-xapi/`.** It holds the files the owner sent from the deployed app (2026-10-25). Fix and extend only these files.
 - `ascott.mcp.get-property-details.xapi/` is the older reference project that the base grew out of. Use it only to look up the DataWeave files the base still needs (see "Not yet in the base"). Do not edit it for new work.
+- **Second app: `asc-mcp-server/`.** The MCP tool-call server the owner sent on 2026-10-26. It is a *different* Mule app from the xAPI: it hosts the MCP server and the ChatGPT widget, and calls a backend over HTTP. See "The MCP server app" below. Only three of its files are here; do not assume anything else about it.
 - Branch `claude/property-details-xapi-v3` / PR #1 is a separate project from another session. It is not this app.
 - The owner edits in Anypoint Studio and deploys by hand. Their copy can be ahead of this repo. When a log disagrees with the repo, ask for the deployed file instead of assuming.
 - `global-config.xml` here has its two truststore passwords and the secure-properties key replaced with `REDACTED`. The real values live only in the owner's project. Never commit secrets: no client IDs, client secrets, passwords or keys from `uat.yaml`.
@@ -248,12 +249,12 @@ Rules for T-05 and T-06:
 
 Compares 2–4 room types **at one property**. It has a single inline component and no full screen. Every card hands off to T-04 for that room, and there is no booking action: T-08 is reached only through T-04 (AC-10, SM-06). The card shows one starting rate per room, so the full rate-plan list stays in T-04.
 
-**Before building, ask the owner:** should T-07 be a pass-through like T-06 (no recommendation, no filters, no ranking)? The PRD has the same scoring and recommendation block and filters as T-06, but the owner chose a pass-through for T-06.
+**Owner decision (2026-10-26): T-07 only gathers the rooms, like T-06.** No recommendation, ranking or filtering: no `recommendation` block, no `is_recommended`, no match flags or reason lines, and `minPrice` / `maxPrice` / `requiredInclusions` / `attributeToCompare` are accepted and ignored. The model and the widget compare.
 
 **Inputs:**
 
 - `propertyCode` (required).
-- `roomCategoryCodes[]` (2–4; duplicates removed, extra codes past 4 dropped and reported: EC-01/02, AC-04). The PRD's example values (`"CUTLER-STUDIO"`) are **`apartmentCategoryCode`**, the same identifier T-08 uses. T-04 here outputs `room_code` = `apartmentType` and `room_category` = `apartmentCategoryCode`. Confirm which one the model will carry over before matching.
+- `roomCategoryCodes[]` (2–4; duplicates removed, extra codes past 4 dropped and reported: EC-01/02, AC-04). **Owner decision (2026-10-26): match them against `apartmentType`**, which is what T-04 returns as `room_code`. The PRD's own examples (`"CUTLER-STUDIO"`) are `apartmentCategoryCode`; match that too as a fallback, but `apartmentType` is what the model carries over.
 - `checkinDate` / `checkoutDate`: carried from T-04, else today + 30 / + 31.
 - `noOfadults` / `noOfchildren`: default 1 / 0.
 - `currencyCode`.
@@ -291,7 +292,7 @@ Compares 2–4 room types **at one property**. It has a single inline component 
 - Fewer than 2 rooms → ER-01/ER-05; the LLM hands off to T-04 instead (EC-04).
 - Upstream 5xx → ER-03.
 
-**Hand-off to T-04:** the expand icon and "View available rates" open T-04 with that room pre-selected and the same dates and guests (AC-09). **T-04 here has no room-filter input yet**, so that pre-selection would have to be added to T-04.
+**Hand-off to T-04:** the expand icon and "View available rates" open T-04 with that room pre-selected and the same dates and guests (AC-09). **Owner decision (2026-10-26): no room filter is to be added to T-04.** T-04 keeps returning every room, and the widget picks the one it needs.
 
 ### T-08 Create_booking
 
@@ -346,9 +347,33 @@ Despite its name, T-08 is **read-only**. It never writes a reservation, holds a 
 - The total comes from `bookingcart`, which this app can't call yet. Until then, the T-04 tax-inclusive total is the only source.
 - ER-06 is blank in the PRD.
 
+## The MCP server app (`asc-mcp-server/`, owner's files, 2026-10-26)
+
+A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in `asc-mcp-odx-backend-xapi/` is a backend; this app is the tool-call layer in front of it. Only these three files were shared:
+
+| File | Defines |
+|---|---|
+| `global-config.xml` | `configuration-properties file="application_properties.yaml"`; `HTTP_Listener` (`${http.host}` / `${http.port}`); **`mcp:server-config` `asc_mcp_config`** (serverName `asc-mcp-server-1`, 1.0.0, streamable HTTP on `${mcp.endpoint}`, 30s timeout, JSON); flow `health` (GET `/health`, reports `p("data.mode")` and `tools: 8`); **`MCP-EXP-HTTPconfig`**: plain **HTTP**, host `test-mcp-xapi-ch01.sg-s1.cloudhub.io`, port 80. |
+| `mcp-html-widget.xml` | Flow `serve-html-resource-flow`: an `mcp:resource-listener` on `asc_mcp_config` serving `ui://ascott/widget-v2.html` as `text/html;profile=mcp-app`, read from `classpath://ui/ui_widget.html`. This is the ChatGPT widget that renders our `structuredContent`. |
+| `business-flows.xml` | `validate-business-input` (dates, 30-night max, `createBooking` needs `confirmed`), the per-tool sub-flows `search-properties:post:\v2\bookingpropertylist`, `read-property`, `read-services`, `read-rates`, `read-promotions`, `compare-properties`, `compare-rates`, `create-booking`, the shared callers `endpoint_CityorCountry-bookingpropertylist` / `endpoint-apartmentrateapi` / `endpoint-getPropertyInfo` / `endpoint-userReview`, and `validate-odx-status` / `log-odx-success`. |
+
+How it calls out, as these files stand:
+
+- Every read is **`GET`** on `MCP-EXP-HTTPconfig` with `path = vars.odxPath` and `http:query-params = vars.odxQuery`, header `Authorization: Bearer p('odx.token')` plus `X-Correlation-ID`. `create-booking` is `POST /bookings` with an `Idempotency-Key`.
+- Paths are REST-style: `/properties`, `/properties/{id}`, `/properties/{id}/services`, `/properties/{id}/rates`, `/properties/{id}/promotions`, `/bookings`.
+- Status handling: the validator accepts `200..299,409,422`; `validate-odx-status` turns 409 into `APP:CONFLICT` and 422 into `APP:VALIDATION`.
+- Variables the tool listeners must set before these sub-flows run: **`vars.toolName`**, **`vars.args`** (`location`, `limit`, `propertyId`, `propertyIds`, `checkIn`, `checkOut`, `adults`, `confirmed`, `idempotencyKey`) and **`vars.traceId`**.
+
+**It does not call our xAPI yet.** Our endpoints are `POST /api/v1/{property-details, service-offerings, room-details, compare-properties}` on `asc-mcp-odx-backend-xapi-1`, with `client_id` / `client_secret`-style auth and a JSON body — not `GET /properties/{id}` with a bearer token on `test-mcp-xapi-ch01`. To point this app at our xAPI, each sub-flow needs: method `POST`, our path, `http:body` instead of `http:query-params`, and our headers. Ask the owner whether `test-mcp-xapi-ch01` is a different experience API or a placeholder.
+
+**Naming:** its tool names (`createBooking`, `compare-rates`, `read-promotions`) and `vars.args` names (`checkIn`, `adults`, `propertyId`) are **not** the PRD names (`checkinDate`, `noOfadults`, `propertyCode`) our xAPI accepts, although our validators also accept the short T-02 names (`checkin`, `adults`). Map them deliberately; do not assume they line up.
+
+**Not shared yet (ask before relying on it):** the file with the `mcp:tool-listener` definitions and tool JSON schemas (it sets `toolName` / `args`), the error handler that maps `APP:VALIDATION` / `APP:CONFLICT` / `APP:CONFIRMATION_REQUIRED` to a tool result, `src/main/resources/ui/ui_widget.html`, `application_properties.yaml` (share it without secrets: it holds `odx.token`, `odx.timeout`, `http.*`, `mcp.endpoint`, `data.mode`) and `pom.xml`.
+
 ## How to work on it
 
 - Diagnose from the audit log lines: `xapi.start` / `T04.start` / `T06.start`, `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
 - Check any response change against the tool's schema, using a sample built from real upstream data where possible.
 - Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`, `t06.*`).
 - Commit to branch `claude/get-property-details-xapi`.
+- `asc-mcp-server/` holds the owner's MCP server files for reference. Change them only when asked, and keep the xAPI (`asc-mcp-odx-backend-xapi/`) and the MCP server apart: they are separate Mule apps.

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule
+    xmlns="http://www.mulesoft.org/schema/mule/core"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xmlns:http="http://www.mulesoft.org/schema/mule/http"
+    xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+    xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp"
+
+    xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+        http://www.mulesoft.org/schema/mule/core
+        http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+
+        http://www.mulesoft.org/schema/mule/http
+        http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+
+        http://www.mulesoft.org/schema/mule/ee/core
+        http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+
+        http://www.mulesoft.org/schema/mule/mcp
+        http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
+
+
+    <!-- 1. HTTP Listener Configuration -->
+
+
+    <!-- 2. MCP Server Configuration -->
+
+
+    <!-- 3. MCP Resource Flow -->
+    <flow name="serve-html-resource-flow">
+
+        <mcp:resource-listener
+            config-ref="asc_mcp_config"
+            name="Response HTML Template"
+            uri="ui://ascott/widget-v2.html"
+            resourceMimeType="text/html;profile=mcp-app">
+
+            <mcp:description><![CDATA[
+Provides the HTML UI resource used by ChatGPT to render Ascott property search,
+comparison, rate, promotion, and booking results returned by MCP tools.
+]]></mcp:description>
+
+            <mcp:resource-listener-content>
+                <mcp:text-resource text="#[payload]" />
+            </mcp:resource-listener-content>
+
+        </mcp:resource-listener>
+
+
+        <!-- Load HTML from src/main/resources/ui/ui_widget.html -->
+        <ee:transform doc:name="Load HTML Widget">
+
+            <ee:message>
+                <ee:set-payload><![CDATA[
+%dw 2.0
+output text/plain
+---
+readUrl(
+    "classpath://ui/ui_widget.html",
+    "text/plain"
+)
+]]></ee:set-payload>
+            </ee:message>
+
+        </ee:transform>
+
+    </flow>
+
+</mule>
