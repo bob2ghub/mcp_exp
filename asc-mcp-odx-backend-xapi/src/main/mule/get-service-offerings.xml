@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-03 get_service_offerings: POST ${t03.http.path}
+  Reads propertyList[].facilities.facilityDetails[] from the same process API as get_property_details and returns
+  the get_service_offerings structuredContent (schemas/service-offerings-structured-content.schema.json 0.1.0).
+  No config of its own: common_HTTP_Listener_Config and Property_Info_HTTP from global-config.xml, property-details-error-handler
+  from error-handlers.xml. Properties: the t03.* block in service-offerings.yaml, plus the process API keys it shares
+  with get_property_details (property.path, property.timeout, property.clientId, property.clientSecret).
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <flow name="get-service-offerings">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="${t03.http.path}" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="toolName" value="get_service_offerings"/>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T03.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T03 START"/>
+    <flow-ref name="services-validate-request" doc:name="services-validate-request"/>
+    <flow-ref name="services-get-facilities" doc:name="services-get-facilities"/>
+    <flow-ref name="services-map-response" doc:name="services-map-response"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, totalResults: payload.meta.total_results, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
+    <error-handler ref="property-details-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.servicesRequest. propertyCode is required: meta.property_code echoes it (digits only). -->
+  <sub-flow name="services-validate-request">
+    <!-- Only a JSON parse failure is reported as invalid JSON; any other error (e.g. a missing property) is a 500. -->
+    <try>
+      <set-payload value="#[output application/java --- payload]"/>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="errorMessage" value="Request body must be valid JSON."/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[vars.errorMessage != null]">
+        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="servicesValidation"><![CDATA[%dw 2.0
+output application/java
+import days from dw::core::Periods
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun matchesRe(s, re) = if (s is String) (s matches re) else false
+
+var body = if (payload is Object) payload else {}
+// The availability search returns no propertyList without a stay, so send the same defaults as get_property_details.
+var checkin = (now() as Date) + days(p('default.checkinOffsetDays') as Number)
+var checkout = checkin + days(p('default.nights') as Number)
+var code = text(body.propertyCode)
+var language = if (body.language == null) p('t03.defaultlanguage') else text(body.language)
+---
+{
+	errors: [
+		if (!(payload is Object)) "Request body must be a JSON object." else null,
+		if (code == null) "propertyCode is required." else if (!matchesRe(code, /^[0-9]{1,20}$/)) "propertyCode must be 1 to 20 digits." else null,
+		if (!matchesRe(language, /^[a-z]{2}(-[A-Za-z]{2,4})?$/)) "language must be a language code such as en or zh-CN." else null
+	] filter ($ != null),
+	request: {
+		propertyCode: code,
+		language: language,
+		checkin: checkin as String {format: "yyyy-MM-dd"},
+		checkout: checkout as String {format: "yyyy-MM-dd"},
+		adults: p('default.adults') as Number,
+		children: p('default.children') as Number
+	}
+}]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[not isEmpty(vars.servicesValidation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[vars.servicesValidation.errors joinBy ' ']"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_service_offerings request"/>
+      </when>
+    </choice>
+    <set-variable variableName="servicesRequest" value="#[vars.servicesValidation.request]"/>
+  </sub-flow>
+
+  <!-- Same process API call as get_property_details; the matching propertyList entry ends up in vars.servicesSource. -->
+  <sub-flow name="services-get-facilities">
+    <!-- property-info-request.dwl builds the body from vars.request, not vars.servicesRequest. -->
+    <set-variable variableName="request" value="#[vars.servicesRequest]"/>
+     <ee:transform>
+      	<ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
+    <http:request method="POST" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000" >
+			<http:body ><![CDATA[#[vars.propertyInfoRequest]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+    "messageId" : vars.traceId,
+    "country" : Mule::p('default.userCountry') default "SG",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+			<http:response-validator>
+				<http:success-status-code-validator values="200..299,404" />
+			</http:response-validator>
+		</http:request>
+  
+    <!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_Bookingsearch_config" method="POST" path="/v3/checkpropertyavailability" responseTimeout="30000">
+      <http:body><![CDATA[#[output application/json
+&#45;&#45;-
+{
+	version: p('t03.version'),
+	language: vars.servicesRequest.language,
+	channel: p('t03.channel'),
+	propertyCode: vars.servicesRequest.propertyCode,
+	checkin: vars.servicesRequest.checkin,
+	checkout: vars.servicesRequest.checkout,
+	adults: vars.servicesRequest.adults,
+	children: vars.servicesRequest.children,
+	currency: p('default.currency')
+}&#93;&#93;&#93;></http:body>
+      <http:headers><![CDATA[#[output application/java
+&#45;&#45;-
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('poisystem.clientSecret'),
+    "client_id" : Mule::p('poisystem.clientId'),
+	"messageId" : vars.traceId,
+	"X-Correlation-ID": vars.traceId
+}&#93;&#93;&#93;></http:headers>
+      <http:response-validator><http:success-status-code-validator values="200..299,404"/></http:response-validator>
+    </http:request> [STUDIO] -->
+    <choice>
+      <when expression="#[attributes.statusCode == 404]">
+        <set-variable variableName="errorMessage" value="Property not found."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+    <ee:transform>
+      <ee:variables>
+        <ee:set-variable variableName="servicesSource"><![CDATA[%dw 2.0
+// propertyList[] entry whose propertyCode matches the request; a single entry is taken as is.
+output application/java
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun candidates(v): Array = if (v is Array) flatten(v map candidates($))
+	else if (v is Object) (if (v.propertyList is Array) (v.propertyList filter ($ is Object))
+		else if ((v.propertyCode != null) or (v.facilities != null)) [v]
+		else flatten(valuesOf(v) map candidates($)))
+	else []
+var all = candidates(payload)
+var code = vars.servicesRequest.propertyCode
+---
+(all filter ((c) -> text(c.propertyCode) == code))[0] default (if (sizeOf(all) == 1) all[0] else null)]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <!-- Field names only (no values), so an unexpected upstream format can be diagnosed from the log. -->
+    <try>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.property.response", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, propertyListSize: if (payload.propertyList is Array) sizeOf(payload.propertyList) else null, facilityFields: if (vars.servicesSource.facilities is Object) (keysOf(vars.servicesSource.facilities) map ($ as String)) else typeOf(vars.servicesSource.facilities) as String}, "application/json", {indent: false})]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.property.response", correlationId: vars.traceId, note: "response body is not readable JSON"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[!(vars.servicesSource is Object)]">
+        <set-variable variableName="errorMessage" value="Property not found."/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- vars.servicesSource -> {meta, services[]}: one flat row per facilities.facilityDetails[] item, upstream order. -->
+  <sub-flow name="services-map-response">
+    <ee:transform>
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
+fun firstVal(o, keys) = if (o is Object) ((keys map ((k) -> o[k])) filter ($ != null))[0] else null
+fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
+fun matchesRe(s, re) = if (s is String) (s matches re) else false
+fun objects(v) = if (v is Array) (v filter ($ is Object)) else if (v is Object) [v] else []
+fun slug(v) = do {
+	var s = text(v)
+	var out = if (s == null) "" else ((lower(s) replace /[^a-z0-9]+/ with "-") replace /^-+|-+$/ with "")
+	---
+	if (out == "") null else out
+}
+
+var src = vars.servicesSource
+var assetBaseUrl = p('t03.assetbaseurl')
+// facilityUrl must be an absolute URI; site-relative paths are resolved against asset.baseUrl.
+fun absoluteUrl(v) = do {
+	var s = text(v)
+	---
+	if (s == null) null
+	else if (matchesRe(s, /^https?:\/\/\S+$/)) s
+	else if (matchesRe(s, /^\/\S*$/)) assetBaseUrl ++ s
+	else null
+}
+var facilitiesIn = firstVal(src, ["facilities"])
+var details = objects(if (facilitiesIn is Object) firstVal(facilitiesIn, ["facilityDetails", "facility_details"]) else facilitiesIn)
+var services = details map ((f) -> {
+	service_name: firstText(f, ["title", "name"]),
+	service_location: firstText(f, ["location"]),
+	operating_hours: firstText(f, ["operatingHours", "operating_hours"]),
+	description: firstText(f, ["description"]),
+	thumbnail_url: firstText(f, ["thumbnailImage", "thumbnail", "image"]),
+	contact_number: firstText(f, ["contactNumber", "phone"]),
+	external_service_url: absoluteUrl(firstVal(f, ["facilityUrl", "url"]))
+}) filter ($.service_name != null)
+var countryCode = upper(firstText(src, ["countryCode", "country_code"]) default "")
+---
+{
+	meta: {
+		property_code: vars.servicesRequest.propertyCode,
+		property_name: firstText(src, ["propertyEnName", "propertyName", "property_name"]) default vars.servicesRequest.propertyCode,
+		brand_code: slug(firstText(src, ["brand", "brandCode", "brand_code"])) default slug(firstText(src, ["brandName"])) default "ascott",
+		country_code: if (matchesRe(countryCode, /^[A-Z]{2}$/)) countryCode else null,
+		phone: firstText(src, ["phone", "phoneNumber"]),
+		asset_base_url: assetBaseUrl,
+		total_results: sizeOf(services)
+	},
+	services: services
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </sub-flow>
+</mule>
