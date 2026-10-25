@@ -110,10 +110,108 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 
 ## Not yet in the base (ask for these before relying on them)
 
-- `get-service-offerings.xml` (T-03 flow): the owner will share it.
 - The error-handler file that defines `property-details-error-handler`, which T-02 and T-03 reference.
 - `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl`, `map-structured-content.dwl` (T-02) and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`.
 - `uat.yaml` (share without secrets) and `pom.xml`.
+
+## Product specs (PRDs) for tools not yet built
+
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md` and `PRD-T06-compare-properties.md`. Read the full PRD before you build either tool. No flow or schema exists for T-05 or T-06 yet. Build one only when asked.
+
+Tool map from the PRDs:
+
+| Tool | Name | Status in this app |
+|---|---|---|
+| T-01 | Search properties | not in this app |
+| T-02 | Get_property_details | built |
+| T-03 | Get_service_offerings | built |
+| T-04 | Get_room_rate_details | built (issues 1–6) |
+| T-05 | Get_promotions | PRD only |
+| T-06 | Compare_properties | PRD only |
+| T-07 | Compare_rooms_rates | not specified here |
+| T-08 | Create_booking | not specified here |
+
+Rules for both tools:
+
+- Read only. One inline component per response, built from one data packet: `meta`, `recommendation` and a list.
+- The xAPI must not let an LLM invent facts. A new backend scoring and explanation service computes boolean `match_flags`. That service has no API yet. Reasons or chips are shown only for flags that are `true`.
+- One resolved currency for every card in a response.
+- 14 Sept note: the OpenAI prose must always agree with, and explain, the tool output.
+
+### T-05 Get_promotions
+
+**Inputs:**
+
+- `countryCode` (required), `city`, `propertyCode`.
+- `checkinDate` (default today), `checkoutDate`.
+- `noOfadults` (default 1), `noOfchildren` (default 0), `currencyCode`.
+- `voucherName`.
+- `voucherCategory[]`: API GAP, no enum source.
+- `maxPrice`: PARAMETER GAP, filter after retrieval.
+- `memberId`: optional here, although the consumer app treats it as mandatory (OQ-07).
+
+**Upstream APIs:**
+
+- `searchvoucher` (`odx/mobilev1/v1/searchvoucher`), the main source. Fields: `voucherTitle`/`voucherEnTitle`, `category`, `imageThumbnail`, `propertyCode`, `country`, `expiryDate`, `basePrice`/`promoPrice`, `preferredCurrencyPromoPrice`, `promoPercentage`, `points`, `isEndingSoon`, `voucherUrl`.
+- `getvoucherdetail`: optional extra detail (OQ-04).
+- Booking search, for rate discounts, when a property and dates are resolved. Fields: `strikethroughRate`, `perNightRatePrefCurr`, `isPromoCodeApplied`/`isVoucherCodeApplied`. This is the same `/v3/checkpropertyavailability` call T-02/T-03/T-04 make. Reuse `get-property-common-info`.
+- `filtercountrycache` / `filtercitycache`.
+- The scoring service.
+
+**Output packet:**
+
+- `meta {location_query, resolved_property_code, total_results, applied_filters, attribution}`.
+- `recommendation {recommended_offer_id, recommendation_text, match_flags {matches_property, discount_percentage, matches_dates, is_lowest_eligible_rate}, reason_chips[{icon, label}]}`.
+- `offers[] {offer_id, promotion_type ("voucher" | "rate_discount"), offer_title, image_thumbnail, is_best_match, is_ending_soon, scope {property_codes[], scope_label}, expiry_date, discount {promo_percentage}, pricing {promo_price, points, currency}, external_offer_url}`.
+
+**Key checks:**
+
+- Exactly one offer has `is_best_match`. Zero results is a valid response, not an error.
+- Ties are broken by a defined rule (EC-07).
+- Voucher and rate-discount offers need a common scale for comparison (OQ-09).
+- How `external_offer_url` is built for each promotion type is open (OQ-05).
+
+### T-06 Compare_properties
+
+**Inputs:**
+
+- `propertyCodes[]`: 2–4, required.
+- `checkinDate` (default today + 30), `checkoutDate` (default today + 31).
+- `noOfadults` (default 1), `noOfchildren` (default 0), `currencyCode`.
+- `facilities[]`.
+- `maxRate`: PARAMETER GAP.
+- `roomType`: API GAP.
+- `poi`: API GAP, no POI proximity API. Note that our `get-property-pois` mock only lists POIs.
+- `travellerProfile`: derived by the LLM.
+- `serviceCategory`: deferred (OQ-07; T-03 data could fill it).
+- `memberId`.
+
+**Upstream APIs:**
+
+- `bookingpropertylist`.
+- `bookingsearchresultv2`.
+- `v1/propertyreviews`.
+- `apartmentlist`.
+- `getpropertyinfo`.
+- The scoring service.
+- POI API: not yet available.
+
+**Mapping into this app:** the booking search data T-02/T-04 already map covers most of each card. T-04 supplies rates and rooms; T-02 supplies name, images, location and amenities. Call it once per property.
+
+**Output packet:**
+
+- `meta {total_results, location_query, currency, checkin_date, checkout_date, noOfadults, noOfchildren, attribution}`.
+- `recommendation {recommended_property_code, traveller_profile_label, recommendation_text, match_flags, reason_lines[{icon, label}]}`.
+- `properties[] {property_code, property_name, is_recommended, brand_logo_url, banner_image_url, card_location_line, rating {average_ratings, total_number_of_reviews}, location {area_label, district_label}, max_person_in_room, room_types[], amenity_highlights[], pricing {per_night_rate_pref_curr, strikethrough_rate, currency}}`.
+- The source of `isASR` is unknown.
+
+**Key checks:**
+
+- Every card has the same fields. Use an explicit "unavailable" state; never leave a field out.
+- A property with no rate shows "Availability on request" and the next available date.
+- An excluded property must carry a stated reason.
+- "See room and rates" hands off to T-04 with the same dates and guests (AC-09, OQ-05).
+- Ties are broken by a defined rule (EC-05, OQ-08).
 
 ## How to work on it
 
