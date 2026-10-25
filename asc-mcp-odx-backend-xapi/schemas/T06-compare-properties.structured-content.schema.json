@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:compare_properties:structured-content:0.2.0",
+  "title": "Compare properties — structuredContent",
+  "description": "The structuredContent of the compare_properties MCP tool (T-06): 2 to 4 property cards in one payload, for the T-06 inline component without a second call. The xAPI only puts the requested properties together; it does not compare, rank, filter or recommend (the model and the widget do). Card and meta names follow PRD TC-06 §6.1. Not in this payload: the PRD's recommendation block and is_recommended (no comparison here). Additions to the PRD: meta.nights / asset_base_url / requested_property_codes / dropped_property_codes, card is_asr / property_type / brand_name / location.country_code / pricing.availability_status / total_stay_rate_pref_curr / next_available_date, and missing_properties[]. 0.2.0, provisional (2026-10-25).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "properties",
+    "missing_properties"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_results",
+        "location_query",
+        "currency",
+        "checkin_date",
+        "checkout_date",
+        "nights",
+        "noOfadults",
+        "noOfchildren",
+        "attribution",
+        "asset_base_url",
+        "requested_property_codes",
+        "dropped_property_codes"
+      ],
+      "properties": {
+        "total_results": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of cards in properties[]."
+        },
+        "location_query": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Distinct cities of the compared properties."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "checkin_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "checkout_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "nights": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "noOfadults": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "noOfchildren": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attribution": {
+          "const": "discoverasr.com"
+        },
+        "asset_base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dropped_property_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Codes beyond the first 4 (PRD AC-04): tell the user which were left out."
+        },
+        "requested_property_codes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "The distinct codes looked up, in request order (at most 4)."
+        }
+      }
+    },
+    "properties": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/card"
+      },
+      "description": "One card per requested property that came back, in request order."
+    },
+    "missing_properties": {
+      "type": "array",
+      "maxItems": 4,
+      "description": "Requested codes with no card, and why (PRD ER-04 / ER-03).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "property_code",
+          "reason_code",
+          "message"
+        ],
+        "properties": {
+          "property_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason_code": {
+            "enum": [
+              "not_found",
+              "lookup_failed"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One property card. Every card has every key; a value upstream does not have is null (PRD EC-10: show it as unavailable, never drop the row).",
+      "required": [
+        "property_code",
+        "property_name",
+        "is_asr",
+        "property_type",
+        "brand_name",
+        "brand_logo_url",
+        "banner_image_url",
+        "card_location_line",
+        "rating",
+        "location",
+        "max_person_in_room",
+        "room_types",
+        "amenity_highlights",
+        "pricing"
+      ],
+      "properties": {
+        "property_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "property_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "is_asr": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Upstream asrParticipating (PRD isASR)."
+        },
+        "property_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "brand_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "brand_logo_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Upstream image path or absolute URL, resolved by the widget against meta.asset_base_url. null: show a placeholder (PRD EC-09)."
+        },
+        "banner_image_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Upstream image path or absolute URL, resolved by the widget against meta.asset_base_url. null: show a placeholder (PRD EC-09)."
+        },
+        "card_location_line": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "rating": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "average_ratings",
+            "total_number_of_reviews"
+          ],
+          "description": "null: booking search returns no reviews; PRD source v1/propertyreviews is not integrated yet.",
+          "properties": {
+            "average_ratings": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "total_number_of_reviews": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "area_label",
+            "district_label",
+            "country_code"
+          ],
+          "properties": {
+            "area_label": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "district_label": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "country_code": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[A-Z]{2}$"
+            }
+          }
+        },
+        "max_person_in_room": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Largest maxOccupancy among the property's rooms."
+        },
+        "room_types": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Room names with a bookable rate (all listed rooms when none has a rate)."
+        },
+        "amenity_highlights": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "icon_url"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "icon_url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "description": "Upstream image path or absolute URL, resolved by the widget against meta.asset_base_url. null: show a placeholder (PRD EC-09)."
+              }
+            }
+          }
+        },
+        "pricing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "availability_status",
+            "per_night_rate_pref_curr",
+            "strikethrough_rate",
+            "total_stay_rate_pref_curr",
+            "currency",
+            "next_available_date"
+          ],
+          "properties": {
+            "availability_status": {
+              "enum": [
+                "available",
+                "on_request"
+              ],
+              "description": "on_request: show 'Availability on request' instead of a price (PRD ER-08, EC-06)."
+            },
+            "per_night_rate_pref_curr": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "This property's lowest bookable nightly rate (T-04 rules), taxes and fees included. null when it has none."
+            },
+            "strikethrough_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "Per-night reference rate, only when above per_night_rate_pref_curr."
+            },
+            "total_stay_rate_pref_curr": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "Whole stay, taxes and fees included."
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$",
+              "description": "Always meta.currency (PRD AC-07)."
+            },
+            "next_available_date": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date",
+              "description": "PRD ER-08. Always null today: booking search returns no next available date."
+            }
+          }
+        }
+      }
+    }
+  }
+}

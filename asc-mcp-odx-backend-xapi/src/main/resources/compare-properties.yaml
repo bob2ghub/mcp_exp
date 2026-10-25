@@ -1,0 +1,22 @@
+# T-06 compare_properties (compare-properties.xml)
+# Append to uat.yaml, in the same style as the t03 block. No listener or request config of its own: it uses
+# common_HTTP_Listener_Config and HTTP_Request_Bookingsearch_config from global-config.xml.
+
+# ---------- New keys: only this endpoint uses them
+t06:
+  http.path: "/api/v1/compare-properties"
+  minProperties: "2"            # PRD: at least 2 property codes
+  maxProperties: "4"            # PRD: at most 4; extra codes are dropped and echoed in meta.dropped_property_codes
+  checkinOffsetDays: "30"       # PRD default check-in: today + 30
+  nights: "1"                   # PRD default check-out: check-in + 1 (today + 31)
+  adults: "1"                   # PRD default noOfadults
+  children: "0"                 # PRD default noOfchildren
+  batchLookup: "true"           # "true": first try one booking search call with several codes; "false": always one by one
+  batchSize: "3"                # codes per batch call (the reference caller allows at most 3 with propertyListing true)
+  maxConcurrency: "4"           # parallel one-by-one calls
+  maxAmenityHighlights: "6"     # amenity chips per card
+  maxRoomTypes: "6"             # room type chips per card
+
+# ---------- Shared keys T-06 also reads (already in uat.yaml for T-02 / T-04)
+# https.bookingsearchprocessapi.*, default.language, default.userCountry, property.currency,
+# request.maxAdults, request.maxChildren, request.maxNights, asset.baseUrl

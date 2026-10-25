@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-06 compare_properties: POST ${t06.http.path}
+  Returns 2 to 4 properties in one payload (PRD TC-06) from the same booking search process API as T-02 / T-04, as the
+  compare_properties structuredContent (schemas/T06-compare-properties.structured-content.schema.json 0.2.0).
+  It only puts the properties together: no comparison, ranking, filtering or recommendation (the model and widget do that).
+
+  Lookup: when t06.batchLookup is "true", one booking search call with up to t06.batchSize codes and propertyListing true
+  (the reference caller allows at most 3 codes that way, and exactly 1 with propertyListing false). Any code the batch call
+  does not return with room data, or every code when that call fails or batchLookup is "false", is then looked up one by one
+  through get-property-common-info (get-common-details.xml), in parallel.
+
+  No config of its own: common_HTTP_Listener_Config and HTTP_Request_Bookingsearch_config from global-config.xml.
+  DataWeave: dwl/compare-validate-request.dwl, dwl/property-info-request.dwl (shared), dwl/compare-properties-response.dwl.
+  Properties: the t06.* block in compare-properties.yaml, plus https.bookingsearchprocessapi.*, default.language,
+  default.userCountry, property.currency, request.maxAdults / maxChildren / maxNights and asset.baseUrl.
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <flow name="compare-properties">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="${t06.http.path}" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="toolName" value="compare_properties" doc:name="toolName"/>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T06.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T06.start"/>
+    <flow-ref name="compare-validate-request" doc:name="compare-validate-request"/>
+    <flow-ref name="compare-get-properties" doc:name="compare-get-properties"/>
+    <flow-ref name="compare-check-lookups" doc:name="compare-check-lookups"/>
+    <ee:transform doc:name="Final-Response">
+      <ee:message><ee:set-payload resource="dwl/compare-properties-response.dwl"/></ee:message>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, totalResults: payload.meta.total_results, returned: (payload.properties default []) map $.property_code, missing: (payload.missing_properties default []) map $.property_code, lookups: vars.lookupSummary, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T06.success"/>
+    <error-handler ref="compare-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.compareRequest. Only a JSON parse failure is reported as invalid JSON. -->
+  <sub-flow name="compare-validate-request">
+    <try>
+      <set-payload value="#[output application/java --- payload]" doc:name="parse body"/>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="false" enableNotifications="false">
+          <set-variable variableName="errorMessage" value="Request body must be valid JSON." doc:name="errorMessage"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[vars.errorMessage != null]">
+        <raise-error type="APP:BAD_REQUEST" description="Request body is not valid JSON"/>
+      </when>
+    </choice>
+    <ee:transform doc:name="validate">
+      <ee:variables><ee:set-variable variableName="compareValidation" resource="dwl/compare-validate-request.dwl"/></ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[not isEmpty(vars.compareValidation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[vars.compareValidation.errors joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid compare_properties request"/>
+      </when>
+    </choice>
+    <set-variable variableName="compareRequest" value="#[vars.compareValidation.request]" doc:name="compareRequest"/>
+  </sub-flow>
+
+  <!-- vars.compareRequest.propertyCodes -> vars.lookups: [{code, status: ok | not_found | unavailable, source, property}], in request order. -->
+  <sub-flow name="compare-get-properties">
+    <set-variable variableName="batchList" value="#[[]]" doc:name="batchList"/>
+    <choice>
+      <when expression="#[p('t06.batchLookup') == 'true']">
+        <flow-ref name="compare-batch-lookup" doc:name="compare-batch-lookup"/>
+      </when>
+    </choice>
+    <!-- A code the batch call did not return, or returned without apartments, is fetched on its own. -->
+    <set-variable variableName="missingCodes" value="#[output application/java --- vars.compareRequest.propertyCodes filter ((c) -> isEmpty(vars.batchList filter ((e) -> (((e.propertyCode default '') as String) == c) and (e.apartments is Array))))]" doc:name="missingCodes"/>
+    <set-variable variableName="singleResults" value="#[[]]" doc:name="singleResults"/>
+    <choice>
+      <when expression="#[not isEmpty(vars.missingCodes)]">
+        <parallel-foreach collection="#[vars.missingCodes]" maxConcurrency="${t06.maxConcurrency}" doc:name="one by one">
+          <flow-ref name="compare-single-lookup" doc:name="compare-single-lookup"/>
+        </parallel-foreach>
+        <!-- Parallel For Each returns one message per code; keep their payloads. -->
+        <set-variable variableName="singleResults" value="#[output application/java --- payload map ((m) -> if (m.payload != null) m.payload else m)]" doc:name="singleResults"/>
+      </when>
+    </choice>
+    <ee:transform doc:name="lookups">
+      <ee:variables>
+        <ee:set-variable variableName="lookups"><![CDATA[%dw 2.0
+output application/java
+---
+vars.compareRequest.propertyCodes map ((c) -> do {
+	var single = (vars.singleResults filter ((r) -> r.code == c))[0]
+	var hit = (vars.batchList filter ((e) -> ((e.propertyCode default '') as String) == c))[0]
+	---
+	if (single != null) single else {code: c, status: "ok", source: "batch", property: hit}
+})]]></ee:set-variable>
+        <ee:set-variable variableName="lookupSummary"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	batch: sizeOf(vars.compareRequest.propertyCodes) - sizeOf(vars.missingCodes),
+	single: sizeOf(vars.singleResults),
+	notFound: (vars.singleResults filter ($.status == "not_found")) map $.code,
+	unavailable: (vars.singleResults filter ($.status == "unavailable")) map $.code
+}]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+  </sub-flow>
+
+  <!-- One booking search call for up to t06.batchSize codes -> vars.batchList (propertyList[] entries). Any failure leaves it empty. -->
+  <sub-flow name="compare-batch-lookup">
+    <try>
+      <set-variable variableName="request" value="#[output application/java --- vars.compareRequest ++ {propertyCode: vars.compareRequest.propertyCodes[0]}]" doc:name="request"/>
+      <set-variable variableName="batchCodes" value="#[output application/java --- dw::core::Arrays::take(vars.compareRequest.propertyCodes, p('t06.batchSize') as Number)]" doc:name="batchCodes"/>
+      <!-- Same body as every other booking search call (dwl/property-info-request.dwl), with several codes and propertyListing true. -->
+      <ee:transform doc:name="property-info-request">
+        <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+      </ee:transform>
+      <ee:transform doc:name="batch request">
+        <ee:variables>
+          <ee:set-variable variableName="batchRequest"><![CDATA[%dw 2.0
+output application/json
+---
+vars.propertyInfoRequest mapObject ((v, k) ->
+	if ((k as String) == "propertyListing") {(k): true}
+	else if ((k as String) == "propertyCode") {(k): vars.batchCodes}
+	else {(k): v})]]></ee:set-variable>
+        </ee:variables>
+      </ee:transform>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName, mode: "batch", correlationId: vars.traceId, body: vars.batchRequest}, "application/json", {indent: false})]' doc:name="bookingsearch.request"/>
+      <http:request method="POST" doc:name="Request Booking Search (batch)" config-ref="HTTP_Request_Bookingsearch_config" path="/v3/checkpropertyavailability" responseTimeout="30000">
+        <http:body><![CDATA[#[vars.batchRequest]]]></http:body>
+        <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+	"messageId" : vars.traceId,
+	"country" : Mule::p('default.userCountry') default "SG",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid')
+}]]]></http:headers>
+        <http:response-validator>
+          <http:success-status-code-validator values="200..299,404"/>
+        </http:response-validator>
+      </http:request>
+      <set-variable variableName="batchList" value="#[output application/java --- if (attributes.statusCode == 404) [] else if ((payload is Object) and (payload.propertyList is Array)) (payload.propertyList filter ($ is Object)) else []]" doc:name="batchList"/>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.batch", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, requested: vars.batchCodes, returned: vars.batchList map ((e) -> {code: e.propertyCode, hasApartments: e.apartments is Array})}, "application/json", {indent: false})]' doc:name="compare.batch"/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <set-variable variableName="batchList" value="#[[]]" doc:name="batchList"/>
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.compare.batch.failed", tool: vars.toolName, correlationId: vars.traceId, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="compare.batch.failed"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+  </sub-flow>
+
+  <!-- One code (payload) -> {code, status, source, property}. Never raises: a failure becomes status not_found or unavailable. -->
+  <sub-flow name="compare-single-lookup">
+    <set-variable variableName="lookupCode" value="#[payload as String]" doc:name="lookupCode"/>
+    <try>
+      <set-variable variableName="request" value="#[output application/java --- vars.compareRequest ++ {propertyCode: vars.lookupCode}]" doc:name="request"/>
+      <flow-ref name="get-property-common-info" doc:name="get-property-common-info"/>
+      <set-payload value="#[output application/java --- {code: vars.lookupCode, status: 'ok', source: 'single', property: vars.property}]" doc:name="ok"/>
+      <error-handler>
+        <on-error-continue type="APP:NOT_FOUND" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.lookup", tool: vars.toolName, correlationId: vars.traceId, propertyCode: vars.lookupCode, status: "not_found"}, "application/json", {indent: false})]' doc:name="not_found"/>
+          <set-payload value="#[output application/java --- {code: vars.lookupCode, status: 'not_found', source: 'single'}]" doc:name="not_found"/>
+        </on-error-continue>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName, correlationId: vars.traceId, propertyCode: vars.lookupCode, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="unavailable"/>
+          <set-payload value="#[output application/java --- {code: vars.lookupCode, status: 'unavailable', source: 'single', errorType: error.errorType.namespace ++ ':' ++ error.errorType.identifier}]" doc:name="unavailable"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+  </sub-flow>
+
+  <!-- At least one property must have come back: none found is a 404 (PRD ER-04), none reachable is a 502 (ER-03). -->
+  <sub-flow name="compare-check-lookups">
+    <choice>
+      <when expression="#[isEmpty(vars.lookups filter ($.status == 'ok'))]">
+        <choice>
+          <when expression="#[isEmpty(vars.lookups filter ($.status == 'unavailable'))]">
+            <set-variable variableName="errorMessage" value="None of the requested properties was found for the stated dates." doc:name="errorMessage"/>
+            <raise-error type="APP:NOT_FOUND" description="No requested property found"/>
+          </when>
+          <otherwise>
+            <raise-error type="APP:DOWNSTREAM_UNAVAILABLE" description="No requested property could be retrieved"/>
+          </otherwise>
+        </choice>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <error-handler name="compare-error-handler">
+    <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[400]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:NOT_FOUND" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[404]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'PROPERTIES_NOT_FOUND', message: vars.errorMessage default 'None of the requested properties was found.', retryable: false}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:DOWNSTREAM_UNAVAILABLE" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Property details service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[504]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Property details service timed out. Retry later.', retryable: true}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Property details service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY" logException="true" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[500]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="compare-format-and-log-error"/>
+    </on-error-propagate>
+  </error-handler>
+  <sub-flow name="compare-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: "compare_properties", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+    <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
+  </sub-flow>
+</mule>

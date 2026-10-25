@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "total_results": 2,
+    "location_query": null,
+    "currency": "SGD",
+    "checkin_date": "2026-11-15",
+    "checkout_date": "2026-11-18",
+    "nights": 3,
+    "noOfadults": 2,
+    "noOfchildren": 0,
+    "attribution": "discoverasr.com",
+    "asset_base_url": "https://www.discoverasr.com",
+    "requested_property_codes": [
+      "8790",
+      "8791"
+    ],
+    "dropped_property_codes": []
+  },
+  "properties": [
+    {
+      "property_code": "8790",
+      "property_name": "Citadines Balestier Singapore",
+      "is_asr": null,
+      "property_type": null,
+      "brand_name": null,
+      "brand_logo_url": null,
+      "banner_image_url": null,
+      "card_location_line": null,
+      "rating": null,
+      "location": {
+        "area_label": null,
+        "district_label": null,
+        "country_code": "SG"
+      },
+      "max_person_in_room": 2,
+      "room_types": [
+        "Studio Premier",
+        "One-Bedroom Executive"
+      ],
+      "amenity_highlights": null,
+      "pricing": {
+        "availability_status": "available",
+        "per_night_rate_pref_curr": 118.0,
+        "strikethrough_rate": 236.0,
+        "total_stay_rate_pref_curr": 354.0,
+        "currency": "SGD",
+        "next_available_date": null
+      }
+    },
+    {
+      "property_code": "8791",
+      "property_name": "lyf Funan Singapore",
+      "is_asr": null,
+      "property_type": "Coliving",
+      "brand_name": null,
+      "brand_logo_url": null,
+      "banner_image_url": null,
+      "card_location_line": null,
+      "rating": null,
+      "location": {
+        "area_label": null,
+        "district_label": null,
+        "country_code": "SG"
+      },
+      "max_person_in_room": 9,
+      "room_types": [
+        "All Together (2 Bedroom)",
+        "All Together (4 Bedroom)",
+        "All Together (6 Bedroom Duplex)"
+      ],
+      "amenity_highlights": null,
+      "pricing": {
+        "availability_status": "available",
+        "per_night_rate_pref_curr": 359.7,
+        "strikethrough_rate": 1199.0,
+        "total_stay_rate_pref_curr": 1079.1,
+        "currency": "SGD",
+        "next_available_date": null
+      }
+    }
+  ],
+  "missing_properties": []
+}

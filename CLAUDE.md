@@ -28,6 +28,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (0.5.0) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (0.1.0) |
+| T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (0.2.0, written by us from PRD §6.1) |
 
 Every response body is the tool's `structuredContent`, exactly as its schema defines it. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
 
@@ -42,6 +43,7 @@ Every response body is the tool's `structuredContent`, exactly as its schema def
 | `get-property-details.xml` | Flow `get-property-details` (T-02): `common-validate-request` → `get-property-info` → `vars.propertyCode` → `get-property-pois` → `dwl/map-structured-content.dwl` → `xapi.success`; error handler `property-details-error-handler`. Sub-flow `get-property-info` = `get-property-common-info`, then unwraps, logs and checks again. | Its old `validate-request` and `get-property-pois` copies are commented out (moved to `validate-request.xml` / `get-poi-details.xml`). |
 | `get-service-offerings.xml` | Flow `get-service-offerings` (T-03; sets `vars.toolName`): `services-validate-request` (parses the body first, so only bad JSON gives "invalid JSON"; requires a digits-only `propertyCode`; adds a default stay from `default.*`) → **`vars.servicesRequest`**. Then `services-get-facilities` copies it into `vars.request`, calls booking search **itself** (not via `get-property-common-info`) and selects the `propertyList` entry → **`vars.servicesSource`**. Then `services-map-response` (inline DataWeave, `t03.assetbaseurl`) → `{meta, services[]}`. Error handler `property-details-error-handler`. | Its header comment is out of date (it names `Property_Info_HTTP` and `property.*`; the flow uses `HTTP_Request_Bookingsearch_config` and `https.bookingsearchprocessapi.*`). |
 | `get-room-rates.xml` | Flow `get-room-details`; sub-flows `rooms-get-rates`, `rooms-map-response`; `rooms-error-handler`; `rooms-format-and-log-error`. | See the known issues below. |
+| `compare-properties.xml` (added by us 2026-10-25, not yet deployed) | Flow `compare-properties` (T-06; `vars.toolName` = `compare_properties`): `compare-validate-request` (`dwl/compare-validate-request.dwl`) → **`vars.compareRequest`** → `compare-get-properties` → **`vars.lookups`** → `compare-check-lookups` → `dwl/compare-properties-response.dwl`. Own `compare-error-handler` / `compare-format-and-log-error`. | See "T-06 in this app" below. |
 
 ## Booking search contract (confirmed against UAT)
 
@@ -85,6 +87,7 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 - Booking search: `https.bookingsearchprocessapi.{host, port, basepath, path, keystorepwd, clientid, clientsecret, responsetimeout}`, `validation.successcodes`.
 - POI: `poisystem.{host, port, protocol, basepath, path, clientid, clientsecret, responsetimeout, reconnection.*}`. The keys are **lower case**.
 - Request defaults: `default.{language, currency, adults, children, checkinOffsetDays, nights, userCountry}`, `request.{maxAdults, maxChildren, maxNights}`, `app.{version, channel}`, `rooms.maxRooms`, `property.currency`, `asset.baseUrl`, `t03.*`.
+- T-06: `t06.{http.path, minProperties, maxProperties, checkinOffsetDays, nights, adults, children, batchLookup, batchSize, maxConcurrency, maxAmenityHighlights, maxRoomTypes}`, in `src/main/resources/compare-properties.yaml` (to append to `uat.yaml`).
 - A missing key read with `p()` gives null, and `null as Number` fails the request. `uat.yaml` has `startdate: 7`, `enddate: 8`, `noofadults: 2`, the defaults other booking search callers use. A check-in of tomorrow in UTC can already be "today" in Singapore.
 
 ## Known issues in the base (2026-10-25)
@@ -114,9 +117,37 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 - `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl`, `map-structured-content.dwl` (T-02) and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`.
 - `uat.yaml` (share without secrets) and `pom.xml`.
 
+## T-06 in this app (owner decision, 2026-10-25)
+
+**T-06 only puts the requested properties together in one payload. It does not compare, rank, filter or recommend.** The model and the widget do that. So the PRD's `recommendation` block, `is_recommended`, match flags, reason lines and the filter inputs (`maxRate`, `facilities`, `roomType`, `poi`, `travellerProfile`, `serviceCategory`) are not in the xAPI. They are accepted in the body and ignored. Do not add them back unless the owner asks.
+
+- **Request:** `propertyCodes[]` (2–4 distinct codes; duplicates removed, codes past the 4th dropped and echoed in `meta.dropped_property_codes`), `checkinDate` (default today + 30), `checkoutDate` (default check-in + 1), `noOfadults` (default 1), `noOfchildren` (default 0), `currencyCode`, `language`. The T-02 names (`checkin`, `adults`, `currency`, …) also work.
+- **Lookup (`compare-get-properties`):**
+  1. If `t06.batchLookup` is "true", `compare-batch-lookup` makes one booking search call. It sends the `property-info-request.dwl` body with `propertyListing: true` and `propertyCode` set to the first `t06.batchSize` (3) codes. The reference caller allows at most 3 codes with `propertyListing` true, and exactly 1 with false. **Not yet confirmed in UAT** that booking search returns full `apartments` for several codes. Any failure leaves `vars.batchList` empty (log `xapi.compare.batch.failed`).
+  2. Every code not returned by the batch call with an `apartments` array goes through `compare-single-lookup` in a `parallel-foreach` (`t06.maxConcurrency`). That calls the shared `get-property-common-info`, one code at a time. `APP:NOT_FOUND` → status `not_found`; any other error → `unavailable` (logged as `xapi.downstream.error` with the code).
+  3. `vars.lookups` = one `{code, status, source: batch|single, property}` per requested code, in request order.
+- **Errors:** none found → 404 `PROPERTIES_NOT_FOUND`; none returned and at least one lookup failed → 502 `DOWNSTREAM_UNAVAILABLE`; at least one found → 200, with the rest in `missing_properties[]` (`not_found` / `lookup_failed`).
+- **Response:** `{meta, properties[], missing_properties[]}`.
+  - Cards are in request order. Every card has every key; a value upstream lacks is `null` (PRD EC-10).
+  - Card fields:
+    - `property_code`, `property_name`, `property_type`, `brand_name`;
+    - `is_asr` from `asrParticipating`;
+    - `brand_logo_url` from `brandlogo`;
+    - `banner_image_url` from `bannerImageMobile`, else `newPropertyThumbnail`, else the first gallery image;
+    - `card_location_line` from the city and country;
+    - `location {area_label, district_label, country_code}`;
+    - `rating`: null, because booking search has no reviews (PRD source `v1/propertyreviews` is not integrated);
+    - `max_person_in_room`: the largest `maxOccupancy`;
+    - `room_types[]`: room names with a bookable rate;
+    - `amenity_highlights[] {label, icon_url}`: from `facilities.facilityGroup`, with the `facilities-amenities` group first. This assumes the same path as T-02's amenities, which is unconfirmed;
+    - `pricing`: this property's own cheapest bookable rate under the T-04 rules (tax included, per night), with `availability_status` `on_request` when it has none. `next_available_date` is always null.
+- **Checks:** `asc-mcp-odx-backend-xapi/tests/check_t06.py` is a Python copy of the response DataWeave. It builds `examples/compare-properties-response.sample.json` from the 8790 and 8791 samples, runs not-found, on-request and T-02-shaped cases, and validates them against the schema. Keep it in step with the DataWeave. The DataWeave itself has not been run here (no runtime).
+- **Known issues:** `compare-batch-lookup` is a fourth copy of the booking search `http:request` (see issue 8). The batch path is unconfirmed (above). Set `t06.batchLookup: "false"` to use only one-by-one calls.
+- **Postman:** `asc-mcp-odx-backend-xapi/postman/ascott-mcp-xapi.postman_collection.json` (T-02/03/04 plus a T-06 folder). Set `propertyCode4` to a real 4th code.
+
 ## Product specs (PRDs) for tools not yet built
 
-Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md` and `PRD-T06-compare-properties.md`. Read the full PRD before you build either tool. No flow or schema exists for T-05 or T-06 yet. Build one only when asked.
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md` and `PRD-T06-compare-properties.md`. Read the full PRD before you build either tool. No flow exists for T-05 yet; build one only when asked. T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
 
 Tool map from the PRDs:
 
@@ -127,7 +158,7 @@ Tool map from the PRDs:
 | T-03 | Get_service_offerings | built |
 | T-04 | Get_room_rate_details | built (issues 1–6) |
 | T-05 | Get_promotions | PRD only |
-| T-06 | Compare_properties | PRD only |
+| T-06 | Compare_properties | built: puts properties together only (see below) |
 | T-07 | Compare_rooms_rates | not specified here |
 | T-08 | Create_booking | not specified here |
 
@@ -215,7 +246,7 @@ Rules for both tools:
 
 ## How to work on it
 
-- Diagnose from the audit log lines: `xapi.start` / `T04.start`, `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
+- Diagnose from the audit log lines: `xapi.start` / `T04.start` / `T06.start`, `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
 - Check any response change against the tool's schema, using a sample built from real upstream data where possible.
-- Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`).
+- Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`, `t06.*`).
 - Commit to branch `claude/get-property-details-xapi`.
