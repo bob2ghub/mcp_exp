@@ -147,7 +147,7 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 
 ## Product specs (PRDs) for tools not yet built
 
-Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md` and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05 or T-08 yet; build one only when asked. T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md`, `PRD-T07-compare-rooms-rates.md` (pasted as text by the owner) and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05, T-07 or T-08 yet; build one only when asked. T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
 
 Tool map from the PRDs:
 
@@ -159,7 +159,7 @@ Tool map from the PRDs:
 | T-04 | Get_room_rate_details | built (issues 1–6) |
 | T-05 | Get_promotions | PRD only |
 | T-06 | Compare_properties | built: puts properties together only (see below) |
-| T-07 | Compare_rooms_rates | not specified here |
+| T-07 | Compare_rooms_rates | PRD only |
 | T-08 | Create_booking | PRD only |
 
 Rules for T-05 and T-06:
@@ -243,6 +243,55 @@ Rules for T-05 and T-06:
 - An excluded property must carry a stated reason.
 - "See room and rates" hands off to T-04 with the same dates and guests (AC-09, OQ-05).
 - Ties are broken by a defined rule (EC-05, OQ-08).
+
+### T-07 Compare_rooms_rates
+
+Compares 2–4 room types **at one property**. It has a single inline component and no full screen. Every card hands off to T-04 for that room, and there is no booking action: T-08 is reached only through T-04 (AC-10, SM-06). The card shows one starting rate per room, so the full rate-plan list stays in T-04.
+
+**Before building, ask the owner:** should T-07 be a pass-through like T-06 (no recommendation, no filters, no ranking)? The PRD has the same scoring and recommendation block and filters as T-06, but the owner chose a pass-through for T-06.
+
+**Inputs:**
+
+- `propertyCode` (required).
+- `roomCategoryCodes[]` (2–4; duplicates removed, extra codes past 4 dropped and reported: EC-01/02, AC-04). The PRD's example values (`"CUTLER-STUDIO"`) are **`apartmentCategoryCode`**, the same identifier T-08 uses. T-04 here outputs `room_code` = `apartmentType` and `room_category` = `apartmentCategoryCode`. Confirm which one the model will carry over before matching.
+- `checkinDate` / `checkoutDate`: carried from T-04, else today + 30 / + 31.
+- `noOfadults` / `noOfchildren`: default 1 / 0.
+- `currencyCode`.
+- `minPrice` / `maxPrice`: confirmed booking search request fields, already in our body as `""`.
+- `requiredInclusions[]`: PARAMETER GAP, OQ-05.
+- `attributeToCompare`: API GAP.
+- `memberId`: ignore, this is a non-logged-in journey.
+
+**Upstream APIs:**
+
+- **"apartmentlist / apartmentratedetails – V3" is our booking search call.** In this app **one call for the property** returns every room in `apartments[].room0[]`, so filter by code; there is no need for the PRD's per-room fan-out.
+- `pricedistribution` is supplemental and is not in this app.
+- The PRD's scoring and explanation service has no API (OQ-01).
+
+**Card (PRD §6.1 `rooms[]`), mapped to T-04 fields:**
+
+- `apartment_category_code`, `apartment_name` (`apartmentName` / `apartmentType`).
+- `banner_image_url` (room `bannerImageMobile`), `brand_logo_url` (property `brandlogo`).
+- `max_person_in_room`, `dimension`.
+- `per_night_rate_pref_curr`: the room's cheapest bookable rate under the T-04 rules, tax included; no rate → "Availability on request" (ER-07, EC-06).
+- `currency`.
+- `deciding_criteria`, always all four keys (EC-10: "Not specified" when unknown):
+  - `bed_type`: `bedType`.
+  - `workspace`, `wifi`: derived from the room's `amenityGroups[].amenities[].description`. The keyword logic is open (OQ-02/03).
+  - `cancellation`: condensed from `cancellationDescription` / `nonRefundable`. The labels are open (OQ-04).
+
+**PRD-only parts:**
+
+- `meta {property_code, property_name, total_results, dates, guests, currency, attribution}`. `attribution` is "ASR" here but "discoverasr.com" elsewhere (OQ-08).
+- `recommendation {recommended_room_code, traveller_profile_label, recommendation_text, match_flags, reason_lines}` and `is_recommended`. No badge is drawn on the card.
+
+**Errors:**
+
+- A code not at the property → excluded with a reason (ER-04, EC-03).
+- Fewer than 2 rooms → ER-01/ER-05; the LLM hands off to T-04 instead (EC-04).
+- Upstream 5xx → ER-03.
+
+**Hand-off to T-04:** the expand icon and "View available rates" open T-04 with that room pre-selected and the same dates and guests (AC-09). **T-04 here has no room-filter input yet**, so that pre-selection would have to be added to T-04.
 
 ### T-08 Create_booking
 
