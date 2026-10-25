@@ -349,44 +349,51 @@ Despite its name, T-08 is **read-only**. It never writes a reservation, holds a 
 
 ## The MCP server app (`asc-mcp-server/`, owner's files, 2026-10-26)
 
-A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in `asc-mcp-odx-backend-xapi/` is a backend; this app is the tool-call layer in front of it. Six files were shared; **they hold three overlapping generations of the same idea**, so check which one a change belongs in before editing.
+A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in `asc-mcp-odx-backend-xapi/` is a backend; this app is the tool-call layer in front of it. Seven files were shared. **It holds two live generations side by side**, so check which one a change belongs in.
 
-| File | Defines | Generation |
-|---|---|---|
-| `global-config.xml` | `configuration-properties file="application_properties.yaml"`; `HTTP_Listener` (`${http.host}` / `${http.port}`); **`mcp:server-config` `asc_mcp_config`** (serverName `asc-mcp-server-1`, 1.0.0, streamable HTTP on `${mcp.endpoint}`, 30s, JSON); flow `health` (GET `/health`, reports `p("data.mode")` and `tools: 8`); **`MCP-EXP-HTTPconfig`**: plain **HTTP**, host `test-mcp-xapi-ch01.sg-s1.cloudhub.io`, port 80. | shared |
-| `mcp-html-widget.xml` | Flow `serve-html-resource-flow`: `mcp:resource-listener` serving `ui://ascott/widget-v2.html` as `text/html;profile=mcp-app`, read from `classpath://ui/ui_widget.html`. The ChatGPT widget that renders our `structuredContent`. | shared |
-| `property-mcp-api.xml` | **The only real `mcp:tool-listener`: `find_properties`.** Its `mcp:parameters-schema` is the T-01 draft-07 input schema (`countryCode` required; `city`, `checkinDate`, `checkoutDate`, `noOfadults`, `noOfchildren`, `noOfRooms`, `isLongStay`, `facilities[]`, `roomType`, `poi`, `currencyCode`, `maxRate`, `memberId`, `voucherCode`, `promotionCode`). Sets `vars.correlationId` = `uuid()`, normalises the body, **POST `/findproperties`** on `MCP-EXP-HTTPconfig` with `x-correlation-id`, then `vars.mcpResponseText` = `write(payload, 'application/json')` for `mcp:text-tool-response-content`. Errors return `{code, message, correlationId, timestamp}` via `mcp:on-error-responses`. | **current** |
-| `tool-routes.xml` | Eight plain `<flow>`s with **no listener and nothing calling them** (`route-findPropertiesByLocation`, `route-getPropertyDetails`, `route-getServiceOfferings`, `route-getRoomAndRateDetails`, `route-getPromotionsAndDeals`, `route-compareProperties`, `route-compareRoomsAndRates`, `route-createBooking`). Each sets `vars.toolName`, POSTs the payload to the matching path on `MCP-EXP-HTTPconfig`, accepts `200..299,400,404,409,422`, then `check-process-response` (≥400 → `APP:FUNCTIONAL`). | newer, unreferenced |
-| `business-flows.xml` | `validate-business-input` and the REST-style sub-flows (`read-property`, `read-rates`, `compare-properties`, `create-booking`, the `endpoint-*` callers, `validate-odx-status`, `log-odx-success`). **GET** `/properties/{id}/…` with `Authorization: Bearer p('odx.token')` and query params; reads `vars.args` (`propertyId`, `checkIn`, `adults`, …). | oldest, unreferenced |
-| `observability.xml` | `log-start` (sets `vars.startedAt` and `vars.traceId` = `correlationId`), `log-success`, `wrap-success` (`{success, correlationId, mode, data}`), `log-failure` (reads `vars.publicError`). | shared, unreferenced |
+| File | Defines |
+|---|---|
+| `global-config.xml` | `configuration-properties file="application_properties.yaml"`; `HTTP_Listener` (`${http.host}` / `${http.port}`); **`mcp:server-config` `asc_mcp_config`** (serverName `asc-mcp-server-1`, 1.0.0, streamable HTTP on `${mcp.endpoint}`, 30s, JSON); flow `health` (GET `/health`, reports `p("data.mode")` and `tools: 8`); **`MCP-EXP-HTTPconfig`**: plain **HTTP**, host `test-mcp-xapi-ch01.sg-s1.cloudhub.io`, port 80. |
+| `mcp-tool.xml` | **The tool listeners.** Seven live flows, plus `findProperties` commented out. Each sets `vars.toolName` and `vars.args` = payload, then `log-start` → `validate-business-input` → its `business-flows.xml` sub-flow → `wrap-success`, with `error-handler ref="generic-tool-error-handler"`. |
+| `business-flows.xml` | `validate-business-input` (dates valid, check-in not past, 30-night max; `createBooking` needs `confirmed == true`), the per-tool sub-flows (`read-property`, `read-services`, `read-rates`, `read-promotions`, `compare-properties`, `compare-rates`, `create-booking`, `search-properties:post:\v2\bookingpropertylist`), the shared callers (`endpoint_CityorCountry-bookingpropertylist`, `endpoint-apartmentrateapi`, `endpoint-getPropertyInfo`, `endpoint-userReview`) and `validate-odx-status` (409 → `APP:CONFLICT`, 422 → `APP:VALIDATION`) / `log-odx-success`. Calls are **GET** `/properties/{id}/…` on `MCP-EXP-HTTPconfig` with `Authorization: Bearer p('odx.token')` and `vars.odxQuery` as query params; `create-booking` is `POST /bookings` with an `Idempotency-Key`. |
+| `observability.xml` | `log-start` (sets `vars.startedAt`, `vars.traceId` = `correlationId`, logs `tool.start`), `log-success`, `wrap-success` (**wraps the body as `{success, correlationId, mode, data}`**), `log-failure` (reads `vars.publicError`). |
+| `property-mcp-api.xml` | The **newer** style, for T-01 only: tool listener `find_properties` with the full PRD input schema (`countryCode` required; `city`, `checkinDate`, `checkoutDate`, `noOfadults`, `noOfchildren`, `noOfRooms`, `isLongStay`, `facilities[]`, `roomType`, `poi`, `currencyCode`, `maxRate`, `memberId`, `voucherCode`, `promotionCode`). Sets `vars.correlationId` = `uuid()`, normalises the body, **POST `/findproperties`** with `x-correlation-id` only, then `vars.mcpResponseText` = `write(payload, 'application/json')`. It uses none of the sub-flows above. |
+| `tool-routes.xml` | Eight `<flow>`s (`route-findPropertiesByLocation`, `route-getPropertyDetails`, `route-getServiceOfferings`, `route-getRoomAndRateDetails`, `route-getPromotionsAndDeals`, `route-compareProperties`, `route-compareRoomsAndRates`, `route-createBooking`) that POST the payload to the matching path, accept `200..299,400,404,409,422`, then `check-process-response` (≥400 → `APP:FUNCTIONAL`). **Only `route-findPropertiesByLocation` is referenced, and only from the commented-out `findProperties` flow, so none of them runs today.** This is the shape to reuse when pointing the tools at our xAPI. |
+| `mcp-html-widget.xml` | Flow `serve-html-resource-flow`: `mcp:resource-listener` serving `ui://ascott/widget-v2.html` as `text/html;profile=mcp-app`, read from `classpath://ui/ui_widget.html`. The ChatGPT widget that renders our `structuredContent`. |
 
-**Only `find_properties` is wired up.** `property-mcp-api.xml` makes its own `http:request` and does not use `tool-routes.xml`, `business-flows.xml` or `observability.xml`. The other seven tools have no `mcp:tool-listener` in these files. So the `health` flow's `tools: 8` is aspirational.
+**Registered tools (8, matching `health`):** `find_properties` (T-01, `property-mcp-api.xml`), then from `mcp-tool.xml`: `get_property_details`, `getServiceOfferings`, `getRoomAndRateDetails`, `getPromotions`, `compareProperties`, `compareRoomsAndRates`, `createBooking`. The MCP tool name and the flow name differ in two places: flow `getPromotionsAndDeals` registers as `getPromotions`, and flow `getPropertyDetails` registers as `get_property_details`. Naming is mixed: `find_properties` and `get_property_details` are snake_case, the rest camelCase.
 
-**Bugs in the owner's files (raise before reusing them):**
+**It does not call our xAPI.** The live tools call `GET /properties/{id}/…` on `test-mcp-xapi-ch01.sg-s1.cloudhub.io:80` with a bearer token. Ours are `POST /api/v1/…` on `asc-mcp-odx-backend-xapi-1` with a JSON body and no auth. Ask the owner whether `test-mcp-xapi-ch01` is a different experience API in front of ours or a placeholder. The mapping:
 
-1. **`route-findPropertiesByLocation` uses `method="CONNECT"`** where every other route uses POST. `CONNECT` is a proxy verb and will not reach the API.
+| MCP tool | Calls today | `tool-routes.xml` path | Our xAPI |
+|---|---|---|---|
+| `find_properties` | POST `/findproperties` | `/findPropertiesByLocation` | not in our xAPI |
+| `get_property_details` | GET `/properties/{propertyId}` | `/getPropertyDetails` | `POST /api/v1/property-details` |
+| `getServiceOfferings` | GET `/properties/{id}/services` | `/getServiceOfferings` | `POST ${t03.http.path}` |
+| `getRoomAndRateDetails` | GET `/properties/{id}/rates` | `/getRoomAndRateDetails` | `POST /api/v1/room-details` |
+| `getPromotions` | GET `/properties/{id}/promotions` | `/getPromotionsAndDeals` | not built |
+| `compareProperties` | GET per id, in parallel | `/compareProperties` | `POST ${t06.http.path}` |
+| `compareRoomsAndRates` | GET per id, in parallel | `/compareRoomsAndRates` | not built |
+| `createBooking` | POST `/bookings` | `/createBooking` | not built |
+
+**Input names do not match our xAPI.** The live schemas use `propertyId`, `propertyIds`, `checkIn`, `checkOut`, `adults`, `limit`, `location`. Our validators take `propertyCode` / `propertyCodes` plus the PRD names (`checkinDate`, `noOfadults`, `currencyCode`) or the short T-02 names (`checkin`, `checkout`, `adults`, `children`, `currency`). So `checkIn` / `checkOut` / `propertyId` would all be ignored and the call would fail validation. Only `find_properties` already uses PRD names. Either rename in the tool schemas or map in the route flows; prefer renaming, so ChatGPT sees one vocabulary.
+
+**Conflicts with the PRDs to raise with the owner:**
+
+1. **`createBooking` is declared a WRITE** that creates a reservation and requires `guest {name, email}`, `expectedTotal`, `currency`, `confirmed` and `idempotencyKey`. **The T-08 PRD is read-only**: no guest or payment details, no reservation, just a summary and an external checkout link. These are two different tools. Decide which one is being built before any T-08 work.
+2. **`compareRoomsAndRates` takes `propertyIds[]`** and `compare-rates` loops over properties. **The T-07 PRD compares rooms within one property** (`propertyCode` + `roomCategoryCodes[]`). The current tool is really "compare rates across properties", not T-07.
+3. **`maxItems: 5`** on `compareProperties` and `compareRoomsAndRates`, where both PRDs and our T-06 allow at most 4.
+4. **`wrap-success` wraps the body** as `{success, correlationId, mode, data}`. Our responses are the bare `structuredContent` the widget's schema expects, so wrapping puts it under `data`. Confirm which shape `ui_widget.html` reads.
+5. `currency` is `{"enum": ["SGD"]}` in `createBooking`, so no other currency can be booked.
+
+**Bugs in the owner's files:**
+
+1. **`route-findPropertiesByLocation` uses `method="CONNECT"`** where every other route uses POST. `CONNECT` is a proxy verb and will not reach the API. It only matters once that route is used again.
 2. **`property-mcp-api.xml` reads `payload.curreny`** (typo), so `currency` is always the `"SGD"` default and the caller's `currencyCode` is ignored.
-3. `tool-routes.xml`'s `log-xapi-start` / `log-xapi-success` compute `durationMs` from `vars.startedAt`, which only `observability.xml`'s `log-start` sets, and nothing calls `log-start`. Expect a null arithmetic failure if those routes are ever used.
-4. Paths disagree across generations for the same tool: `/findproperties` (live) vs `/findPropertiesByLocation` (routes) vs `/properties` (business flows).
+3. Paths disagree for the same tool across the three generations (`/findproperties` vs `/findPropertiesByLocation` vs `/properties`).
+4. `validate-business-input` only checks dates when `vars.args.checkIn` is set, so `find_properties`' `checkinDate` is never validated; it also reads `vars.args`, which `property-mcp-api.xml` does not set.
 
-**It does not call our xAPI.** The paths it expects are `/findproperties`, `/getPropertyDetails`, `/getServiceOfferings`, `/getRoomAndRateDetails`, `/getPromotionsAndDeals`, `/compareProperties`, `/compareRoomsAndRates`, `/createBooking` on `test-mcp-xapi-ch01.sg-s1.cloudhub.io:80`. Ours are `POST /api/v1/{property-details, service-offerings, room-details, compare-properties}` on `asc-mcp-odx-backend-xapi-1`. Either `test-mcp-xapi-ch01` is a different experience API in front of ours, or the host and paths need changing. Ask the owner which. The mapping would be:
-
-| MCP tool | Path it calls | Our xAPI |
-|---|---|---|
-| T-01 `find_properties` | `/findproperties` | not in our xAPI |
-| T-02 `getPropertyDetails` | `/getPropertyDetails` | `POST /api/v1/property-details` |
-| T-03 `getServiceOfferings` | `/getServiceOfferings` | `POST ${t03.http.path}` |
-| T-04 `getRoomAndRateDetails` | `/getRoomAndRateDetails` | `POST /api/v1/room-details` |
-| T-05 `getPromotionsAndDeals` | `/getPromotionsAndDeals` | not built |
-| T-06 `compareProperties` | `/compareProperties` | `POST ${t06.http.path}` |
-| T-07 `compareRoomsAndRates` | `/compareRoomsAndRates` | not built |
-| T-08 `createBooking` | `/createBooking` | not built |
-
-**Names:** the `find_properties` schema uses the PRD names (`checkinDate`, `noOfadults`, `currencyCode`, `propertyCode`), which our validators accept. `business-flows.xml` uses `checkIn` / `adults` / `propertyId`, which they do not. Follow the PRD names.
-
-**Headers:** this app sends only `content-type` and `x-correlation-id`. Our xAPI listeners need no auth, so that works; our `X-Correlation-ID` pattern is `^[A-Za-z0-9_-]{1,80}$` and a `uuid()` fits.
-
-**Not shared yet (ask before relying on it):** `mcp:tool-listener` definitions and parameter schemas for T-02 to T-08, `dwl/map-find-properties-response.dwl` (referenced but commented out), `src/main/resources/ui/ui_widget.html`, `application_properties.yaml` (share without secrets: it holds `odx.token`, `odx.timeout`, `http.*`, `mcp.endpoint`, `data.mode`) and `pom.xml`.
+**Not shared yet (ask before relying on it):** `generic-tool-error-handler` (referenced by all seven tool flows; it should set `vars.publicError`, which the error responses and `log-failure` read), `dwl/map-find-properties-response.dwl` (referenced but commented out), `src/main/resources/ui/ui_widget.html`, `application_properties.yaml` (share without secrets: it holds `odx.token`, `odx.timeout`, `http.*`, `mcp.endpoint`, `data.mode`) and `pom.xml`.
 
 ## How to work on it
 
