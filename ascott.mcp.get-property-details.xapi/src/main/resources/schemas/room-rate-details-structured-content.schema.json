@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_room_rate_details:structured-content:0.1.0",
+  "title": "Get room and rate details — structuredContent",
+  "description": "The `structuredContent` of the `get_room_rate_details` MCP tool: one property's available room types and their rate plans for one stay, for the T-04 inline carousel (Figma `D_InLine_Light_T-04` 1630:43853) AND the full screen (617:51047 web, 617:51755 mobile) without a second call (PRD §2, §2.4). Follows PRD T-04 §6.1 in shape (`meta` + `rooms[]` + `rate_plans[]`) and names, checked against upstream `apartmentratedetails – V3` as MuleSoft's merged sample returns it (`propertyList[].apartments[].room0[]`). Departures from the PRD are listed in room-rate-details/README.md. 0.1.0, provisional (2026-10-21).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "rooms"
+  ],
+  "$defs": {
+    "price": {
+      "type": "number",
+      "minimum": 0,
+      "description": "An amount in `meta.currency`, TAXES AND FEES INCLUDED, as a number (not the upstream string). The widget formats it."
+    },
+    "imagePath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An upstream image path (or absolute URL), resolved by the widget against `meta.asset_base_url`."
+    },
+    "ratePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rate_plan_code",
+        "rate_plan_name",
+        "per_night_rate",
+        "total_stay_rate"
+      ],
+      "properties": {
+        "rate_plan_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `rate_plan_code` ← upstream `ratePlanCode`, e.g. \"ZZFLEX\". Sent to T-08 `create_booking` as `ratePlanCode` when the user books this rate."
+        },
+        "rate_plan_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `rate_plan_name` ← upstream `ratePlanName`, e.g. \"Best Flexible Rate\"."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED ← upstream `ratePlanDescription`, plain text or CMS HTML verbatim (the widget reduces it to text), e.g. what the rate includes. The full-screen rate card's benefit lines. Optional."
+        },
+        "per_night_rate": {
+          "$ref": "#/$defs/price",
+          "description": "PRD `per_night_rate_pref_curr`: the average rate per night, taxes and fees included, in `meta.currency`. Upstream gives it before tax (`perNightRatePrefCurr`, `isTaxInclusive` false on 73 of 74 sampled rates) and the tax apart (`totalTaxPrefCurrency`), so MuleSoft adds them: (`totalStayRatePrefCurr` + `totalTaxPrefCurrency`) ÷ nights. The inline card's \"Our lowest price\" and the full-screen rate card."
+        },
+        "total_stay_rate": {
+          "$ref": "#/$defs/price",
+          "description": "PRD `total_stay_rate_pref_curr`: the whole stay, taxes and fees included, in `meta.currency` (`totalStayRatePrefCurr` + `totalTaxPrefCurrency`). The full-screen booking summary's total."
+        },
+        "strikethrough_rate": {
+          "$ref": "#/$defs/price",
+          "description": "PRD `strikethrough_rate_pref_curr` ← upstream `strikethroughRatePrefCurr`, per night, taxes included on the same basis as `per_night_rate`. Optional: omit when upstream is empty or not above `per_night_rate`."
+        },
+        "save_percentage": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "description": "PRD `save_percentage` ← upstream `savePercentage` (\"15\" → 15). Optional: omit when there is no strikethrough rate."
+        },
+        "earn_asr_points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRD `earn_asr_points` ← upstream `earnASRpoints` (\"3995\" → 3995) for the whole stay. The inline card's gold \"Earn up to … Pts for this stay!\" banner; 0 or absent shows the grey \"ASR points are not available for this booking.\" one."
+        },
+        "non_refundable": {
+          "type": "boolean",
+          "description": "PRD `non_refundable` ← upstream `nonRefundable`. Optional; absent means refundable on the terms in `cancellation_description`."
+        },
+        "cancellation_description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `cancellation_description` ← upstream `cancellationDescription`, verbatim, e.g. \"Cancel 24hrs prior to arrival by 1500hrs. …\". Optional."
+        },
+        "free_cancellation_until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ADDED, optional and RESERVED: the last moment the rate can be cancelled free, local to the property (Figma: \"Free cancellation until 6:00 PM on 18 Sep 2026\"). Upstream has only the `cancellation_description` sentence today; the card shows that sentence until this is sent."
+        },
+        "is_app_exclusive": {
+          "type": "boolean",
+          "description": "PRD \"App exclusive rate\" label (OQ-04) ← upstream `ratePlanChannel` = \"MOBILE\" (\"WEB\" otherwise). Optional. Only sent for rates that are bookable from the ChatGPT hand-off at all (README, 'Which rates')."
+        },
+        "includes_breakfast": {
+          "type": "boolean",
+          "description": "ADDED, optional and RESERVED (Figma full-screen chip \"Breakfast included\"): upstream has no such flag, only rate names like \"Best Flexible Rate with Breakfast\". The chip is hidden until this is sent."
+        }
+      }
+    }
+  },
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "property_code",
+        "property_name",
+        "brand_code",
+        "checkin_date",
+        "checkout_date",
+        "noOfadults",
+        "noOfchildren",
+        "noOfRooms",
+        "currency",
+        "total_results"
+      ],
+      "description": "PRD §6.1 `meta`: the resolved property and the stay that was actually searched, once per response. The values the search used, not the user's words: the widget passes them to T-08 `create_booking` unchanged.",
+      "properties": {
+        "property_code": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "PRD `meta.property_code`, the input's `propertyCode` echoed. T-08's `propertyCode`."
+        },
+        "property_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `meta.property_name`. The ENGLISH name (upstream `propertyName`): the header (\"3 Rooms available at …\") and the website link are built from it."
+        },
+        "brand_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADDED, the same field as T-01 to T-03: the upstream `brand` slug verbatim, e.g. \"ascott-the-residence\". Picks the card's brand panel colour and builds the website link. PRD `brand_name` (\"Ascott The Residence\") is not used: the widget owns the brand names and logos."
+        },
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ADDED, optional (as T-02 and T-03). ISO 3166-1 alpha-2, upstream `countryCode`. With `brand_code` and `property_name` the widget builds the full screen's \"Open in discoverasr.com\" link to the property's page; without it, the site's search."
+        },
+        "asset_base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "ADDED (as T-01 to T-03). Origin the widget resolves relative image paths against; default https://www.discoverasr.com."
+        },
+        "checkin_date": {
+          "type": "string",
+          "format": "date",
+          "description": "PRD `meta.checkin_date`: the stay searched, after server defaults. T-08's `checkinDate`."
+        },
+        "checkout_date": {
+          "type": "string",
+          "format": "date",
+          "description": "PRD `meta.checkout_date`. T-08's `checkoutDate`. The widget counts the nights from the two dates."
+        },
+        "noOfadults": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "PRD `meta.noOfadults`. T-08's `noOfadults`."
+        },
+        "noOfchildren": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRD `meta.noOfchildren`. T-08's `noOfchildren`."
+        },
+        "noOfRooms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "PRD `meta.noOfRooms`. The header's \"2 Rooms\"."
+        },
+        "is_all_avail": {
+          "type": "boolean",
+          "description": "PRD `is_all_avail` ← upstream `isAllAvail`: every requested room (`noOfRooms`) can be booked. Moved from the room to `meta` because only `room0` is listed (README, 'Several rooms'). Optional; absent means true. When false the widget says that not every requested room is available."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "PRD `meta.currency`: ISO 4217 code of EVERY price in the response, i.e. the input's `currencyCode` (or the property's currency when omitted). Upstream's `…PrefCurr` amounts are in it, but upstream does not name it, so MuleSoft fills it from the request."
+        },
+        "voucher_code_valid": {
+          "type": "boolean",
+          "description": "ADDED ← upstream `isCodeValid`. Sent only when the input had a `voucherCode`: whether upstream accepted it."
+        },
+        "total_results": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "PRD `meta.total_results`: the length of `rooms`. 0 is a valid result (no room available for the stay, or none in the price range), not an error."
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "description": "The room types available for the stay (upstream `room0`), in upstream `ranking` order. Only rooms with at least one bookable rate; empty when none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "room_code",
+          "room_name",
+          "rate_plans"
+        ],
+        "properties": {
+          "room_code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "← upstream `apartmentType`, e.g. \"0BRCT\": unique within the property. NOT `apartmentCategoryCode` as PRD §6 says: that is a category (\"Studio\", \"1 Bedroom\") and repeats (three \"1 Bedroom\" room types at one sampled property). T-08's room identifier and T-07's room code."
+          },
+          "room_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `apartment_name` ← upstream `apartmentName`, e.g. \"Studio Cutler Suite\"."
+          },
+          "room_category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "← upstream `apartmentCategoryCode`, e.g. \"Studio\", \"1 Bedroom\". Optional; for the model (e.g. \"show me the one-bedrooms\")."
+          },
+          "ranking": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "PRD `ranking` ← upstream `ranking`. `rooms` is already in this order. Optional."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `room_narrative_description` (marked API GAP there) ← upstream `roomInformation`, which the sample does carry, plain text or CMS HTML verbatim. The full screen's room description. Optional."
+          },
+          "bed_type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `bed_type` ← upstream `bedType`, verbatim, e.g. \"1 King-size bed or Twin Beds\". Optional."
+          },
+          "max_person_in_room": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `max_person_in_room` ← upstream `maxPersonInRoom`, verbatim English, e.g. \"Max 2 pax (3rd pax chargeable)\". Optional."
+          },
+          "max_occupancy": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "ADDED ← upstream `maxOccupancy` (\"3\" → 3). Optional. With it the widget writes the capacity in the user's language (\"2 pax\") instead of the English sentence."
+          },
+          "size_sqm": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "PRD `dimension` ← upstream `dimension` (\"48\" → 48), in square metres (to be confirmed by MuleSoft: upstream sends a bare number). The widget writes \"48 sqm / 517 sqft\". Optional."
+          },
+          "units_remaining": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "PRD `no_of_unit_remaining` ← upstream `noOfUnitRemaining`. Optional; not shown in Figma today."
+          },
+          "thumbnail_url": {
+            "$ref": "#/$defs/imagePath",
+            "description": "ADDED ← upstream `thumbnailImage` (square). The full screen's room list. Optional."
+          },
+          "banner_image_url": {
+            "$ref": "#/$defs/imagePath",
+            "description": "PRD `banner_image_url` ← upstream `bannerImageMobile`. The first photo when `gallery` is empty. Optional."
+          },
+          "floor_plan_url": {
+            "$ref": "#/$defs/imagePath",
+            "description": "ADDED ← upstream `floorPlanPath`. Optional; not shown in Figma today."
+          },
+          "gallery": {
+            "type": "array",
+            "description": "PRD `gallery[]` ← upstream `imageGalleryItems[]` with `galleryType` \"image\": `galleryImage` (the resized one) else `path`. The inline photo carousel and the full screen's gallery. Optional.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "$ref": "#/$defs/imagePath"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Upstream `title`; omit when empty (it is in the sample). Used as the image's alt text."
+                }
+              }
+            }
+          },
+          "amenity_groups": {
+            "type": "array",
+            "description": "PRD `amenity_groups[]` ← upstream `amenityGroups[]`. The full screen's Amenity Details tab. Groups with no amenities, and the unnamed group upstream sends with a null amenity, are left out. Optional.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "group",
+                "amenities"
+              ],
+              "properties": {
+                "group": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "← upstream `refAmenityGroup` verbatim: \"bedroom\", \"bathroom\", \"livingroom\", \"kitchen\", \"balcony\", \"others\" in the sample. The widget titles and icons the groups it knows and shows the rest under a generic title."
+                },
+                "amenities": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "← upstream `amenities[].description`, e.g. \"Coffee machine\". PRD `charge` and `facility_icon` are left out: every sampled charge is \"free\" and the widget draws its own group icons."
+                  }
+                }
+              }
+            }
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ADDED, optional and RESERVED: the chip on the inline photo (Figma 1630:43853: \"Great for couples\"), text only. No upstream field today (PRD OQ-03); hidden until sent."
+          },
+          "features": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ADDED, optional and RESERVED: the inline card's caption line (Figma: \"City View, Balcony, Living Room, Kitchenette\"). No upstream field today; hidden until sent."
+          },
+          "view_type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PRD `view_type_tag`, optional and RESERVED (API GAP, OQ-03): the full screen room list's chip, e.g. \"City view\"."
+          },
+          "accessible": {
+            "type": "boolean",
+            "description": "PRD `accessibility_badge`, optional and RESERVED (API GAP, OQ-03): true shows \"Accessible room available\". Upstream has only an \"Accessible room upon request\" line among some rooms' amenities, which stays in `amenity_groups`."
+          },
+          "rate_plans": {
+            "type": "array",
+            "minItems": 1,
+            "description": "PRD `rate_plans[]` ← upstream `ratePlan[]`, FILTERED AND SORTED BY MULESOFT: only rates a user arriving from ChatGPT can book on the website (no test rates, no rates needing a member login while the MVP is anonymous; README, 'Which rates'), cheapest `per_night_rate` first. The inline card shows `rate_plans[0]` as \"Our lowest price\" and books it; the full screen's Rates tab lists them all.",
+            "items": {
+              "$ref": "#/$defs/ratePlan"
+            }
+          }
+        }
+      }
+    }
+  }
+}
