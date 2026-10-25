@@ -1,0 +1,56 @@
+{
+  "messageId": "sample",
+  "propertyList": [
+    {
+      "propertyCode": "8790",
+      "propertyName": "Citadines Balestier Singapore",
+      "brand": "citadines",
+      "countryCode": "SG",
+      "isAllAvail": true,
+      "apartments": [
+        {
+          "room0": [
+            {
+              "apartmentType": "1BREX",
+              "apartmentName": "One-Bedroom Executive",
+              "apartmentCategoryCode": "1 Bedroom",
+              "ranking": "2",
+              "bedType": "1 Queen-size bed",
+              "maxPersonInRoom": "Max 2 pax",
+              "maxOccupancy": "2",
+              "dimension": "35",
+              "noOfUnitRemaining": "4",
+              "thumbnailImage": "/content/dam/tal/sample/1br-thumb.jpg",
+              "imageGalleryItems": [
+                {"galleryType": "image", "path": "/content/dam/tal/sample/1br.jpg", "galleryImage": "/content/dam/tal/sample/1br-lowres.jpg", "title": ""},
+                {"galleryType": "video", "path": "/content/dam/tal/sample/1br.mp4"}
+              ],
+              "amenityGroups": [
+                {"refAmenityGroup": "kitchen", "amenities": [{"description": "Kitchenette", "charge": "free"}]},
+                {"refAmenityGroup": null, "amenities": [null]}
+              ],
+              "ratePlan": [
+                {"ratePlanCode": "ZZFLEX", "ratePlanName": "Best Flexible Rate", "totalStayRatePrefCurr": "400.00", "totalTaxPrefCurrency": "72.00", "ratePlanChannel": "WEB", "nonRefundable": false, "cancellationDescription": "Cancel 24hrs prior to arrival.", "earnASRpoints": "472"},
+                {"ratePlanCode": "ZZADV", "ratePlanName": "Advance Purchase", "totalStayRatePrefCurr": "300.00", "totalTaxPrefCurrency": "54.00", "strikethroughRatePrefCurr": "180.00", "savePercentage": "15", "ratePlanChannel": "MOBILE", "nonRefundable": true}
+              ]
+            },
+            {
+              "apartmentType": "0BRSP",
+              "apartmentName": "Studio Premier",
+              "ranking": "1",
+              "ratePlan": [
+                {"ratePlanCode": "ZZFLEX", "ratePlanName": "Best Flexible Rate", "totalStayRatePrefCurr": "360.00", "totalTaxPrefCurrency": "64.80"}
+              ]
+            },
+            {
+              "apartmentType": "1BRPR",
+              "apartmentName": "One-Bedroom Premier",
+              "ranking": "3",
+              "ratePlan": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

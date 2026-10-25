@@ -4,7 +4,7 @@
   Calls booking search (HTTP_Request_Bookingsearch_config) with the same body as get_property_details
   (dwl/property-info-request.dwl). Properties: rooms.maxRooms plus the shared app.*, default.* and request.* keys.
   Uses common_HTTP_Listener_Config from global-config.xml.
-  Response: one flat property row plus apartments[], one flat row per requested room x apartment.
+  Response: get_room_rate_details structuredContent {meta, rooms[]} (dwl/room-rate-details.dwl).
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
@@ -20,7 +20,7 @@
     <flow-ref name="rooms-validate-request" doc:name="rooms-validate-request"/>
     <flow-ref name="rooms-get-rates" doc:name="rooms-get-rates"/>
     <flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
-    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: "get_room_details_and_rates", correlationId: vars.traceId, propertyCode: payload.property_code, apartmentCount: payload.apartment_count, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: "get_room_details_and_rates", correlationId: vars.traceId, propertyCode: payload.meta.property_code, totalResults: payload.meta.total_results, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]'/>
     <error-handler ref="rooms-error-handler"/>
   </flow>
 
@@ -200,73 +200,10 @@ if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code)
     </choice>
   </sub-flow>
 
-  <!-- vars.roomsSource -> flat response. Nested objects become prefixed snake_case keys; nulls and blanks are dropped. -->
+  <!-- vars.roomsSource + vars.roomsRequest -> get_room_rate_details structuredContent {meta, rooms[]}. -->
   <sub-flow name="rooms-map-response">
     <ee:transform>
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json skipNullOn="everywhere"
-import try from dw::Runtime
-import underscore from dw::core::Strings
-import some from dw::core::Arrays
-
-fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if ((v is Number) or (v is Boolean)) (v as String) else null
-fun number(v) = if (v is Number) v else if ((v is String) and !isBlank(v)) try(() -> trim(v) as Number).result else null
-fun firstVal(o, keys) = if (o is Object) ((keys map ((k) -> o[k])) filter ($ != null))[0] else null
-fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
-fun snake(k) = underscore(k as String)
-// Blank strings -> null; numeric strings stay strings (codes such as "0012" must not change).
-fun clean(v) = if (v is String) text(v) else v
-// {a: {bC: 1}, d: [{eF: 2}]} -> {a_b_c: 1, d: [{e_f: 2}]}
-fun flatObj(o: Object, prefix: String): Object = o mapObject ((v, k) ->
-	if (v is Object) flatObj(v, prefix ++ snake(k) ++ "_")
-	else {(prefix ++ snake(k)): if (v is Array) (v map ((item) -> if (item is Object) flatObj(item, "") else clean(item))) else clean(v)})
-
-var req = vars.roomsRequest
-var src = vars.roomsSource
-
-// apartments: [{room0: [apt, ...], room1: [...]}] -> one row per room x apartment.
-// A group without roomN keys is treated as one apartment for room 0.
-fun roomIndex(k) = do { var m = (k as String) match /^[Rr]oom(\d+)$/ --- if (isEmpty(m)) null else m[1] as Number }
-fun asList(v) = if (v is Array) (v filter ($ is Object)) else if (v is Object) [v] else []
-var apartmentGroups = asList(firstVal(src, ["apartments", "Apartments"]))
-var apartments = flatten(apartmentGroups map ((group) ->
-	if ((keysOf(group) map ($ as String)) some ((k) -> roomIndex(k) != null))
-		flatten(group pluck ((items, key) ->
-			if (roomIndex(key) == null) []
-			else (asList(items) map ((apt, i) -> {room_key: key as String, room_index: roomIndex(key), apartment_index: i} ++ flatObj(apt, "")))))
-	else [{room_key: "room0", room_index: 0, apartment_index: 0} ++ flatObj(group, "")]
-)) orderBy ((row) -> row.room_index * 1000 + row.apartment_index)
-
-var childrenAndExtraBed = firstVal(src, ["childrenAndExtraBed", "children_and_extra_bed"])
----
-{
-	property_code: firstText(src, ["propertyCode", "property_code"]) default req.propertyCode,
-	property_name: firstText(src, ["propertyName", "property_name"]) default req.propertyName,
-	country: firstText(src, ["country", "countryName"]),
-	country_code: upper(firstText(src, ["countryCode", "country_code"]) default ""),
-	city: firstText(src, ["city", "cityName"]),
-	currency: upper(firstText(src, ["currency", "currencyCode"]) default ""),
-	pref_currency: req.currency,
-	property_type: firstText(src, ["propertyType", "property_type"]),
-	check_in_time: firstText(src, ["checkInTime", "checkinTime", "check_in_time"]),
-	check_out_time: firstText(src, ["checkOutTime", "checkoutTime", "check_out_time"]),
-	(if (childrenAndExtraBed is Object) flatObj(childrenAndExtraBed, "children_and_extra_bed_")
-	 else {children_and_extra_bed: if (childrenAndExtraBed is Array) (childrenAndExtraBed map ((item) -> if (item is Object) flatObj(item, "") else clean(item))) else text(childrenAndExtraBed)}),
-	per_night_rate: number(firstVal(src, ["perNightRate", "per_night_rate"])),
-	total_stay_rate: number(firstVal(src, ["totalStayRate", "total_stay_rate"])),
-	per_night_rate_pref_curr: number(firstVal(src, ["perNightRatePrefCurr", "per_night_rate_pref_curr"])),
-	total_stay_rate_pref_curr: number(firstVal(src, ["totalStayRatePrefCurr", "total_stay_rate_pref_curr"])),
-	checkin: req.checkin,
-	checkout: req.checkout,
-	nights: req.nights,
-	adults: req.adults,
-	children: req.children,
-	rooms: req.rooms,
-	apartment_count: sizeOf(apartments),
-	apartments: apartments
-} mapObject ((v, k) -> if ((v is String) and isEmpty(v)) {} else {(k): v})]]></ee:set-payload>
-      </ee:message>
+      <ee:message><ee:set-payload resource="dwl/room-rate-details.dwl"/></ee:message>
     </ee:transform>
   </sub-flow>
 
