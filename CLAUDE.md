@@ -26,7 +26,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | Tool | Path | Flow file | Response schema |
 |---|---|---|---|
 | T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (0.5.0) |
-| T-03 `get_service_offerings` | `/api/v1/service-offerings` | `get-service-offerings.xml` (**pending**) | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
+| T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (0.1.0) |
 
 Every response body is the tool's `structuredContent`, exactly as its schema defines it. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
@@ -40,6 +40,7 @@ Every response body is the tool's `structuredContent`, exactly as its schema def
 | `get-common-details.xml` | `get-property-common-info`: builds the body from `dwl/property-info-request.dwl` (reads **`vars.request`**), logs `xapi.bookingsearch.request`, POSTs booking search, 404 → `APP:NOT_FOUND`, `dwl/unwrap-property.dwl` → **`vars.property`** (the `propertyList[0]` object), logs `xapi.property.response` (field names only). It raises `APP:NOT_FOUND` when the response has no code or name. | This is the shared booking search call. |
 | `get-poi-details.xml` | `get-property-pois`: only when `vars.request.maxPois > 0`; `dwl/poi-request.dwl`, POST `${poisystem.path}` via `Property_POI_HTTP` → `vars.pois`. Any error → `vars.pois = null`, logged as `xapi.poi.unavailable`. | Optional: never fails the call. |
 | `get-property-details.xml` | Flow `get-property-details` (T-02): `common-validate-request` → `get-property-info` → `vars.propertyCode` → `get-property-pois` → `dwl/map-structured-content.dwl` → `xapi.success`; error handler `property-details-error-handler`. Sub-flow `get-property-info` = `get-property-common-info`, then unwraps, logs and checks again. | Its old `validate-request` and `get-property-pois` copies are commented out (moved to `validate-request.xml` / `get-poi-details.xml`). |
+| `get-service-offerings.xml` | Flow `get-service-offerings` (T-03; sets `vars.toolName`): `services-validate-request` (parses the body first, so only bad JSON gives "invalid JSON"; requires a digits-only `propertyCode`; adds a default stay from `default.*`) → **`vars.servicesRequest`**. Then `services-get-facilities` copies it into `vars.request`, calls booking search **itself** (not via `get-property-common-info`) and selects the `propertyList` entry → **`vars.servicesSource`**. Then `services-map-response` (inline DataWeave, `t03.assetbaseurl`) → `{meta, services[]}`. Error handler `property-details-error-handler`. | Its header comment is out of date (it names `Property_Info_HTTP` and `property.*`; the flow uses `HTTP_Request_Bookingsearch_config` and `https.bookingsearchprocessapi.*`). |
 | `get-room-rates.xml` | Flow `get-room-details`; sub-flows `rooms-get-rates`, `rooms-map-response`; `rooms-error-handler`; `rooms-format-and-log-error`. | See the known issues below. |
 
 ## Booking search contract (confirmed against UAT)
@@ -99,6 +100,10 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 `get-property-details.xml` (T-02, working in UAT):
 7. `get-property-info` repeats what `get-property-common-info` already does (unwrap into `vars.property`, the `xapi.property.response` log and the not-found check), so each call logs `xapi.property.response` twice. Harmless; drop the repeat when convenient.
 
+`get-service-offerings.xml` (T-03):
+8. It has its own copy of the booking search request. That makes three copies (T-02 via `get-property-common-info`, T-03 and T-04), all of which must stay identical; a fix to one must go to all three, or T-03/T-04 should call `get-property-common-info`.
+9. Its stay is always the default (today + `default.checkinOffsetDays`, `default.nights` nights, `default.adults` adults). If booking search has no availability for that stay, there is no `propertyList` and the call returns 404, even though facilities don't depend on dates.
+
 `global-config.xml`: every truststore is `insecure="true"`; the secure-properties key and two truststore passwords are hardcoded (REDACTED here); `uat.yaml` is loaded twice (`uat.yaml` and `${mule-env}.yaml`). There are also two POI request configs.
 
 POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) answers 400 for real property codes, so `nearby[]` is always omitted for now.
@@ -106,7 +111,7 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 ## Not yet in the base (ask for these before relying on them)
 
 - `get-service-offerings.xml` (T-03 flow): the owner will share it.
-- The error-handler file that defines `property-details-error-handler`, which T-02 (and T-03) reference.
+- The error-handler file that defines `property-details-error-handler`, which T-02 and T-03 reference.
 - `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl`, `map-structured-content.dwl` (T-02) and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`.
 - `uat.yaml` (share without secrets) and `pom.xml`.
 
