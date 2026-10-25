@@ -147,7 +147,7 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 
 ## Product specs (PRDs) for tools not yet built
 
-Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md` and `PRD-T06-compare-properties.md`. Read the full PRD before you build either tool. No flow exists for T-05 yet; build one only when asked. T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md` and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05 or T-08 yet; build one only when asked. T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
 
 Tool map from the PRDs:
 
@@ -160,9 +160,9 @@ Tool map from the PRDs:
 | T-05 | Get_promotions | PRD only |
 | T-06 | Compare_properties | built: puts properties together only (see below) |
 | T-07 | Compare_rooms_rates | not specified here |
-| T-08 | Create_booking | not specified here |
+| T-08 | Create_booking | PRD only |
 
-Rules for both tools:
+Rules for T-05 and T-06:
 
 - Read only. One inline component per response, built from one data packet: `meta`, `recommendation` and a list.
 - The xAPI must not let an LLM invent facts. A new backend scoring and explanation service computes boolean `match_flags`. That service has no API yet. Reasons or chips are shown only for flags that are `true`.
@@ -243,6 +243,59 @@ Rules for both tools:
 - An excluded property must carry a stated reason.
 - "See room and rates" hands off to T-04 with the same dates and guests (AC-09, OQ-05).
 - Ties are broken by a defined rule (EC-05, OQ-08).
+
+### T-08 Create_booking
+
+Despite its name, T-08 is **read-only**. It never writes a reservation, holds a cart or takes payment (AC-08, SM-05). It re-checks that one room and rate is still bookable and returns a booking summary card plus one external checkout link to discoverasr.com, where the user pays. It collects no guest personal or payment details. There is a single inline component and no full screen. One room per call; multi-room is out of scope (EC-06, OQ-08).
+
+**Two ways in:**
+
+- **Selected:** `resolution_method` "selected". The caller carries `propertyCode`, `apartmentCategoryCode` and `ratePlanCode` from T-04/T-07, plus dates and guests. Availability must be re-checked now, not assumed from the earlier call (AC-03, EC-02). If the room or rate is gone → ER-04 and no checkout link.
+- **Cold:** only `propertyCode`, from "book me a room at …". The xAPI runs the same lookup as T-04 and picks the cheapest bookable rate per night; ties go to the room with the best `ranking` (EC-01). No bookable room → ER-02.
+
+**Inputs:**
+
+- `propertyCode` (required).
+- `apartmentCategoryCode`, `ratePlanCode` (optional together; cold pick when absent).
+- `checkinDate` / `checkoutDate`: default today + 30 / + 31.
+- `noOfadults` / `noOfchildren`: default 1 / 0.
+- `currencyCode`.
+- `voucherCode` / `promotionCode`: from T-05 or stated; passed through. An invalid code → ER-07, standard total.
+- `enrollAsrOnCheckout`: PARAMETER GAP, default false.
+- `memberId`: auth only. This app is a non-logged-in journey, so ignore it.
+
+**Upstream APIs:**
+
+- **"apartmentlist / apartmentratedetails – V3" is the booking search call this app already makes**: `/v3/checkpropertyavailability` → `propertyList[].apartments[].room0[].ratePlan[]`, the T-04 source. Reuse `get-property-common-info` and the T-04 rules (`room-rate-details.dwl`): bookable rates only, tax-inclusive prices, `ranking` order.
+  - Room fields: `apartmentCategoryCode`, `apartmentName`.
+  - Rate fields: `ratePlanCode`, `ratePlanName`, `isTaxInclusive`, `cancellationDescription`, `earnASRpoints`.
+  - Property fields: `propertyName`, `bannerImageMobile`, `brandlogo`, `address`.
+- **`bookingcart`**: a confirmed API, but there is **no config, path or credentials for it in this app yet**. It returns `cartId`, `isAvailable` and `totalChargesIncludingTaxes`. Ask the owner for its contract. Whether `cartId` is usable by the website is OQ-02.
+- **`reservationV3` (`v2`/`v3-initiatereservation`) and `mobilev1/v2/confirmreservation`**: must **never** be called by T-08. They are write APIs (OQ-01 future).
+- **Checkout deep link: API GAP (OQ-04).** No API builds it and its URL format is unconfirmed. The PRD's example `https://www.discoverasr.com/checkout?propertyCode=…&apartmentCategoryCode=…&ratePlanCode=…&checkin=…&checkout=…&adults=…&children=…&currency=…` is marked "[pending]". Can it be recomputed on the client when the ASR checkbox changes? That is open (OQ-05). If the link cannot be built → ER-08.
+
+**Output packet (PRD §6.1):**
+
+- `meta {property_code, resolution_method ("selected" | cold), checkin_date, checkout_date, noOfadults, noOfchildren, currency}`
+- `property {property_name, brand_logo_url, banner_image_url, address}`
+- `room_and_rate {apartment_category_code, apartment_name, rate_plan_code, rate_plan_name, is_tax_inclusive, cancellation_description, earn_asr_points}`
+- `cart {cart_id, is_available, total_charges_including_taxes, voucher_code, promotion_code}`
+- `enrollment {enroll_asr_on_checkout}`
+- `checkout {external_checkout_url}`
+
+**Rules:**
+
+- One currency throughout (AC-07).
+- The free-cancellation line appears only for a cancellable rate; never invent one (EC-05). Parsing `cancellationDescription` into a deadline is open (OQ-07).
+- No image → leave it out (EC-07).
+- The LLM must never claim to know whether the booking succeeded (ER-09, OQ-06).
+- A change of dates or guests re-invokes T-08 (AC-09). A change of room or rate goes back to T-04/T-07.
+
+**Conflicts with this app to raise before building:**
+
+- The PRD's examples use a member rate ("First-Stay Member Special") and points. T-04 here drops member (`AOA` / "…Member…") rates for anonymous users, so a selected member rate would fail the re-check.
+- The total comes from `bookingcart`, which this app can't call yet. Until then, the T-04 tax-inclusive total is the only source.
+- ER-06 is blank in the PRD.
 
 ## How to work on it
 
