@@ -10,7 +10,7 @@ output application/json
 import try from dw::Runtime
 import take from dw::core::Arrays
 
-var req = vars.compareRequest
+var req = vars.compareRequest default {}
 var nights = req.nights default 1
 var currency = upper(req.currency default (p('property.currency') default ""))
 var maxAmenities = p('t06.maxAmenityHighlights') as Number

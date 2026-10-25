@@ -56,11 +56,11 @@
     </ee:transform>
     <choice>
       <when expression="#[not isEmpty(vars.compareValidation.errors default [])]">
-        <set-variable variableName="errorMessage" value="#[vars.compareValidation.errors joinBy ' ']" doc:name="errorMessage"/>
+        <set-variable variableName="errorMessage" value="#[(vars.compareValidation.errors default []) joinBy ' ']" doc:name="errorMessage"/>
         <raise-error type="APP:BAD_REQUEST" description="Invalid compare_properties request"/>
       </when>
     </choice>
-    <set-variable variableName="compareRequest" value="#[vars.compareValidation.request]" doc:name="compareRequest"/>
+    <set-variable variableName="compareRequest" value="#[vars.compareValidation.request default {}]" doc:name="compareRequest"/>
   </sub-flow>
 
   <!-- vars.compareRequest.propertyCodes -> vars.lookups: [{code, status: ok | not_found | unavailable, source, property}], in request order. -->
@@ -72,15 +72,15 @@
       </when>
     </choice>
     <!-- A code the batch call did not return, or returned without apartments, is fetched on its own. -->
-    <set-variable variableName="missingCodes" value="#[output application/java --- vars.compareRequest.propertyCodes filter ((c) -> isEmpty(vars.batchList filter ((e) -> (((e.propertyCode default '') as String) == c) and (e.apartments is Array))))]" doc:name="missingCodes"/>
+    <set-variable variableName="missingCodes" value="#[output application/java --- (vars.compareRequest.propertyCodes default []) filter ((c) -> isEmpty((vars.batchList default []) filter ((e) -> (((e.propertyCode default '') as String) == c) and (e.apartments is Array))))]" doc:name="missingCodes"/>
     <set-variable variableName="singleResults" value="#[[]]" doc:name="singleResults"/>
     <choice>
-      <when expression="#[not isEmpty(vars.missingCodes)]">
-        <parallel-foreach collection="#[vars.missingCodes]" maxConcurrency="${t06.maxConcurrency}" doc:name="one by one">
+      <when expression="#[not isEmpty(vars.missingCodes default [])]">
+        <parallel-foreach collection="#[vars.missingCodes default []]" maxConcurrency="${t06.maxConcurrency}" doc:name="one by one">
           <flow-ref name="compare-single-lookup" doc:name="compare-single-lookup"/>
         </parallel-foreach>
         <!-- Parallel For Each returns one message per code; keep their payloads. -->
-        <set-variable variableName="singleResults" value="#[output application/java --- payload map ((m) -> if (m.payload != null) m.payload else m)]" doc:name="singleResults"/>
+        <set-variable variableName="singleResults" value="#[output application/java --- (payload default []) map ((m) -> if (m.payload != null) m.payload else m)]" doc:name="singleResults"/>
       </when>
     </choice>
     <ee:transform doc:name="lookups">
@@ -88,9 +88,9 @@
         <ee:set-variable variableName="lookups"><![CDATA[%dw 2.0
 output application/java
 ---
-vars.compareRequest.propertyCodes map ((c) -> do {
-	var single = (vars.singleResults filter ((r) -> r.code == c))[0]
-	var hit = (vars.batchList filter ((e) -> ((e.propertyCode default '') as String) == c))[0]
+(vars.compareRequest.propertyCodes default []) map ((c) -> do {
+	var single = ((vars.singleResults default []) filter ((r) -> r.code == c))[0]
+	var hit = ((vars.batchList default []) filter ((e) -> ((e.propertyCode default '') as String) == c))[0]
 	---
 	if (single != null) single else {code: c, status: "ok", source: "batch", property: hit}
 })]]></ee:set-variable>
@@ -98,10 +98,10 @@ vars.compareRequest.propertyCodes map ((c) -> do {
 output application/java
 ---
 {
-	batch: sizeOf(vars.compareRequest.propertyCodes) - sizeOf(vars.missingCodes),
-	single: sizeOf(vars.singleResults),
-	notFound: (vars.singleResults filter ($.status == "not_found")) map $.code,
-	unavailable: (vars.singleResults filter ($.status == "unavailable")) map $.code
+	batch: sizeOf(vars.compareRequest.propertyCodes default []) - sizeOf(vars.missingCodes default []),
+	single: sizeOf(vars.singleResults default []),
+	notFound: ((vars.singleResults default []) filter ($.status == "not_found")) map $.code,
+	unavailable: ((vars.singleResults default []) filter ($.status == "unavailable")) map $.code
 }]]></ee:set-variable>
       </ee:variables>
     </ee:transform>
@@ -110,8 +110,8 @@ output application/java
   <!-- One booking search call for up to t06.batchSize codes -> vars.batchList (propertyList[] entries). Any failure leaves it empty. -->
   <sub-flow name="compare-batch-lookup">
     <try>
-      <set-variable variableName="request" value="#[output application/java --- vars.compareRequest ++ {propertyCode: vars.compareRequest.propertyCodes[0]}]" doc:name="request"/>
-      <set-variable variableName="batchCodes" value="#[output application/java --- dw::core::Arrays::take(vars.compareRequest.propertyCodes, p('t06.batchSize') as Number)]" doc:name="batchCodes"/>
+      <set-variable variableName="request" value="#[output application/java --- (vars.compareRequest default {}) ++ {propertyCode: (vars.compareRequest.propertyCodes default [])[0]}]" doc:name="request"/>
+      <set-variable variableName="batchCodes" value="#[output application/java --- dw::core::Arrays::take(vars.compareRequest.propertyCodes default [], p('t06.batchSize') as Number)]" doc:name="batchCodes"/>
       <!-- Same body as every other booking search call (dwl/property-info-request.dwl), with several codes and propertyListing true. -->
       <ee:transform doc:name="property-info-request">
         <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
@@ -121,9 +121,9 @@ output application/java
           <ee:set-variable variableName="batchRequest"><![CDATA[%dw 2.0
 output application/json
 ---
-vars.propertyInfoRequest mapObject ((v, k) ->
+(vars.propertyInfoRequest default {}) mapObject ((v, k) ->
 	if ((k as String) == "propertyListing") {(k): true}
-	else if ((k as String) == "propertyCode") {(k): vars.batchCodes}
+	else if ((k as String) == "propertyCode") {(k): vars.batchCodes default []}
 	else {(k): v})]]></ee:set-variable>
         </ee:variables>
       </ee:transform>
@@ -144,7 +144,7 @@ vars.propertyInfoRequest mapObject ((v, k) ->
         </http:response-validator>
       </http:request>
       <set-variable variableName="batchList" value="#[output application/java --- if (attributes.statusCode == 404) [] else if ((payload is Object) and (payload.propertyList is Array)) (payload.propertyList filter ($ is Object)) else []]" doc:name="batchList"/>
-      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.batch", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, requested: vars.batchCodes, returned: vars.batchList map ((e) -> {code: e.propertyCode, hasApartments: e.apartments is Array})}, "application/json", {indent: false})]' doc:name="compare.batch"/>
+      <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.compare.batch", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, requested: vars.batchCodes, returned: (vars.batchList default []) map ((e) -> {code: e.propertyCode, hasApartments: e.apartments is Array})}, "application/json", {indent: false})]' doc:name="compare.batch"/>
       <error-handler>
         <on-error-continue type="ANY" logException="false" enableNotifications="false">
           <set-variable variableName="batchList" value="#[[]]" doc:name="batchList"/>
@@ -158,7 +158,7 @@ vars.propertyInfoRequest mapObject ((v, k) ->
   <sub-flow name="compare-single-lookup">
     <set-variable variableName="lookupCode" value="#[payload as String]" doc:name="lookupCode"/>
     <try>
-      <set-variable variableName="request" value="#[output application/java --- vars.compareRequest ++ {propertyCode: vars.lookupCode}]" doc:name="request"/>
+      <set-variable variableName="request" value="#[output application/java --- (vars.compareRequest default {}) ++ {propertyCode: vars.lookupCode}]" doc:name="request"/>
       <flow-ref name="get-property-common-info" doc:name="get-property-common-info"/>
       <set-payload value="#[output application/java --- {code: vars.lookupCode, status: 'ok', source: 'single', property: vars.property}]" doc:name="ok"/>
       <error-handler>
@@ -177,9 +177,9 @@ vars.propertyInfoRequest mapObject ((v, k) ->
   <!-- At least one property must have come back: none found is a 404 (PRD ER-04), none reachable is a 502 (ER-03). -->
   <sub-flow name="compare-check-lookups">
     <choice>
-      <when expression="#[isEmpty(vars.lookups filter ($.status == 'ok'))]">
+      <when expression="#[isEmpty((vars.lookups default []) filter ($.status == 'ok'))]">
         <choice>
-          <when expression="#[isEmpty(vars.lookups filter ($.status == 'unavailable'))]">
+          <when expression="#[isEmpty((vars.lookups default []) filter ($.status == 'unavailable'))]">
             <set-variable variableName="errorMessage" value="None of the requested properties was found for the stated dates." doc:name="errorMessage"/>
             <raise-error type="APP:NOT_FOUND" description="No requested property found"/>
           </when>
