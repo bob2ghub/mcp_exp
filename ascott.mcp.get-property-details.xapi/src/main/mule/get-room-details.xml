@@ -14,6 +14,7 @@
       <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
       <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
+    <set-variable variableName="toolName" value="get_room_details_and_rates"/>
     <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
     <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.start", tool: "get_room_details_and_rates", correlationId: vars.traceId}, "application/json", {indent: false})]'/>
@@ -218,6 +219,11 @@ if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code)
       <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'ROOMS_NOT_FOUND', message: vars.errorMessage default 'No rooms found for this property.', retryable: false}]"/>
       <flow-ref name="rooms-format-and-log-error"/>
     </on-error-propagate>
+    <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED_REQUEST', message: 'Booking search rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="rooms-format-and-log-error"/>
+    </on-error-propagate>
     <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[504]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Room and rate service timed out. Retry later.', retryable: true}]"/>
@@ -235,6 +241,15 @@ if (code == null) all[0] else ((all filter ((c) -> text(c.propertyCode) == code)
     </on-error-propagate>
   </error-handler>
   <sub-flow name="rooms-format-and-log-error">
+    <!-- For a downstream HTTP error, log its status, description and (first 1000 characters of) its response body. -->
+    <try>
+      <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- if (error.errorType.namespace == "HTTP") write({event: "xapi.downstream.error", correlationId: vars.traceId default correlationId, status: error.errorMessage.attributes.statusCode default null, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false}) else ""]'/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", correlationId: vars.traceId default correlationId, detail: error.description}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
     <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: "get_room_details_and_rates", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier}, "application/json", {indent: false})]'/>
     <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
   </sub-flow>
