@@ -1,0 +1,5 @@
+# T-02 get_property_details (dwl/map-structured-content.dwl, schema 0.6.0)
+# Optional. Upstream only flags isBestRateGuaranteeEnabled; it has no sentence for the "Best Rate Guaranteed" cell.
+# Set this to show the cell for properties that have the flag; leave it out and the cell is not shown.
+t02:
+  bestrateguaranteedtext: "Applicable under property's Terms and conditions"

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ascott:mcp:get_property_details:structured-content:0.5.0",
+  "$id": "urn:ascott:mcp:get_property_details:structured-content:0.6.0",
   "title": "Get property details structuredContent",
-  "description": "The `structuredContent` of the `get_property_details` MCP tool: one property, everything the T-02 inline card and full-screen page render. Base: PRD T-02 section 6.1 'Illustrative data packet — canonical output', field names verbatim (snake_case, nested as in the packet). On top of the PRD, the additions the built widget needs, each marked 'ADDED' in its description: `brand_code` and `nearby[]` (same meaning as T-01), `pricing.availability_status` / `next_available_date` (T-01's on-request handling), `reviews.individual_reviews` as a real array (PRD OQ-02 placeholder), `asset_base_url`, and two UI-only optional blocks the PRD does not have: `accessibility_note`, `awards` (user decision 2026-10-10). Left out: `pet_policy` (the client has no such data, 2026-10-15) and the PRD's `points_of_interest` placeholder (replaced by `nearby[]`). `best_rate_guaranteed` was a PARAMETER GAP and is accepted since 0.3.0. `services[]` was removed in 0.4.0: the 'Rooms and services' cards are the same on every property (text and image), so the widget holds them. 0.5.0 adds the optional `location.city`, `location.country` and `location.country_code` (the property page link). 0.5.0, provisional (2026-10-18).",
+  "description": "The `structuredContent` of the `get_property_details` MCP tool: one property, everything the T-02 inline card and full-screen page render. Base: PRD T-02 section 6.1 'Illustrative data packet — canonical output', field names verbatim (snake_case, nested as in the packet). On top of the PRD, the additions the built widget needs, each marked 'ADDED' in its description: `brand_code` and `nearby[]` (same meaning as T-01), `pricing.availability_status` / `next_available_date` (T-01's on-request handling), `reviews.individual_reviews` as a real array (PRD OQ-02 placeholder), `asset_base_url`, and two UI-only optional blocks the PRD does not have: `accessibility_note`, `awards` (user decision 2026-10-10). Left out: `pet_policy` (the client has no such data, 2026-10-15) and the PRD's `points_of_interest` placeholder (replaced by `nearby[]`). `best_rate_guaranteed` was a PARAMETER GAP and is accepted since 0.3.0. `services[]` was removed in 0.4.0: the 'Rooms and services' cards are the same on every property (text and image), so the widget holds them. 0.5.0 adds the optional `location.city`, `location.country` and `location.country_code` (the property page link). 0.5.0, provisional (2026-10-18). 0.6.0 (2026-10-26): `pricing.based_on.child_ages` (optional).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -191,6 +191,14 @@
             "children": {
               "type": "integer",
               "minimum": 0
+            },
+            "child_ages": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "ADDED 0.6.0 (2026-10-26): the input's `childAges`, one age per child (snake_case, as the other `based_on` fields). Optional; sent whenever the input had it. The widget passes it to T-04 `apartmentList[].childAges` from \"View rooms and rates\"."
             }
           }
         }

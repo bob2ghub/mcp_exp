@@ -26,7 +26,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 
 | Tool | Path | Flow file | Response schema |
 |---|---|---|---|
-| T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (0.5.0) |
+| T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (0.1.0) |
 | T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (0.2.0, written by us from PRD §6.1) |
@@ -115,8 +115,28 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 ## Not yet in the base (ask for these before relying on them)
 
 - The error-handler file that defines `property-details-error-handler`, which T-02 and T-03 reference.
-- `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl`, `map-structured-content.dwl` (T-02) and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`.
+- `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl` and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`. (`map-structured-content.dwl` for T-02 is now in the base: see "T-02 mapping" below.)
 - `uat.yaml` (share without secrets) and `pom.xml`.
+
+## T-02 mapping (`dwl/map-structured-content.dwl`, written by us 2026-10-26, not yet deployed)
+
+Maps `vars.property` (one `propertyList[]` entry) + `vars.pois` + `vars.request` to T-02 schema **0.6.0**. Same file name and inputs as the version the T-02 flow already references, so it is a drop-in replacement.
+
+- **Checked against the real 51052 (Ascott Raffles Place) booking search response**, stored at `examples/upstream-property-details-51052.json`. `tests/check_t02.py` is a function-for-function Python copy that writes `examples/property-details-51052-response.sample.json` and runs 23 checks (that sample, no stay in the request, `childAges`, no rate, POIs, the best-rate text, a bare property); all validate against 0.6.0. Keep the two in step. The DataWeave itself has not been run here: a downloaded runtime may not be executed in this session. `tests/playground/map-structured-content.playground.dwl` + `-input.json` run it in the DataWeave Playground.
+- **Rules worth knowing:**
+  - `brand_code`: upstream `brand`, else slug of `brandName` ("Ascott The Residence" → `ascott-the-residence`). The 51052 response has no `brand` field.
+  - `thumbnail_url` (required): `newPropertyThumbnail` → `bannerImageMobile` → first gallery image → first room's `thumbnailImage` / `bannerImageMobile` → `location.mapImage`.
+  - `pricing`: property-level `perNightRatePrefCurr` / `totalStayRatePrefCurr` (**ex-tax, as upstream gives them**; unlike T-04, which adds tax). `strikethrough_rate` comes from the rate plan whose per-night rate equals the lead-in (51052: `ASRAPPFX` 211.50 → 940.00), kept only when higher. No rate → `on_request`.
+  - `based_on`: the request's stay; when the request has none, the first and last+1 `nightlyRate` dates (`MM/dd/yyyy`). `adults` ≥ 1 (default 1), `children` default 0. `child_ages` from `vars.request.childAges`, **which `validate-request.dwl` does not set yet**, so it is absent until the validator passes it.
+  - `hotel_information.check_in_time` / `check_out_time`: upstream "03:00 PM" → "15:00" (schema is 24-hour).
+  - `location`: coordinates are converted to numbers; `gettingToProperty` / `publicTransport` titles have upstream's `{0}` replaced with the property name.
+  - `amenities.facility_groups` from `facilities.facilityGroup`: label = `description`, else `name` (e.g. "Residents' lounge" has a null description); rows without label or icon dropped; **de-duplicated within and across groups** (schema: "De-duplicated by the server"), so groups left empty disappear (51052: "Business Matters").
+  - `reviews`: booking search has none → `{average_ratings: 0, total_number_of_reviews: 0}`, kept as an empty shell.
+  - `nearby`: from `vars.pois`, max 5, POIs missing any required field dropped; `[]` when none (the POI mock answers 400 today).
+  - `accessibility_note`: the `tag[].susstainable.allItems[]` item whose `identityName` is "Accessibility" (title = its label, body = its tooltip with HTML stripped). Absent when upstream has no such item.
+  - `best_rate_guaranteed`: upstream only has the `isBestRateGuaranteeEnabled` flag, so the sentence is the optional key `t02.bestrateguaranteedtext` (`src/main/resources/property-details.yaml`). Not set → no cell.
+  - `awards` from `listOfAwards` (image + title), `gallery` titles fall back to the property name (upstream sends "").
+- **Required in the schema with no fallback:** `location.address` and `location.coordinates`. Both are present in the booking search response; a property without them would not validate.
 
 ## T-06 in this app (owner decision, 2026-10-25)
 
