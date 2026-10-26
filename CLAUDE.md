@@ -29,7 +29,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 |---|---|---|---|
 | T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
-| T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (0.1.0) |
+| T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
 | T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (0.2.0, written by us from PRD §6.1) |
 
 Every response body is the tool's `structuredContent`, exactly as its schema defines it. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
@@ -95,10 +95,10 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 
 ## Mapping rules that are settled
 
-- **T-04 prices include tax:** `total_stay_rate` = `totalStayRatePrefCurr` + `totalTaxPrefCurrency`, and `per_night_rate` = that ÷ nights. This equals upstream `nightly_rate.price_with_tax_and_fee`.
-- **T-04 strikethrough:** upstream `strikethroughRatePrefCurr` is for the **whole stay** before tax, so per night = strike × (total ÷ stay) ÷ nights. It is kept only when above `per_night_rate`.
-- **T-04 bookable rates:** drop template `AOA` or "…Member…" rates (need a login) and names containing "ACRS Compare". Sort cheapest first, sort rooms by `ranking`, drop rooms with no rates. `noOfRooms` is always 1.
-- **T-04 `meta.currency`** = the request currency, else `property.currency`.
+- **T-04 prices (schema 0.3.0, 2026-10-26): passed through as upstream gives them.** `per_night_rate` = `perNightRatePrefCurr`, `total_stay_rate` = `totalStayRatePrefCurr`, on the basis `is_tax_inclusive` states, with the tax beside them: `per_night_tax` = Σ `taxes[].taxAmountPrefCurrPerNight`, `total_tax` = `totalTaxPrefCurrency` (both 0 on a tax-inclusive rate). `per_night_rate` + `per_night_tax` equals upstream `nightlyRate[].priceWithTaxAndFee`. **Earlier versions added the tax in; 0.3.0 does not.**
+- **T-04 has no strikethrough** in 0.3.0 (no UI shows one), so `strikethrough_rate` and `save_percentage` are gone.
+- **T-04 bookable rates:** drop template `AOA` or "…Member…" rates (need a login), names containing "ACRS Compare" and names with a `TEST` token (schema 0.3.0: "no test rates"; 51052 has 6 of them). Sort cheapest first, sort rooms by `ranking`, drop rooms with no rates.
+- **T-04 `meta.currency`** = the request currency, else the property's `currency`, else a rate plan's `currency`, else `property.currency`, else `SGD`.
 - **T-03:** one service per `facilityDetails` item in upstream order, `title` → `service_name`, empty fields left out. `services: []` is valid.
 - **All tools:** leave out null and blank optional fields (`skipNullOn="everywhere"`). Pass upstream text through verbatim, HTML included. Convert numeric strings to numbers where the schema says number.
 - The reference implementation of these rules is `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/room-rate-details.dwl` (T-04). Expected outputs that validate against the schemas are in `ascott.mcp.get-property-details.xapi/examples/` (`room-rate-details-*.sample.json`, `service-offerings-response.sample.json`). `tests/check_contracts.py` there checks them.
@@ -115,7 +115,7 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 
 `get-room-rates.xml`:
 1. It validates with `common-validate-request`, which sets `vars.request` without `nights` or `rooms`. Its own `rooms-validate-request` is commented out, so **`vars.roomsRequest` is never set**. `rooms-get-rates` (roomsSource selection) and `rooms-map-response` read `vars.roomsRequest`, so dates and nights come out null.
-2. `rooms-map-response` is still the **old flat mapping** (`apartments[]`, `apartment_count`), not the T-04 schema. Replace its body with `<ee:set-payload resource="dwl/room-rate-details.dwl"/>`, which needs `vars.roomsSource` and `vars.roomsRequest` (with `nights`).
+2. `rooms-map-response` is still the **old flat mapping** (`apartments[]`, `apartment_count`), not the T-04 schema. Replace its body with `<ee:set-payload resource="dwl/room-rate-details.dwl"/>`, which needs `vars.roomsSource` and `vars.roomsRequest` (no `nights`: 0.3.0 passes upstream's prices through). See "T-04 mapping" below.
 3. The `T04.success` logger reads `payload.property_code` / `payload.apartment_count`; for T-04 use `payload.meta.*`.
 4. No `vars.toolName`, so shared loggers label T-04 lines `get_property_details`.
 5. `rooms-error-handler` has no `HTTP:BAD_REQUEST` branch (a 400 shows as `DOWNSTREAM_UNAVAILABLE`) and doesn't log the downstream body.
@@ -135,7 +135,7 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 ## Not yet in the base (ask for these before relying on them)
 
 - The error-handler file that defines `property-details-error-handler`, which T-02 and T-03 reference.
-- `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl`, `poi-request.dwl` and `room-rate-details.dwl` (T-04). Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`. (`map-structured-content.dwl` for T-02 is now in the base: see "T-02 mapping" below.)
+- `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl` and `poi-request.dwl`. Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`. (`map-structured-content.dwl` for T-02 is now in the base: see "T-02 mapping" below.)
 - `uat.yaml` (share without secrets) and `pom.xml`.
 
 ## T-02 mapping (`dwl/map-structured-content.dwl`, written by us 2026-10-26, not yet deployed)
@@ -167,6 +167,19 @@ Maps `vars.servicesSource` (one `propertyList[]` entry) + `vars.servicesRequest`
 - **`meta`:** `property_code` from the request (digits only, else the upstream code), `property_name` from `propertyEnName` / `propertyName`, `brand_code` from `brand` else a slug of `brandName` (51052 → `ascott-the-residence`), `country_code` upper case when two letters, `phone`, `asset_base_url` from `t03.assetbaseurl` else `asset.baseUrl` else discoverasr.com, and `total_results` = the length of `services`.
 - `services: []` with `total_results: 0` is valid (PRD EC-01), so a property with no facilities is not an error.
 
+## T-04 mapping (`dwl/room-rate-details.dwl`, rewritten by us 2026-10-26, not yet deployed)
+
+Maps `vars.roomsSource` (one `propertyList[]` entry) + `vars.roomsRequest` to T-04 schema **0.3.0** (the owner's file). It replaces the 0.1.0 reference version in `ascott.mcp.get-property-details.xapi/`, which is now out of date on three counts: prices, strikethrough and the response shape.
+
+- **The shape changed.** 0.3.0 is `{meta, requested_rooms[]}`: **one room list per requested room**, not one flat `rooms[]`. Upstream answers `apartmentList[i]` with `apartments[].room{i}`, so entry `i` reads the `room{i}` key wherever it sits (one `apartments` entry holding `room0`, `room1`, … or one entry each — both are handled). Each entry carries `room_index` (1-based), that room's `noOfadults` / `noOfchildren` / `childAges` **from the request** (upstream does not echo them), `total_results` and `rooms[]`. `rooms: []` with `total_results: 0` is valid.
+- **`meta`** has no `total_results` any more. `noOfadults` / `noOfchildren` are the sums over `requested_rooms`, `noOfRooms` is its length. New optional keys: `price_includes_tax` (the request's flag echoed) and `voucher_code_valid` (upstream `isCodeValid`, sent only when the caller passed a `voucherCode`).
+- **The request has no `apartmentList` yet.** `validate-request.dwl` sends flat `adults` / `children`, so the mapping falls back to one requested room built from those, which is today's single-room behaviour. It reads `apartmentList[]` the moment the validator sends one, and accepts both `checkin` / `checkout` and `checkinDate` / `checkoutDate`, `currency` and `currencyCode`.
+- **No request dates?** `meta.checkin_date` / `checkout_date` fall back to upstream's `nightlyRate[].date` values (`MM/dd/yyyy`): the first night, and the last night + 1 day. Both are required by the schema, so there is no shape without them.
+- **Rate fields:** `rate_plan_code`, `rate_plan_name`, `is_tax_inclusive`, `per_night_rate`, `total_stay_rate`, `per_night_tax`, `total_tax` (all required), plus optional `description`, `earn_asr_points`, `non_refundable`, `cancellation_description`, `is_app_exclusive` (`ratePlanChannel` == "MOBILE"). `free_cancellation_until`, `includes_breakfast` are RESERVED in the schema and not sent.
+- **Room fields** are unchanged from 0.1.0: `room_code` = `apartmentType` (not `apartmentCategoryCode`), `room_category`, `ranking`, `description` = `roomInformation`, `bed_type`, `max_person_in_room`, `max_occupancy`, `size_sqm` = `dimension`, `units_remaining`, the three image paths, `gallery` (`galleryImage` else `path`, `galleryType` "image" only) and `amenity_groups` (groups with no amenities dropped). `tag`, `features`, `view_type`, `accessible` are RESERVED and not sent.
+- **Checked against the real 51052 response** (`examples/upstream-property-details-51052.json`, the same file T-02 and T-03 use). `tests/check_t04.py` is a function-for-function Python copy that writes `examples/room-rate-details-51052-response.sample.json` and runs 20 checks (the real payload, three requested rooms, a tax-inclusive rate, no bookable rate, an empty request, a bare property); all validate against 0.3.0. Keep the two in step. On 51052 the studio keeps 6 of its 14 rates (`ASRAPPFX` 211.50 leads) and the four room types come out in `ranking` order. The DataWeave itself has not been run here (no runtime in this session); `tests/playground/room-rate-details.playground.dwl` + `-input.json` run it in the DataWeave Playground.
+- **Wiring still needed in `get-room-rates.xml`** (known issues 1–2, unchanged): `vars.roomsRequest` is never set, and `rooms-map-response` still holds the old flat mapping. Point it at `<ee:set-payload resource="dwl/room-rate-details.dwl"/>` and set `vars.roomsRequest` / `vars.roomsSource`. `nights` is no longer needed by the mapping (prices are not divided any more).
+
 ## T-06 in this app (owner decision, 2026-10-25)
 
 **T-06 only puts the requested properties together in one payload. It does not compare, rank, filter or recommend.** The model and the widget do that. So the PRD's `recommendation` block, `is_recommended`, match flags, reason lines and the filter inputs (`maxRate`, `facilities`, `roomType`, `poi`, `travellerProfile`, `serviceCategory`) are not in the xAPI. They are accepted in the body and ignored. Do not add them back unless the owner asks.
@@ -190,7 +203,7 @@ Maps `vars.servicesSource` (one `propertyList[]` entry) + `vars.servicesRequest`
     - `max_person_in_room`: the largest `maxOccupancy`;
     - `room_types[]`: room names with a bookable rate;
     - `amenity_highlights[] {label, icon_url}`: from `facilities.facilityGroup`, with the `facilities-amenities` group first. This assumes the same path as T-02's amenities, which is unconfirmed;
-    - `pricing`: this property's own cheapest bookable rate under the T-04 rules (tax included, per night), with `availability_status` `on_request` when it has none. `next_available_date` is always null.
+    - `pricing`: this property's own cheapest bookable rate under the T-04 rate filter, **tax included** (stay + `totalTaxPrefCurrency`, ÷ nights), with `availability_status` `on_request` when it has none. T-04's own schema 0.3.0 no longer adds the tax; T-06 still does, since its schema says tax-inclusive. Change both together if that is revisited. `next_available_date` is always null.
 - **Checks:** `asc-mcp-odx-backend-xapi/tests/check_t06.py` is a Python copy of the response DataWeave. It builds `examples/compare-properties-response.sample.json` from the 8790 and 8791 samples, runs not-found, on-request and T-02-shaped cases, and validates them against the schema. Keep it in step with the DataWeave. The DataWeave itself has not been run here (no runtime).
 - **Known issues:** `compare-batch-lookup` is a fourth copy of the booking search `http:request` (see issue 8). The batch path is unconfirmed (above). Set `t06.batchLookup: "false"` to use only one-by-one calls.
 - **Postman:** `asc-mcp-odx-backend-xapi/postman/ascott-mcp-xapi.postman_collection.json` (T-02/03/04 plus a T-06 folder). Set `propertyCode4` to a real 4th code.
@@ -341,7 +354,7 @@ Compares 2–4 room types **at one property**. It has a single inline component 
 - `apartment_category_code`, `apartment_name` (`apartmentName` / `apartmentType`).
 - `banner_image_url` (room `bannerImageMobile`), `brand_logo_url` (property `brandlogo`).
 - `max_person_in_room`, `dimension`.
-- `per_night_rate_pref_curr`: the room's cheapest bookable rate under the T-04 rules, tax included; no rate → "Availability on request" (ER-07, EC-06).
+- `per_night_rate_pref_curr`: the room's cheapest bookable rate under the T-04 rate filter; decide with the owner whether it is tax-inclusive (T-04 0.3.0 passes upstream's basis through instead); no rate → "Availability on request" (ER-07, EC-06).
 - `currency`.
 - `deciding_criteria`, always all four keys (EC-10: "Not specified" when unknown):
   - `bed_type`: `bedType`.
@@ -383,7 +396,7 @@ Despite its name, T-08 is **read-only**. It never writes a reservation, holds a 
 
 **Upstream APIs:**
 
-- **"apartmentlist / apartmentratedetails – V3" is the booking search call this app already makes**: `/v3/checkpropertyavailability` → `propertyList[].apartments[].room0[].ratePlan[]`, the T-04 source. Reuse `get-property-common-info` and the T-04 rules (`room-rate-details.dwl`): bookable rates only, tax-inclusive prices, `ranking` order.
+- **"apartmentlist / apartmentratedetails – V3" is the booking search call this app already makes**: `/v3/checkpropertyavailability` → `propertyList[].apartments[].room0[].ratePlan[]`, the T-04 source. Reuse `get-property-common-info` and the T-04 rules (`room-rate-details.dwl`): bookable rates only, `ranking` order, prices on upstream's own tax basis with the tax beside them (T-04 0.3.0).
   - Room fields: `apartmentCategoryCode`, `apartmentName`.
   - Rate fields: `ratePlanCode`, `ratePlanName`, `isTaxInclusive`, `cancellationDescription`, `earnASRpoints`.
   - Property fields: `propertyName`, `bannerImageMobile`, `brandlogo`, `address`.
