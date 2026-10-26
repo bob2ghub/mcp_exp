@@ -1,83 +1,66 @@
 {
   "meta": {
-    "total_results": 2,
-    "location_query": null,
+    "total_results": 3,
     "currency": "SGD",
-    "checkin_date": "2026-11-15",
-    "checkout_date": "2026-11-18",
-    "nights": 3,
+    "checkin_date": "2026-11-10",
+    "checkout_date": "2026-11-12",
     "noOfadults": 2,
     "noOfchildren": 0,
-    "attribution": "discoverasr.com",
-    "asset_base_url": "https://www.discoverasr.com",
-    "requested_property_codes": [
-      "8790",
-      "8791"
-    ],
-    "dropped_property_codes": []
+    "asset_base_url": "https://www.discoverasr.com"
   },
   "properties": [
     {
+      "property_code": "51052",
+      "property_name": "Ascott Raffles Place Singapore",
+      "brand_code": "ascott-the-residence",
+      "banner_image_url": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/overview/sr_singapore_asc-raffles-place_grand-entrance---hr_44_750x490.jpg",
+      "location_label": "Singapore",
+      "amenity_highlights": [
+        {
+          "imagePath": "/content/dam/tal/icons/icon-pool.svg",
+          "description": "Swimming pool"
+        },
+        {
+          "imagePath": "/content/dam/tal/icons/icon-gym.svg",
+          "description": "Gymnasium"
+        },
+        {
+          "imagePath": "/content/dam/tal/icons/icon-wifi.svg",
+          "description": "Wireless internet connectivity (WiFi)"
+        },
+        {
+          "imagePath": "/content/dam/tal/icons/icon-breakfast.svg",
+          "description": "Daily continental breakfast"
+        },
+        {
+          "imagePath": "/content/dam/tal/icons/icon-lounge.svg",
+          "description": "Residents' lounge"
+        },
+        {
+          "imagePath": "/content/dam/tal/icons/icon-laundry.svg",
+          "description": "Laundry & dry cleaning services"
+        }
+      ],
+      "availability_status": "available",
+      "per_night_rate": 211.5,
+      "is_asr_participating": true,
+      "earn_asr_points": 4230
+    },
+    {
       "property_code": "8790",
       "property_name": "Citadines Balestier Singapore",
-      "is_asr": null,
-      "property_type": null,
-      "brand_name": null,
-      "brand_logo_url": null,
-      "banner_image_url": null,
-      "card_location_line": null,
-      "rating": null,
-      "location": {
-        "area_label": null,
-        "district_label": null,
-        "country_code": "SG"
-      },
-      "max_person_in_room": 2,
-      "room_types": [
-        "Studio Premier",
-        "One-Bedroom Executive"
-      ],
-      "amenity_highlights": null,
-      "pricing": {
-        "availability_status": "available",
-        "per_night_rate_pref_curr": 118.0,
-        "strikethrough_rate": 236.0,
-        "total_stay_rate_pref_curr": 354.0,
-        "currency": "SGD",
-        "next_available_date": null
-      }
+      "brand_code": "citadines",
+      "availability_status": "on_request",
+      "is_asr_participating": false
     },
     {
       "property_code": "8791",
       "property_name": "lyf Funan Singapore",
-      "is_asr": null,
-      "property_type": "Coliving",
-      "brand_name": null,
-      "brand_logo_url": null,
-      "banner_image_url": null,
-      "card_location_line": null,
-      "rating": null,
-      "location": {
-        "area_label": null,
-        "district_label": null,
-        "country_code": "SG"
-      },
-      "max_person_in_room": 9,
-      "room_types": [
-        "All Together (2 Bedroom)",
-        "All Together (4 Bedroom)",
-        "All Together (6 Bedroom Duplex)"
-      ],
-      "amenity_highlights": null,
-      "pricing": {
-        "availability_status": "available",
-        "per_night_rate_pref_curr": 359.7,
-        "strikethrough_rate": 1199.0,
-        "total_stay_rate_pref_curr": 1079.1,
-        "currency": "SGD",
-        "next_available_date": null
-      }
+      "brand_code": "lyf",
+      "availability_status": "available",
+      "per_night_rate": 300,
+      "is_asr_participating": false,
+      "earn_asr_points": 9000
     }
-  ],
-  "missing_properties": []
+  ]
 }

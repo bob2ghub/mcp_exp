@@ -45,6 +45,9 @@ var adultsIn = body.noOfadults default body.adults
 var childrenIn = body.noOfchildren default body.children
 var adults = if (adultsIn == null) p('t06.adults') as Number else number(adultsIn)
 var children = if (childrenIn == null) p('t06.children') as Number else number(childrenIn)
+// Echoed in meta.childAges and carried to T-04 / T-08; booking search is not sent them yet
+// (property-info-request.dwl hardcodes apartmentList[0].childAges to []).
+var childAgesIn = if (body.childAges is Array) (body.childAges map number($)) else []
 var currencyIn = body.currencyCode default body.currency
 var currency = if (currencyIn == null) null else upper(text(currencyIn) default "")
 var language = if (body.language == null) p('default.language') else text(body.language)
@@ -57,6 +60,7 @@ var errors = [
 	if (!checkoutTry.success) "checkoutDate must be a date in yyyy-MM-dd format." else null,
 	if (checkin == null) null else if (checkin < today) "checkinDate cannot be in the past." else null,
 	if (nights == null) null else if (nights < 1) "checkoutDate must be after checkinDate." else if (nights > maxNights) "The stay cannot be longer than $(maxNights) nights." else null,
+	if ((childAgesIn filter (!inRange($, 0, 17))) != []) "childAges must be whole numbers from 0 to 17." else null,
 	if (!inRange(adults, 1, maxAdults)) "noOfadults must be a whole number from 1 to $(maxAdults)." else null,
 	if (!inRange(children, 0, maxChildren)) "noOfchildren must be a whole number from 0 to $(maxChildren)." else null,
 	if (!matchesRe(language, /^[a-z]{2}(-[A-Za-z]{2,4})?$/)) "language must be a language code such as en or zh-CN." else null,
@@ -73,6 +77,7 @@ var errors = [
 		nights: nights,
 		adults: if (isWhole(adults)) floor(adults) else adults,
 		children: if (isWhole(children)) floor(children) else children,
+		childAges: if (body.childAges is Array) (childAgesIn map (if (isWhole($)) floor($) else $)) else null,
 		currency: currency,
 		language: language
 	}

@@ -1,29 +1,30 @@
 %dw 2.0
-// Booking search properties (ctx.lookups, one entry per requested code, in request order) + the request
-// (ctx.compareRequest) -> compare_properties structuredContent, schemas/T06-compare-properties.structured-content.schema.json 0.2.0.
-// T-06 only puts the requested properties side by side in one payload. It does not compare, rank, filter or recommend:
-// that is left to the model and the widget.
-// Every card has the same keys: a value upstream does not have is null, never left out (PRD EC-10).
-// Prices follow the T-04 rules (room-rate-details.dwl): bookable rates only, taxes and fees included, per night,
-// so a card's "from" price matches what T-04 shows after "See room and rates".
-output application/json
+// Booking search properties (vars.lookups, one entry per requested code, in request order) + the request
+// (vars.compareRequest) -> compare_properties structuredContent,
+// schemas/T06-compare-properties.structured-content.schema.json 0.1.0 (the owner's file, 2026-10-27).
+//
+// T-06 only puts the requested properties side by side in one payload. It does not compare, rank, filter or
+// recommend: the model writes its recommendation in the reply, from this data.
+//
+// 0.1.0 shape: {meta, properties[], excluded[]}. properties holds 2 to 4 cards, in request order, without the
+// codes that were not found; fewer than two found is an error, raised by compare-check-lookups before this runs.
+// Optional fields upstream has no value for are LEFT OUT (skipNullOn="everywhere"), not sent as null.
+output application/json skipNullOn="everywhere"
 import try from dw::Runtime
 import take from dw::core::Arrays
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
 // Copy of dwl/compare-properties-response.dwl for https://dataweave.mulesoft.com/learn/playground.
-// Input 'payload' = {compareRequest: <vars.compareRequest>, lookups: <vars.lookups>} (compare-properties-response.playground-input.json)
-// Mule's vars.* are read from the payload (renamed ctx.*) and p('key') from the values below (compare-properties.yaml and uat-missing-keys.yaml).
+// Input 'payload' = {lookups: <vars.lookups>, compareRequest: <vars.compareRequest>} (compare-properties-response.playground-input.json)
 var ctx = payload
-var props = {"t06.minProperties": "2", "t06.maxProperties": "4", "t06.checkinOffsetDays": "30", "t06.nights": "1", "t06.adults": "1", "t06.children": "0", "t06.maxAmenityHighlights": "6", "t06.maxRoomTypes": "6", "request.maxAdults": "10", "request.maxChildren": "10", "request.maxNights": "90", "default.language": "en", "property.currency": "SGD", "asset.baseUrl": "https://www.discoverasr.com"}
+var props = {"t06.maxAmenityHighlights": 6, "property.currency": "SGD", "asset.baseUrl": "https://www.discoverasr.com"}
 fun p(key: String) = props[key]
 // ---------- END SHIM
 
 var req = ctx.compareRequest default {}
-var nights = req.nights default 1
-var currency = upper(req.currency default (p('property.currency') default ""))
-var maxAmenities = p('t06.maxAmenityHighlights') as Number
-var maxRoomTypes = p('t06.maxRoomTypes') as Number
+var lookups = ctx.lookups default []
+// The schema allows at most 6 highlight chips.
+var maxAmenities = do { var m = p('t06.maxAmenityHighlights') default 6 --- if ((m as Number) < 6) (m as Number) else 6 }
 
 fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if ((v is Number) or (v is Boolean)) (v as String) else null
 fun num(v) = if (v is Number) v else if ((v is String) and !isBlank(v)) try(() -> trim(v) as Number).result else null
@@ -32,126 +33,133 @@ fun bool(v) = if (v is Boolean) v else if (v is String) (["true", "y", "yes", "1
 fun objects(v) = if (v is Array) (v filter ($ is Object)) else []
 fun obj(v) = if (v is Object) v else {}
 fun money(n) = if (n == null) null else round(n * 100) / 100
+fun atLeast(n, min) = if ((n != null) and (n >= min)) n else null
 fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
 fun nonEmpty(arr) = if (isEmpty(arr)) null else arr
+fun digits(v) = do { var s = text(v) --- if ((s != null) and (s matches /^[0-9]+$/)) s else null }
+fun slug(v) = do {
+	var s = (lower(text(v) default "") replace /[^a-z0-9]+/ with "-") replace /^-+|-+$/ with ""
+	---
+	if (s == "") null else s
+}
 
-// ---------- rates: the same rules as T-04
+// ---------- rates: the same filter as T-04 (room-rate-details.dwl)
+// Only rates an anonymous user arriving from ChatGPT can book: no member rates (template AOA, template name
+// "… Member …"), no comparison rates ("ACRS Compare") and no test rates (a TEST token in the name).
 fun bookable(rp) = do {
 	var template = upper(text(rp.ratePlanTemplate) default "")
 	var templateName = lower(text(rp.ratePlanTemplateName) default "")
 	var name = lower(text(rp.ratePlanName) default "")
 	---
 	(text(rp.ratePlanCode) != null) and (text(rp.ratePlanName) != null)
-		and !((template == "AOA") or (templateName contains "member") or (name contains "acrs compare"))
+		and !((template == "AOA")
+			or (templateName contains "member")
+			or (name contains "acrs compare")
+			or (name matches /(?s).*(^|[^a-z])test([^a-z].*|$)/))
 }
-fun rateOf(rp) = do {
-	var stay = num(rp.totalStayRatePrefCurr)
-	var total = if (stay == null) null else stay + (num(rp.totalTaxPrefCurrency) default 0)
-	var perNight = if (total == null) null else total / nights
-	var taxFactor = if ((stay != null) and (stay > 0)) total / stay else 1
-	var strike = do { var s = num(rp.strikethroughRatePrefCurr) --- if (s == null) null else s * taxFactor / nights }
+
+// ---------- amenity highlights
+// Upstream facilities.facilityGroup[].facilities[]: the label is description, else name / enName (some rows have a
+// null description), and the icon path is the widget's icon key. De-duplicated by label, the facilities-amenities
+// group first, then ranked by the keywords below so the chips are the highlights the card is meant to show
+// (pool, gym, spa, business centre, …) rather than whatever upstream lists first.
+var highlightKeywords = ["pool", "gym", "fitness", "spa", "business", "wifi", "internet", "breakfast",
+	"restaurant", "lounge", "parking", "laundry", "airport", "shuttle", "reception", "kitchen", "pet"]
+fun highlightRank(label) = do {
+	var l = lower(label)
+	var hit = (highlightKeywords map ((k, i) -> if (l contains k) i else null) filter ($ != null))[0]
 	---
-	{
-		perNight: perNight,
-		total: total,
-		strike: if ((strike != null) and (perNight != null) and (strike > perNight)) strike else null
-	}
+	hit default sizeOf(highlightKeywords)
 }
+fun amenityHighlights(src) = do {
+	var groups = objects(obj(src.facilities).facilityGroup)
+	var preferred = groups filter ((g) -> lower(text(g.entityName) default "") == "facilities-amenities")
+	var rest = groups filter ((g) -> lower(text(g.entityName) default "") != "facilities-amenities")
+	var rows = (flatten((preferred ++ rest) map ((g) -> objects(g.facilities)))
+		filter ((f) -> bool(f.enable) default true)
+		map ((f) -> {imagePath: text(f.imagePath), description: firstText(f, ["description", "name", "enName"])}))
+		filter (($.imagePath != null) and ($.description != null))
+	---
+	nonEmpty(take(rows distinctBy lower($.description) orderBy highlightRank($.description), maxAmenities))
+}
+
+// ---------- nearby: the same points of interest as T-02 nearby, when the lookup carries them.
+// T-06 does not call the POI system today (get-property-pois is T-02 only), so this is normally absent.
+fun nearby(lookup) = nonEmpty((objects(lookup.pois default obj(lookup.property).pois)
+	map ((poi) -> {
+		title: firstText(poi, ["title", "name", "poiName"]),
+		icon_code: firstText(poi, ["icon_code", "iconCode", "icon", "emoji"]),
+		distance_minutes: atLeast(int(poi.distance_minutes default poi.distanceMinutes default poi.walkMinutes), 0)
+	}))
+	filter (($.title != null) and ($.icon_code != null)))
 
 // ---------- one requested property -> its card
-fun entry(lookup) = do {
+fun card(lookup) = do {
 	var src = obj(lookup.property)
-	var rooms = flatten(objects(src.apartments) map objects($.room0)) orderBy (int($.ranking) default 999999)
-	var ratedRooms = rooms map ((a) -> {
-		room: a,
-		rates: ((objects(a.ratePlan) filter bookable($)) map rateOf($)) filter (($.perNight != null) and ($.total != null))
-	}) filter (!isEmpty($.rates))
-	// This property's own lowest bookable rate (the card's "from" price).
-	var cheapest = (flatten(ratedRooms map $.rates) orderBy $.perNight)[0]
-	// Room types with a bookable rate; when the property has no rate at all, the rooms it lists.
-	var typeRooms = if (isEmpty(ratedRooms)) rooms else (ratedRooms map $.room)
-	var roomTypes = ((typeRooms map (text($.apartmentName) default text($.apartmentType))) filter ($ != null)) distinctBy lower($)
-	var occupancy = max(((rooms map (int($.maxOccupancy) default int($.maxPersonInRoom))) filter (($ != null) and ($ > 0)))) default null
-	var facilitiesSrc = obj(src.facilities)
-	var groups = objects(facilitiesSrc.facilityGroup default src.facilityGroup default obj(src.amenities).facilityGroup)
-	// The icon group ("Facilities & Amenities with Icon") first.
-	var orderedGroups = (groups filter (text($.entityName) == "facilities-amenities")) ++ (groups filter (text($.entityName) != "facilities-amenities"))
-	var amenities = ((flatten(orderedGroups map objects($.facilities)) filter (bool($.enabled) default true)) map ((f) -> {
-		label: firstText(f, ["description", "name"]),
-		icon_url: firstText(f, ["imagePath", "icon"])
-	}) filter ($.label != null)) distinctBy lower($.label)
-	var loc = obj(src.location)
-	var city = firstText(src, ["cityName", "city"]) default firstText(loc, ["city"])
-	var country = firstText(src, ["countryName"]) default firstText(loc, ["country"])
-	var reviews = obj(src.reviews)
-	var avgRating = num(reviews.averageRatings default src.averageRatings)
-	var countryCode = upper(firstText(src, ["countryCode"]) default firstText(loc, ["countryCode"]) default "")
+	var rooms = flatten(objects(src.apartments) map ((e) -> flatten((e pluck $) map ((v) -> objects(v)))))
+	// This property's own cheapest bookable rate: the card's "from 175 SGD / Night" and its points banner.
+	var rates = (flatten(rooms map ((a) -> objects(a.ratePlan) filter bookable($)))
+		map ((rp) -> {
+			perNight: num(rp.perNightRatePrefCurr) default num(rp.perNightRate),
+			points: atLeast(int(rp.earnASRpoints), 0)
+		})
+		filter ($.perNight != null)) orderBy $.perNight
+	var lead = rates[0]
+	// A listing-style entry has no apartments at all; upstream still gives it a property-level lead-in rate.
+	var perNight = (lead.perNight default (if (isEmpty(rooms)) (num(src.perNightRatePrefCurr) default num(src.perNightRate)) else null))
+	var city = firstText(src, ["cityName", "city"])
+	var country = firstText(src, ["countryName", "country"])
 	---
 	{
-		code: lookup.code,
-		status: lookup.status,
-		city: city,
-		card: {
-			property_code: firstText(src, ["propertyCode"]) default lookup.code,
-			property_name: firstText(src, ["propertyEnName", "propertyName"]) default lookup.code,
-			is_asr: bool(src.asrParticipating),
-			property_type: firstText(src, ["propertyType"]),
-			brand_name: firstText(src, ["brandName"]),
-			brand_logo_url: firstText(src, ["brandlogo", "brandLogo"]),
-			banner_image_url: firstText(src, ["bannerImageMobile", "newPropertyThumbnail"]) default firstText(objects(src.gallery)[0], ["path", "galleryImage"]),
-			card_location_line: do {
-				var parts = ([city, country] filter ($ != null)) distinctBy lower($)
-				---
-				if (isEmpty(parts)) null else parts joinBy ", "
-			},
-			rating: if (avgRating == null) null else {
-				average_ratings: if (avgRating < 0) 0 else if (avgRating > 5) 5 else avgRating,
-				total_number_of_reviews: do { var t = int(reviews.totalNumberOfReviews default src.totalNumberOfReviews) --- if ((t != null) and (t >= 0)) t else 0 }
-			},
-			location: {
-				area_label: firstText(loc, ["areaLabel", "area", "neighbourhood"]) default city,
-				district_label: firstText(loc, ["districtLabel", "district"]) default country,
-				country_code: if (countryCode matches /^[A-Z]{2}$/) countryCode else null
-			},
-			max_person_in_room: occupancy,
-			room_types: nonEmpty(take(roomTypes, maxRoomTypes)),
-			amenity_highlights: nonEmpty(take(amenities, maxAmenities)),
-			pricing: {
-				availability_status: if (cheapest == null) "on_request" else "available",
-				per_night_rate_pref_curr: money(cheapest.perNight),
-				strikethrough_rate: money(cheapest.strike),
-				total_stay_rate_pref_curr: money(cheapest.total),
-				currency: currency,
-				// PRD ER-08 asks for the next available date; booking search does not return one.
-				next_available_date: null
-			}
-		}
+		property_code: digits(src.propertyCode) default digits(lookup.code),
+		property_name: firstText(src, ["propertyEnName", "propertyName"]),
+		brand_code: slug(src.brand) default slug(src.brandName) default "ascott",
+		banner_image_url: firstText(src, ["bannerImageMobile", "newPropertyThumbnail"])
+			default ((objects(src.gallery) map firstText($, ["galleryImage", "path", "image"])) filter ($ != null))[0],
+		location_label: if (city == null) country
+			else if ((country == null) or (lower(country) == lower(city))) city
+			else city ++ ", " ++ country,
+		// average_ratings / total_number_of_reviews: booking search has no reviews (PRD source v1/propertyreviews
+		// is not integrated), and the schema wants both or neither, so the row is left out.
+		amenity_highlights: amenityHighlights(src),
+		nearby: nearby(lookup),
+		availability_status: if (perNight != null) "available" else "on_request",
+		per_night_rate: money(perNight),
+		// next_available_date: upstream does not say when the next rate is, so it is left out (ER-08).
+		is_asr_participating: bool(src.asrParticipating) default bool(src.isASR) default false,
+		earn_asr_points: if (perNight == null) null else lead.points
 	}
 }
 
-var entries = (ctx.lookups default []) map entry($)
-var found = entries filter ($.status == "ok")
-var cities = ((found map $.city) filter ($ != null)) distinctBy lower($)
+// Cards keep the request order. A card without the schema's required identifiers cannot be rendered, so it is
+// treated as not found rather than sent half-built (no Ascott property code is anything but digits).
+var cards = ((lookups filter ($.status == "ok")) map ((l) -> card(l)))
+	filter (($.property_code != null) and ($.property_name != null))
+var cardCodes = cards map $.property_code
+
+// Every price in the response is in one currency (AC-07): the request's, else the first found property's.
+var okProperties = (lookups filter ($.status == "ok")) map ((l) -> obj(l.property))
+var currency = upper(text(req.currency) default ((okProperties map text($.currency)) filter ($ != null))[0]
+	default (p('property.currency') default "SGD"))
+var labels = (cards map $.location_label) filter ($ != null)
+var childAges = ((if (req.childAges is Array) req.childAges else []) map int($)) filter ($ != null)
 ---
 {
 	meta: {
-		total_results: sizeOf(found),
-		location_query: if (isEmpty(cities)) null else cities joinBy ", ",
+		total_results: sizeOf(cards),
+		// Only when every card is in the same place, as the PRD's "Comparing 3 properties in Central Singapore".
+		location_query: if ((sizeOf(labels) == sizeOf(cards)) and (sizeOf(labels distinctBy lower($)) == 1)) labels[0] else null,
 		currency: currency,
-		checkin_date: req.checkin,
-		checkout_date: req.checkout,
-		nights: nights,
-		noOfadults: req.adults,
-		noOfchildren: req.children,
-		attribution: "discoverasr.com",
-		asset_base_url: p('asset.baseUrl') default "https://www.discoverasr.com",
-		requested_property_codes: req.propertyCodes,
-		dropped_property_codes: req.droppedPropertyCodes default []
+		checkin_date: text(req.checkin) default text(req.checkinDate),
+		checkout_date: text(req.checkout) default text(req.checkoutDate),
+		noOfadults: atLeast(int(req.adults) default int(req.noOfadults), 1) default 1,
+		noOfchildren: atLeast(int(req.children) default int(req.noOfchildren), 0) default 0,
+		childAges: if (req.childAges is Array) childAges else null,
+		asset_base_url: p('asset.baseUrl') default "https://www.discoverasr.com"
 	},
-	properties: found map $.card,
-	// Requested codes with no card, and why (PRD ER-04 / ER-03).
-	missing_properties: (entries filter ($.status != "ok")) map ((e) -> if (e.status == "not_found")
-		{property_code: e.code, reason_code: "not_found", message: "No property data was returned for this code and these dates."}
-	else
-		{property_code: e.code, reason_code: "lookup_failed", message: "The property details service did not answer for this property."})
+	properties: cards,
+	// Requested codes that matched no property. The schema's only reason is "not_found": a code whose lookup
+	// failed (status unavailable) has no slot here, so it is reported in the xapi.downstream.error log instead.
+	excluded: nonEmpty(((lookups filter ($.status == "not_found")) map ((l) -> {property_code: text(l.code), reason: "not_found"}))
+		filter ($.property_code != null))
 }

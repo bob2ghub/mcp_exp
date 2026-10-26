@@ -30,7 +30,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
-| T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (0.2.0, written by us from PRD §6.1) |
+| T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (**0.1.0**, owner's file 2026-10-27) |
 
 Every response body is the tool's `structuredContent`, exactly as its schema defines it. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
 
@@ -198,22 +198,15 @@ Maps `vars.roomsSource` (one `propertyList[]` entry) + `vars.roomsRequest` to T-
   1. If `t06.batchLookup` is "true" (**default "false"** since 2026-10-25), `compare-batch-lookup` makes one booking search call. It sends the `property-info-request.dwl` body with `propertyListing: true` and `propertyCode` set to the first `t06.batchSize` (3) codes. The reference caller allows at most 3 codes with `propertyListing` true, and exactly 1 with false. **In UAT (2026-10-25) the cards came back empty except code and name**, so the batch call most likely returns slim listing entries. Hence the default "false", and a batch entry is now used only when it has `apartments` and a `location` object; otherwise the code is fetched one by one. The `xapi.compare.batch` log lists each entry's field names. Any failure leaves `vars.batchList` empty (log `xapi.compare.batch.failed`).
   2. Every code not returned by the batch call with full details (`apartments` array and `location` object) goes through `compare-single-lookup` in a `parallel-foreach` (`t06.maxConcurrency`). That calls the shared `get-property-common-info`, one code at a time. `APP:NOT_FOUND` → status `not_found`; any other error → `unavailable` (logged as `xapi.downstream.error` with the code).
   3. `vars.lookups` = one `{code, status, source: batch|single, property}` per requested code, in request order.
-- **Errors:** none found → 404 `PROPERTIES_NOT_FOUND`; none returned and at least one lookup failed → 502 `DOWNSTREAM_UNAVAILABLE`; at least one found → 200, with the rest in `missing_properties[]` (`not_found` / `lookup_failed`).
-- **Response:** `{meta, properties[], missing_properties[]}`.
-  - Cards are in request order. Every card has every key; a value upstream lacks is `null` (PRD EC-10).
-  - Card fields:
-    - `property_code`, `property_name`, `property_type`, `brand_name`;
-    - `is_asr` from `asrParticipating`;
-    - `brand_logo_url` from `brandlogo`;
-    - `banner_image_url` from `bannerImageMobile`, else `newPropertyThumbnail`, else the first gallery image;
-    - `card_location_line` from the city and country;
-    - `location {area_label, district_label, country_code}`;
-    - `rating`: null, because booking search has no reviews (PRD source `v1/propertyreviews` is not integrated);
-    - `max_person_in_room`: the largest `maxOccupancy`;
-    - `room_types[]`: room names with a bookable rate;
-    - `amenity_highlights[] {label, icon_url}`: from `facilities.facilityGroup`, with the `facilities-amenities` group first. This assumes the same path as T-02's amenities, which is unconfirmed;
-    - `pricing`: this property's own cheapest bookable rate under the T-04 rate filter, **tax included** (stay + `totalTaxPrefCurrency`, ÷ nights), with `availability_status` `on_request` when it has none. T-04's own schema 0.3.0 no longer adds the tax; T-06 still does, since its schema says tax-inclusive. Change both together if that is revisited. `next_available_date` is always null.
-- **Checks:** `asc-mcp-odx-backend-xapi/tests/check_t06.py` is a Python copy of the response DataWeave. It builds `examples/compare-properties-response.sample.json` from the 8790 and 8791 samples, runs not-found, on-request and T-02-shaped cases, and validates them against the schema. Keep it in step with the DataWeave. The DataWeave itself has not been run here (no runtime).
+- **At least TWO properties must come back** (schema 0.1.0: `properties` is 2–4). Errors: fewer than two found → 404 `PROPERTIES_NOT_FOUND`, whose message names the codes that were not found; fewer than two and at least one lookup failed → 502 `DOWNSTREAM_UNAVAILABLE`.
+- **Response (schema 0.1.0, the owner's file 2026-10-27, mapped by `dwl/compare-properties-response.dwl`):** `{meta, properties[], excluded[]}`. **Optional fields upstream has no value for are left out** (`skipNullOn="everywhere"`), unlike our earlier 0.2.0 version which sent them as `null`.
+  - `meta {total_results, location_query, currency, checkin_date, checkout_date, noOfadults, noOfchildren, childAges, asset_base_url}`. `additionalProperties: false`, so **`dropped_property_codes` has nowhere to go**: codes past the 4th are still removed by the validator but only appear in the logs. `location_query` is sent only when every card shares the same `city, country` line. `childAges` is echoed from the request — `compare-validate-request.dwl` now accepts and validates it (0–17), though `property-info-request.dwl` still sends upstream an empty `childAges`.
+  - **Card fields** (in request order): `property_code` (digits only), `property_name` (`propertyEnName` / `propertyName`), `brand_code` (slug of `brand`, else `brandName`, else `ascott`), `banner_image_url` (`bannerImageMobile` → `newPropertyThumbnail` → first gallery image), `location_label` (`cityName, countryName`, de-duplicated when they are the same word), `amenity_highlights[] {imagePath, description}`, `nearby[] {title, icon_code, distance_minutes}`, `availability_status`, `per_night_rate`, `is_asr_participating` (`asrParticipating`), `earn_asr_points`.
+  - **Prices:** the property's own **cheapest bookable rate** under the T-04 rate filter (no `AOA` / member / "ACRS Compare" / TEST rates), as `per_night_rate` = that rate's `perNightRatePrefCurr`, **as upstream gives it** (T-04 0.3.0's basis; the earlier T-06 added the tax). `earn_asr_points` is that same rate's `earnASRpoints`. A listing-style entry with no `apartments` falls back to the property-level `perNightRatePrefCurr`. No rate → `availability_status: on_request` with no price. `next_available_date` is never sent (upstream does not say).
+  - **`amenity_highlights`:** from `facilities.facilityGroup[].facilities[]` — `imagePath` plus the label (`description`, else `name` / `enName`, since some rows have a null description). The `facilities-amenities` group first, de-duplicated by label, then ranked by a keyword list (pool, gym, fitness, spa, business, wifi, breakfast, restaurant, lounge, parking, laundry, airport, …) and cut to 6, so the chips are highlights rather than whatever upstream lists first. 51052 → Swimming pool, Gymnasium, WiFi, Daily continental breakfast, Residents' lounge, Laundry.
+  - **Left out for lack of a source:** `average_ratings` / `total_number_of_reviews` (booking search has no reviews; the schema wants both or neither) and `nearby` (T-06 does not call the POI system — the mapping fills it when a lookup carries `pois`, which only T-02 does today).
+  - **`excluded[] {property_code, reason}`** carries only `reason: "not_found"`, the schema's single enum value. A code whose lookup failed (`unavailable`) therefore has no slot: it is simply absent from the response and reported in the `xapi.downstream.error` log.
+- **Checks:** `asc-mcp-odx-backend-xapi/tests/check_t06.py` is a function-for-function Python copy of the response DataWeave. It builds `examples/compare-properties-response.sample.json` from the real 51052 response plus the 8790 / 8791 samples and runs 19 checks (not found, unavailable, no bookable rate, a listing entry, POIs and `childAges`, different cities); all validate against 0.1.0. Keep it in step with the DataWeave. The DataWeave itself has not been run here (no runtime); `tests/playground/compare-properties-response.playground.dwl` + `-input.json` run it in the DataWeave Playground.
 - **Known issues:** `compare-batch-lookup` is a fourth copy of the booking search `http:request` (see issue 8). The batch path is unconfirmed (above). Set `t06.batchLookup: "false"` to use only one-by-one calls.
 - **Postman:** `asc-mcp-odx-backend-xapi/postman/ascott-mcp-xapi.postman_collection.json` (T-02/03/04 plus a T-06 folder). Set `propertyCode4` to a real 4th code.
 
@@ -248,7 +241,7 @@ Tool map from the PRDs:
 | T-03 | Get_service_offerings | built |
 | T-04 | Get_room_rate_details | built; rewritten for schema 0.3.0 (2026-10-26) |
 | T-05 | Get_promotions | PRD only |
-| T-06 | Compare_properties | built: puts properties together only (see below) |
+| T-06 | Compare_properties | built: puts properties together only; mapped to the owner's schema 0.1.0 (2026-10-27) |
 | T-07 | Compare_rooms_rates | PRD only |
 | T-08 | Create_booking | PRD only |
 

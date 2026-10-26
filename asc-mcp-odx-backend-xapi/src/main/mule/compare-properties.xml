@@ -2,7 +2,7 @@
 <!--
   T-06 compare_properties: POST ${t06.http.path}
   Returns 2 to 4 properties in one payload (PRD TC-06) from the same booking search process API as T-02 / T-04, as the
-  compare_properties structuredContent (schemas/T06-compare-properties.structured-content.schema.json 0.2.0).
+  compare_properties structuredContent (schemas/T06-compare-properties.structured-content.schema.json 0.1.0, the owner's file).
   It only puts the properties together: no comparison, ranking, filtering or recommendation (the model and widget do that).
 
   Lookup: when t06.batchLookup is "true" (default "false"), one booking search call with up to t06.batchSize codes and propertyListing true
@@ -32,7 +32,7 @@
     <ee:transform doc:name="Final-Response">
       <ee:message><ee:set-payload resource="dwl/compare-properties-response.dwl"/></ee:message>
     </ee:transform>
-    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, totalResults: payload.meta.total_results, returned: (payload.properties default []) map $.property_code, missing: (payload.missing_properties default []) map $.property_code, lookups: vars.lookupSummary, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T06.success"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.success", tool: vars.toolName, correlationId: vars.traceId, totalResults: payload.meta.total_results, returned: (payload.properties default []) map $.property_code, excluded: (payload.excluded default []) map $.property_code, lookups: vars.lookupSummary, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T06.success"/>
     <error-handler ref="compare-error-handler"/>
   </flow>
 
@@ -175,17 +175,18 @@ output application/json
     </try>
   </sub-flow>
 
-  <!-- At least one property must have come back: none found is a 404 (PRD ER-04), none reachable is a 502 (ER-03). -->
+  <!-- The schema holds 2 to 4 properties, so at least TWO must have come back: fewer is an error naming the codes
+       that were not found (schema 0.1.0, PRD EC-04 / ER-04), and a lookup that failed makes it a 502 (ER-03). -->
   <sub-flow name="compare-check-lookups">
     <choice>
-      <when expression="#[isEmpty((vars.lookups default []) filter ($.status == 'ok'))]">
+      <when expression="#[sizeOf((vars.lookups default []) filter ($.status == 'ok')) &lt; 2]">
         <choice>
           <when expression="#[isEmpty((vars.lookups default []) filter ($.status == 'unavailable'))]">
-            <set-variable variableName="errorMessage" value="None of the requested properties was found for the stated dates." doc:name="errorMessage"/>
-            <raise-error type="APP:NOT_FOUND" description="No requested property found"/>
+            <set-variable variableName="errorMessage" value="#[output application/java --- do { var missing = ((vars.lookups default []) filter ($.status != 'ok')) map ($.code as String) --- 'Fewer than two of the requested properties could be compared' ++ (if (isEmpty(missing)) '' else '. Not found: ' ++ (missing joinBy ', ')) ++ '.' }]" doc:name="errorMessage"/>
+            <raise-error type="APP:NOT_FOUND" description="Fewer than two requested properties found"/>
           </when>
           <otherwise>
-            <raise-error type="APP:DOWNSTREAM_UNAVAILABLE" description="No requested property could be retrieved"/>
+            <raise-error type="APP:DOWNSTREAM_UNAVAILABLE" description="Fewer than two requested properties could be retrieved"/>
           </otherwise>
         </choice>
       </when>
