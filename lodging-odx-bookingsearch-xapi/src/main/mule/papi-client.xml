@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<!--
+		Generic PAPI proxy. Uses the inbound listener attributes, so every APIkit flow
+		just flow-refs here:
+		  path   = inbound path without the XAPI base path (/api/v1/x -> /v1/x)
+		  body   = validated inbound JSON, unchanged (no re-encoding)
+		  query  = inbound query params (e.g. ?availiablity= on v3)
+		  status = PAPI status code is passed through, 4xx/5xx bodies included
+	-->
+	<sub-flow name="call-papi">
+		<set-variable variableName="papiPath" value="#[attributes.maskedRequestPath]" doc:name="papiPath" />
+		<set-variable variableName="t0" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="t0" />
+		<http:request method="POST" config-ref="HTTP_Request_Bookingsearch_config" path="#[vars.papiPath]"
+			responseTimeout="30000" doc:name="POST PAPI">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type": "application/json",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid'),
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+	"messageId": vars.messageId,
+	(userToken: attributes.headers.userToken) if (!isEmpty(attributes.headers.userToken))
+}]]]></http:headers>
+			<http:query-params><![CDATA[#[attributes.queryParams]]]></http:query-params>
+			<http:response-validator>
+				<http:success-status-code-validator values="100..599" />
+			</http:response-validator>
+		</http:request>
+		<set-variable variableName="httpStatus" value="#[attributes.statusCode]" doc:name="httpStatus" />
+		<set-variable variableName="elapsedMs" value="#[(now() as Number {unit: 'milliseconds'}) - vars.t0]" doc:name="elapsedMs" />
+		<logger level="INFO" doc:name="Log PAPI call"
+			message="#['PAPI POST $(vars.papiPath) -> $(vars.httpStatus) in $(vars.elapsedMs) ms messageId=$(vars.messageId)']" />
+		<!-- PAPI 5xx bodies are not always JSON (e.g. a Java-serialized map): return a clean JSON error instead -->
+		<choice doc:name="PAPI 5xx without JSON?">
+			<when expression="#[(vars.httpStatus >= 500) and !(lower(attributes.headers.'content-type' default '') contains 'json')]">
+				<ee:transform doc:name="PAPI error response">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	messageId: vars.messageId,
+	error: "PAPI:INTERNAL_ERROR",
+	message: "Process API returned $(vars.httpStatus). See PAPI logs for messageId $(vars.messageId)."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+		</choice>
+	</sub-flow>
+
+	<!--
+		PAPI health probe: a lightweight GET (no business logic runs on the PAPI).
+		UP   = PAPI answered with any status below 500, except 401/403
+		DOWN = no connection, timeout, 5xx, or credentials rejected
+	-->
+	<sub-flow name="check-papi-health">
+		<set-variable variableName="t0" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="t0" />
+		<try doc:name="Try">
+			<http:request method="GET" config-ref="HTTP_Request_Bookingsearch_config" path="/console/"
+				responseTimeout="30000" target="papiProbe"
+				targetValue="#[{ httpStatus: attributes.statusCode }]" doc:name="GET PAPI">
+				<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type": "application/json",
+	"client_id" : Mule::p('https.bookingsearchprocessapi.clientid'),
+	"client_secret" : Mule::p('https.bookingsearchprocessapi.clientsecret'),
+	"messageId": vars.messageId,
+	(userToken: attributes.headers.userToken) if (!isEmpty(attributes.headers.userToken))
+}]]]></http:headers>
+				<http:response-validator>
+					<http:success-status-code-validator values="100..599" />
+				</http:response-validator>
+			</http:request>
+			<error-handler>
+				<on-error-continue enableNotifications="false" logException="false" doc:name="Unreachable">
+					<set-variable variableName="papiProbe" value="#[{ httpStatus: null, error: error.description }]" doc:name="papiProbe" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="papiHealth">
+			<ee:variables>
+				<ee:set-variable variableName="papiHealth" resource="dwl/papi-health.dwl" />
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" message="#['PAPI health: ' ++ write(vars.papiHealth, 'application/json', {indent: false})]" doc:name="Log health" />
+	</sub-flow>
+</mule>

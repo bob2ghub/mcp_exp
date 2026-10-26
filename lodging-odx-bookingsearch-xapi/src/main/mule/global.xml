@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+
+	<!-- env is set per deployment (-Denv=uat on CloudHub, local in Studio) -->
+	<global-property doc:name="Global Property" doc:id="e506f1c6-cac5-446e-99c7-dfa337a41a59" name="mule-env" value="uat"/>
+	<configuration-properties doc:name="Configuration properties" doc:id="193f9fc7-dd9a-4904-b9df-a51b01f5bdd3" file="${mule-env}.yaml"/>
+	
+	<!-- <secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="a760d198-1433-4ced-ae3b-2bee65a9d5e6" file="config-secured-${mule-env}.yaml" key="REDACTED"/> -->
+
+	<!-- Inbound: plain HTTP on ${http.port} (8081 on CloudHub 1.0, behind the shared/dedicated LB) -->
+	<http:listener-config name="XAPI_HTTP_Listener_config" doc:name="HTTP Listener config">
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+
+	<!-- Outbound: the Process API on its VPC-internal HTTPS port -->
+<http:request-config name="HTTP_Request_Bookingsearch_config" doc:name="HTTP Request configuration" doc:id="edcaa057-4fcc-4cf8-a062-dd3a5bf3db86" basePath="${https.bookingsearchprocessapi.basepath}" responseTimeout="${https.bookingsearchprocessapi.responsetimeout}">
+		<http:request-connection protocol="HTTPS" host="${https.bookingsearchprocessapi.host}" port="${https.bookingsearchprocessapi.port}">
+			<tls:context enabledProtocols="TLSv1.2">
+				<tls:trust-store path="${https.bookingsearchprocessapi.path}" password="${https.bookingsearchprocessapi.keystorepwd}" type="jks" insecure="true"/>
+			</tls:context>
+		</http:request-connection>
+		<http:response-validator>
+			<http:success-status-code-validator values="${validation.successcodes}"/>
+		</http:response-validator>
+	</http:request-config>
+	<apikit:config name="bookingsearch-xapi-config" api="api/bookingsearch-xapi.raml"
+		outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+</mule>
