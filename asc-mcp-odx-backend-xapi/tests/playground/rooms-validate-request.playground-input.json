@@ -1,0 +1,13 @@
+{
+  "propertyCode": "51052",
+  "checkin": "2026-11-10",
+  "checkout": "2026-11-12",
+  "adults": 2,
+  "children": 1,
+  "childAges": [
+    6
+  ],
+  "currency": "SGD",
+  "language": "en",
+  "priceIncludesTax": false
+}

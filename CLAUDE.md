@@ -44,7 +44,7 @@ Every response body is the tool's `structuredContent`, exactly as its schema def
 | `get-poi-details.xml` | `get-property-pois`: only when `vars.request.maxPois > 0`; `dwl/poi-request.dwl`, POST `${poisystem.path}` via `Property_POI_HTTP` → `vars.pois`. Any error → `vars.pois = null`, logged as `xapi.poi.unavailable`. | Optional: never fails the call. |
 | `get-property-details.xml` | Flow `get-property-details` (T-02): `common-validate-request` → `get-property-info` → `vars.propertyCode` → `get-property-pois` → `dwl/map-structured-content.dwl` → `xapi.success`; error handler `property-details-error-handler`. Sub-flow `get-property-info` = `get-property-common-info`, then unwraps, logs and checks again. | Its old `validate-request` and `get-property-pois` copies are commented out (moved to `validate-request.xml` / `get-poi-details.xml`). |
 | `get-service-offerings.xml` | Flow `get-service-offerings` (T-03; sets `vars.toolName`): `services-validate-request` (parses the body first, so only bad JSON gives "invalid JSON"; requires a digits-only `propertyCode`; adds a default stay from `default.*`) → **`vars.servicesRequest`**. Then `services-get-facilities` copies it into `vars.request`, calls booking search **itself** (not via `get-property-common-info`) and selects the `propertyList` entry → **`vars.servicesSource`**. Then `services-map-response` → `{meta, services[]}`; **changed by us 2026-10-26** from inline DataWeave to `<ee:set-payload resource="dwl/service-offerings.dwl"/>` (see "T-03 mapping"). Error handler `property-details-error-handler`. | Its header comment is out of date (it names `Property_Info_HTTP` and `property.*`; the flow uses `HTTP_Request_Bookingsearch_config` and `https.bookingsearchprocessapi.*`). |
-| `get-room-rates.xml` | Flow `get-room-details`; sub-flows `rooms-get-rates`, `rooms-map-response`; `rooms-error-handler`; `rooms-format-and-log-error`. | See the known issues below. |
+| `get-room-rates.xml` (**rewritten by us 2026-10-26, not yet deployed**) | Flow `get-room-details` (T-04; sets `vars.toolName` = `get_room_rate_details`): `rooms-validate-request` (`dwl/rooms-validate-request.dwl`) → **`vars.roomsRequest`** → `rooms-get-rates` (sets `vars.request` = `vars.roomsRequest`, calls the shared `get-property-common-info`, `vars.roomsSource` = `vars.property`) → `rooms-map-response` (`dwl/room-rate-details.dwl`) → `T04.success`. `rooms-error-handler` / `rooms-log-downstream` / `rooms-format-and-log-error`. | Known issues 1–6 are fixed; see "T-04 in this app" below. The commented-out STUDIO blocks and the duplicate `http:request` were dropped. |
 | `compare-properties.xml` (added by us 2026-10-25, not yet deployed) | Flow `compare-properties` (T-06; `vars.toolName` = `compare_properties`): `compare-validate-request` (`dwl/compare-validate-request.dwl`) → **`vars.compareRequest`** → `compare-get-properties` → **`vars.lookups`** → `compare-check-lookups` → `dwl/compare-properties-response.dwl`. Own `compare-error-handler` / `compare-format-and-log-error`. | See "T-06 in this app" below. |
 
 ## The booking search xAPI (`lodging-odx-bookingsearch-xapi/`, owner's files, 2026-10-26)
@@ -113,19 +113,19 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 
 ## Known issues in the base (2026-10-25)
 
-`get-room-rates.xml`:
-1. It validates with `common-validate-request`, which sets `vars.request` without `nights` or `rooms`. Its own `rooms-validate-request` is commented out, so **`vars.roomsRequest` is never set**. `rooms-get-rates` (roomsSource selection) and `rooms-map-response` read `vars.roomsRequest`, so dates and nights come out null.
-2. `rooms-map-response` is still the **old flat mapping** (`apartments[]`, `apartment_count`), not the T-04 schema. Replace its body with `<ee:set-payload resource="dwl/room-rate-details.dwl"/>`, which needs `vars.roomsSource` and `vars.roomsRequest` (no `nights`: 0.3.0 passes upstream's prices through). See "T-04 mapping" below.
-3. The `T04.success` logger reads `payload.property_code` / `payload.apartment_count`; for T-04 use `payload.meta.*`.
-4. No `vars.toolName`, so shared loggers label T-04 lines `get_property_details`.
-5. `rooms-error-handler` has no `HTTP:BAD_REQUEST` branch (a 400 shows as `DOWNSTREAM_UNAVAILABLE`) and doesn't log the downstream body.
-6. Duplicate request-building: `rooms-get-rates` repeats the booking search call that `get-property-common-info` already makes.
+`get-room-rates.xml`: **issues 1–6 were all fixed in our rewrite of 2026-10-26** (not yet deployed). They were:
+1. ~~It validated with `common-validate-request`, so `vars.roomsRequest` was never set and dates and nights came out null.~~ Fixed: its own `rooms-validate-request` runs `dwl/rooms-validate-request.dwl`.
+2. ~~`rooms-map-response` held the old flat mapping (`apartments[]`, `apartment_count`).~~ Fixed: `<ee:set-payload resource="dwl/room-rate-details.dwl"/>` (schema 0.3.0).
+3. ~~The `T04.success` logger read `payload.property_code` / `payload.apartment_count`.~~ Fixed: it reads `payload.meta.*` and sums `requested_rooms[].total_results`.
+4. ~~No `vars.toolName`.~~ Fixed.
+5. ~~`rooms-error-handler` had no `HTTP:BAD_REQUEST` branch and did not log the downstream body.~~ Fixed: a `DOWNSTREAM_REJECTED` (502) branch, and `rooms-log-downstream` logs `xapi.downstream.error` with the upstream status and the first 1000 characters of its body.
+6. ~~`rooms-get-rates` repeated the booking search call.~~ Fixed: it calls `get-property-common-info`, so there are now three copies of that call, not four (see issue 8).
 
 `get-property-details.xml` (T-02, working in UAT):
 7. `get-property-info` repeats what `get-property-common-info` already does (unwrap into `vars.property`, the `xapi.property.response` log and the not-found check), so each call logs `xapi.property.response` twice. Harmless; drop the repeat when convenient.
 
 `get-service-offerings.xml` (T-03):
-8. It has its own copy of the booking search request. That makes three copies (T-02 via `get-property-common-info`, T-03 and T-04), all of which must stay identical; a fix to one must go to all three, or T-03/T-04 should call `get-property-common-info`.
+8. It has its own copy of the booking search request. That makes three copies (T-02 and now T-04 via `get-property-common-info`, T-03, and T-06's `compare-batch-lookup`), all of which must stay identical; a fix to one must go to all three, or T-03 should call `get-property-common-info` as T-04 now does.
 9. Its stay is always the default (today + `default.checkinOffsetDays`, `default.nights` nights, `default.adults` adults). If booking search has no availability for that stay, there is no `propertyList` and the call returns 404, even though facilities don't depend on dates.
 
 `global-config.xml`: every truststore is `insecure="true"`; the secure-properties key and two truststore passwords are hardcoded (REDACTED here); `uat.yaml` is loaded twice (`uat.yaml` and `${mule-env}.yaml`). There are also two POI request configs.
@@ -178,7 +178,16 @@ Maps `vars.roomsSource` (one `propertyList[]` entry) + `vars.roomsRequest` to T-
 - **Rate fields:** `rate_plan_code`, `rate_plan_name`, `is_tax_inclusive`, `per_night_rate`, `total_stay_rate`, `per_night_tax`, `total_tax` (all required), plus optional `description`, `earn_asr_points`, `non_refundable`, `cancellation_description`, `is_app_exclusive` (`ratePlanChannel` == "MOBILE"). `free_cancellation_until`, `includes_breakfast` are RESERVED in the schema and not sent.
 - **Room fields** are unchanged from 0.1.0: `room_code` = `apartmentType` (not `apartmentCategoryCode`), `room_category`, `ranking`, `description` = `roomInformation`, `bed_type`, `max_person_in_room`, `max_occupancy`, `size_sqm` = `dimension`, `units_remaining`, the three image paths, `gallery` (`galleryImage` else `path`, `galleryType` "image" only) and `amenity_groups` (groups with no amenities dropped). `tag`, `features`, `view_type`, `accessible` are RESERVED and not sent.
 - **Checked against the real 51052 response** (`examples/upstream-property-details-51052.json`, the same file T-02 and T-03 use). `tests/check_t04.py` is a function-for-function Python copy that writes `examples/room-rate-details-51052-response.sample.json` and runs 20 checks (the real payload, three requested rooms, a tax-inclusive rate, no bookable rate, an empty request, a bare property); all validate against 0.3.0. Keep the two in step. On 51052 the studio keeps 6 of its 14 rates (`ASRAPPFX` 211.50 leads) and the four room types come out in `ranking` order. The DataWeave itself has not been run here (no runtime in this session); `tests/playground/room-rate-details.playground.dwl` + `-input.json` run it in the DataWeave Playground.
-- **Wiring still needed in `get-room-rates.xml`** (known issues 1–2, unchanged): `vars.roomsRequest` is never set, and `rooms-map-response` still holds the old flat mapping. Point it at `<ee:set-payload resource="dwl/room-rate-details.dwl"/>` and set `vars.roomsRequest` / `vars.roomsSource`. `nights` is no longer needed by the mapping (prices are not divided any more).
+- **The flow is wired for it** (`get-room-rates.xml`, rewritten 2026-10-26): see "T-04 in this app" below.
+
+### T-04 in this app (`get-room-rates.xml` + `dwl/rooms-validate-request.dwl`, rewritten by us 2026-10-26, not yet deployed)
+
+- **`rooms-validate-request`** runs `dwl/rooms-validate-request.dwl`, T-04's own validator (the shared `dwl/validate-request.dwl` produces no `nights` and no per-room guests). It accepts the short T-02 names (`checkin`, `checkout`, `adults`, `children`, `currency`) and the PRD names (`checkinDate`, `checkoutDate`, `noOfadults`, `noOfchildren`, `currencyCode`), plus `childAges`, `apartmentList[]` and `priceIncludesTax`. It keeps the field names `property-info-request.dwl` reads and adds `nights`, `rooms`, `apartmentList` and `maxPois: 0`. Errors are one `APP:BAD_REQUEST` message per problem; per-room messages name the room (`apartmentList[1].noOfadults …`) and are only produced when the caller actually sent an `apartmentList`. `voucherCode` is deliberately **not** accepted: `property-info-request.dwl` hardcodes `voucherCode: ""`, so upstream would never see it and `meta.voucher_code_valid` would report a flag computed without it.
+- **One room per request, for now.** A guard in `rooms-validate-request` raises `APP:BAD_REQUEST` when `apartmentList` has more than one entry, because `property-info-request.dwl` sends `noOfRooms: 1` and a single-entry `apartmentList`, so upstream would answer `room0` only and the other tabs would be empty. Delete that guard once that file passes `vars.request.apartmentList` / `.rooms` through; the mapping already handles `room0`, `room1`, … . `childAges` is validated and echoed but likewise not yet sent upstream.
+- **`rooms-get-rates`** no longer has its own `http:request`: it sets `vars.request` = `vars.roomsRequest` and calls the shared `get-property-common-info`, then `vars.roomsSource` = `vars.property`.
+- **Logs:** `T04.start`, `xapi.bookingsearch.request` and `xapi.property.response` (from the shared sub-flow, now labelled `get_room_rate_details` through `vars.toolName`), `xapi.downstream.error` on any HTTP failure (status + first 1000 characters of the upstream body), `T04.success` with `propertyCode`, `noOfRooms`, `roomTypes` and `elapsedMs`, and `xapi.failure`.
+- **Errors:** 400 `BAD_REQUEST`, 404 `ROOMS_NOT_FOUND`, 502 `DOWNSTREAM_REJECTED` (an upstream 400: our body was refused), 502 `DOWNSTREAM_UNAVAILABLE`, 504 `DOWNSTREAM_TIMEOUT`, 500 `INTERNAL_ERROR`.
+- **Checks:** `tests/check_t04_request.py` mirrors the validator in Python (12 checks) and `tests/check_t04.py` the mapping (20 checks). `tests/playground/rooms-validate-request.playground.*` and `room-rate-details.playground.*` run both in the DataWeave Playground.
 
 ## T-06 in this app (owner decision, 2026-10-25)
 
@@ -237,7 +246,7 @@ Tool map from the PRDs:
 | T-01 | Search properties | not in this app |
 | T-02 | Get_property_details | built |
 | T-03 | Get_service_offerings | built |
-| T-04 | Get_room_rate_details | built (issues 1–6) |
+| T-04 | Get_room_rate_details | built; rewritten for schema 0.3.0 (2026-10-26) |
 | T-05 | Get_promotions | PRD only |
 | T-06 | Compare_properties | built: puts properties together only (see below) |
 | T-07 | Compare_rooms_rates | PRD only |
