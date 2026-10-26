@@ -171,60 +171,11 @@ var code = vars.servicesRequest.propertyCode
     </choice>
   </sub-flow>
 
-  <!-- vars.servicesSource -> {meta, services[]}: one flat row per facilities.facilityDetails[] item, upstream order. -->
+  <!-- vars.servicesSource -> {meta, services[]}: one service per facilities.facilityDetails[] item, upstream order (dwl/service-offerings.dwl). -->
   <sub-flow name="services-map-response">
     <ee:transform>
       <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json skipNullOn="everywhere"
-fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
-fun firstVal(o, keys) = if (o is Object) ((keys map ((k) -> o[k])) filter ($ != null))[0] else null
-fun firstText(o, keys) = if (o is Object) ((keys map ((k) -> text(o[k]))) filter ($ != null))[0] else null
-fun matchesRe(s, re) = if (s is String) (s matches re) else false
-fun objects(v) = if (v is Array) (v filter ($ is Object)) else if (v is Object) [v] else []
-fun slug(v) = do {
-	var s = text(v)
-	var out = if (s == null) "" else ((lower(s) replace /[^a-z0-9]+/ with "-") replace /^-+|-+$/ with "")
-	---
-	if (out == "") null else out
-}
-
-var src = vars.servicesSource
-var assetBaseUrl = p('t03.assetbaseurl')
-// facilityUrl must be an absolute URI; site-relative paths are resolved against asset.baseUrl.
-fun absoluteUrl(v) = do {
-	var s = text(v)
-	---
-	if (s == null) null
-	else if (matchesRe(s, /^https?:\/\/\S+$/)) s
-	else if (matchesRe(s, /^\/\S*$/)) assetBaseUrl ++ s
-	else null
-}
-var facilitiesIn = firstVal(src, ["facilities"])
-var details = objects(if (facilitiesIn is Object) firstVal(facilitiesIn, ["facilityDetails", "facility_details"]) else facilitiesIn)
-var services = details map ((f) -> {
-	service_name: firstText(f, ["title", "name"]),
-	service_location: firstText(f, ["location"]),
-	operating_hours: firstText(f, ["operatingHours", "operating_hours"]),
-	description: firstText(f, ["description"]),
-	thumbnail_url: firstText(f, ["thumbnailImage", "thumbnail", "image"]),
-	contact_number: firstText(f, ["contactNumber", "phone"]),
-	external_service_url: absoluteUrl(firstVal(f, ["facilityUrl", "url"]))
-}) filter ($.service_name != null)
-var countryCode = upper(firstText(src, ["countryCode", "country_code"]) default "")
----
-{
-	meta: {
-		property_code: vars.servicesRequest.propertyCode,
-		property_name: firstText(src, ["propertyEnName", "propertyName", "property_name"]) default vars.servicesRequest.propertyCode,
-		brand_code: slug(firstText(src, ["brand", "brandCode", "brand_code"])) default slug(firstText(src, ["brandName"])) default "ascott",
-		country_code: if (matchesRe(countryCode, /^[A-Z]{2}$/)) countryCode else null,
-		phone: firstText(src, ["phone", "phoneNumber"]),
-		asset_base_url: assetBaseUrl,
-		total_results: sizeOf(services)
-	},
-	services: services
-}]]></ee:set-payload>
+        <ee:set-payload resource="dwl/service-offerings.dwl"/>
       </ee:message>
     </ee:transform>
   </sub-flow>
