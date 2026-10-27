@@ -1,0 +1,20 @@
+# T-05 get_promotions (t05-get-promotions.xml): keys to add to uat.yaml.
+#
+# The https.cprvprocessapi.* keys are REQUIRED: t05-get-promotions.xml defines HTTP_Request_configuration-CPRVProcessAPI
+# with them, and Mule cannot start with an unresolved ${...} placeholder. Use the values of the mobile xAPI's
+# ODX_Search_Purchase_Voucher_Flow (CPRV process API). Keep the client ID and secret in the secure properties file, never
+# in this file or in git. uat.yaml already has an `https:` block: add `cprvprocessapi:` INSIDE it (YAML allows one
+# `https:` key).
+
+t05:
+  # details_url when searchvoucher sends no voucherUrl (the mobile flow takes it from AEM, which T-05 does not call).
+  detailsFallbackPath: "/en/member/buy-experiences"
+
+https:
+  cprvprocessapi:
+    host: "<CPRV process API host>"
+    port: "<port>"
+    basepath: "<base path>"
+    responsetimeout: "10000"
+    clientid: "<from secure properties>"
+    clientsecret: "<from secure properties>"

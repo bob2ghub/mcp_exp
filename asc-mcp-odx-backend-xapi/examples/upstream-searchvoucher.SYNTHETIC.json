@@ -1,0 +1,22 @@
+{
+  "_note": "SYNTHETIC: built from the field names ODX_Search_Purchase_Voucher_Flow reads, not a real /v1/searchvoucher response. Replace with a real one.",
+  "messageId": "trace-1",
+  "voucher": [
+    {"voucherProgrammeCode": "TRIP50", "voucherTitle": "Trip voucher SGD 50", "voucherEnTitle": "Trip voucher SGD 50", "category": "cash",
+     "propertyCode": ["51052", "51052", ""], "countryCode": "SG", "applicableLevel": "property_specific", "expiryDate": "2027-03-31T23:59:59",
+     "promoPrice": 45, "preferredCurrencyPromoPrice": "45.00", "points": 0, "inventory": 3, "urgencyTrigger": 5, "sequence": 2, "private": "no",
+     "voucherUrl": "https://www.discoverasr.com//en/member/buy-experiences/trip50", "imageThumbnail": "/content/dam/vouchers/trip50.jpg",
+     "description": "<p>Spend on any stay.</p><p>Valid &amp; transferable.</p>"},
+    {"voucherProgrammeCode": "SGPKG", "voucherTitle": "Singapore staycation package", "category": "package",
+     "propertyCode": [], "countryCode": "SG", "applicableLevel": "country", "expiryDate": null,
+     "preferredCurrencyPromoPrice": 0, "points": 12000, "inventory": 40, "sequence": 1, "private": "no", "description": "SGPKG"},
+    {"voucherProgrammeCode": "JPONLY", "voucherTitle": "Tokyo dining credit", "category": "cash",
+     "propertyCode": ["70001"], "countryCode": "JP", "applicableLevel": "property_specific", "preferredCurrencyPromoPrice": 30, "sequence": 3, "private": "no"},
+    {"voucherProgrammeCode": "OTHERPROP", "voucherTitle": "Flight credit at another property", "category": "cash",
+     "propertyCode": ["51099"], "countryCode": "SG", "applicableLevel": "property_specific", "preferredCurrencyPromoPrice": 80, "sequence": 4, "private": "no"},
+    {"voucherProgrammeCode": "SECRET", "voucherTitle": "Staff only", "category": "cash", "countryCode": "SG", "applicableLevel": "country", "private": "yes", "sequence": 0},
+    {"voucherProgrammeCode": "NOTITLE", "countryCode": "SG", "applicableLevel": "country", "sequence": 5},
+    {"voucherProgrammeCode": "TRIP50", "voucherTitle": "Duplicate code", "countryCode": "SG", "applicableLevel": "country", "sequence": 6}
+  ],
+  "totalNumber": 7, "startNumber": 1, "endNumber": 7
+}

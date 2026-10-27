@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-05 get_promotions (vouchers only): POST /api/v1/promotions
+
+  A minimal, anonymous version of the mobile xAPI's ODX_Search_Purchase_Voucher_Flow: one call to the CPRV process API
+  POST /v1/searchvoucher, without memberId / userToken, mapped to the T-05 structuredContent.
+  Left out from that flow: the VM archive, the ASR property cache (city -> property codes) and the AEM voucher details
+  call (voucherUrl, imageThumbnail, description, altThumbnail, urgencyTrigger); see dwl/promotions-response.dwl for
+  what that means for each field.
+
+  Request:  schemas/T05-get-promotions.input.schema.json 0.1.0
+            {countryCode, city, propertyCode, voucherName, voucherCategory[], currencyCode, language}
+  Response: schemas/T05-get-promotions.structured-content.schema.json 0.2.0 {meta, vouchers[]}.
+            Zero vouchers is a 200 with vouchers [] (PRD AC-03); an upstream 404 counts as zero vouchers.
+  Errors:   400 BAD_REQUEST; 502 DOWNSTREAM_REJECTED / DOWNSTREAM_UNAVAILABLE; 504 DOWNSTREAM_TIMEOUT; 500 INTERNAL_ERROR.
+
+  Properties: https.cprvprocessapi.{host, port, basepath, responsetimeout, clientid, clientsecret} (required: the
+  connection config below needs them to start), optional t05.detailsFallbackPath, plus property.currency,
+  default.language and asset.baseUrl. See src/main/resources/get-promotions.yaml.
+  Listener: common_HTTP_Listener_Config (global-config.xml).
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+
+  <!-- The CPRV process API, the same config name and keys as the mobile xAPI's ODX_Search_Purchase_Voucher_Flow. -->
+  <http:request-config name="HTTP_Request_configuration-CPRVProcessAPI" doc:name="HTTP Request configuration" basePath="${https.cprvprocessapi.basepath}" responseTimeout="${https.cprvprocessapi.responsetimeout}">
+    <http:request-connection protocol="HTTPS" host="${https.cprvprocessapi.host}" port="${https.cprvprocessapi.port}">
+      <tls:context enabledProtocols="TLSv1.2">
+        <tls:trust-store insecure="true"/>
+      </tls:context>
+    </http:request-connection>
+  </http:request-config>
+
+  <flow name="t05-get-promotions">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/promotions" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <set-variable variableName="toolName" value="get_promotions" doc:name="toolName"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T05.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T05-START"/>
+
+    <!-- Tool arguments -> vars.promotionsRequest. -->
+    <try>
+      <ee:transform doc:name="validate">
+        <ee:variables><ee:set-variable variableName="promotionsValidation" resource="dwl/promotions-validate-request.dwl"/></ee:variables>
+      </ee:transform>
+      <error-handler>
+        <!-- The real reason is in this ERROR line; the caller only gets "not valid JSON". -->
+        <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
+          <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'promotions-validate-request.dwl failed: ' ++ (error.description default '')]"/>
+          <set-variable variableName="promotionsValidation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="promotionsValidation"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[not isEmpty(vars.promotionsValidation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[(vars.promotionsValidation.errors default []) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_promotions request"/>
+      </when>
+    </choice>
+    <set-variable variableName="promotionsRequest" value="#[vars.promotionsValidation.request]" doc:name="promotionsRequest"/>
+
+    <!-- The body of ODX_Search_Purchase_Voucher_Flow's "Create Request", anonymous: no memberId, no userCountryCode,
+         no paging (upstream's own default page), public vouchers only. -->
+    <ee:transform doc:name="searchvoucher body">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var r = vars.promotionsRequest
+---
+{
+	messageId: vars.traceId,
+	language: r.language,
+	voucherName: r.voucherName,
+	country: r.countryCode,
+	voucherCategory: r.voucherCategory,
+	propertyCode: if (r.propertyCode == null) null else [r.propertyCode],
+	currency: r.currency,
+	sortBy: "latest",
+	"private": false,
+	channel: "mobile"
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.searchvoucher.request", tool: vars.toolName, correlationId: vars.traceId, body: payload}, "application/json", {indent: false})]' doc:name="searchvoucher.request"/>
+    <http:request method="POST" doc:name="Search vouchers" config-ref="HTTP_Request_configuration-CPRVProcessAPI" path="/v1/searchvoucher">
+      <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_id" : Mule::p('https.cprvprocessapi.clientid'),
+	"client_secret" : Mule::p('https.cprvprocessapi.clientsecret'),
+	"messageId" : vars.traceId
+}]]]></http:headers>
+      <http:response-validator>
+        <http:success-status-code-validator values="200..299,404"/>
+      </http:response-validator>
+    </http:request>
+    <!-- A 404 is "no vouchers": PRD AC-03 makes zero results a valid answer, not an error. -->
+    <set-variable variableName="voucherSearch" value="#[if (attributes.statusCode == 404) {voucher: []} else payload]" doc:name="voucherSearch"/>
+    <!-- Field names only, so the mapping can be checked against what upstream really sends. -->
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.searchvoucher.response", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (vars.voucherSearch is Object) (keysOf(vars.voucherSearch) map ($ as String)) else typeOf(vars.voucherSearch) as String, vouchers: sizeOf(vars.voucherSearch.voucher default []), firstVoucher: if ((vars.voucherSearch.voucher default [])[0] is Object) (keysOf(vars.voucherSearch.voucher[0]) map ($ as String)) else null}, "application/json", {indent: false})]' doc:name="searchvoucher.response"/>
+
+    <ee:transform doc:name="promotions-response">
+      <ee:message>
+        <ee:set-payload resource="dwl/promotions-response.dwl"/>
+      </ee:message>
+    </ee:transform>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T05.success", tool: vars.toolName, correlationId: vars.traceId, countryCode: payload.meta.country_code, propertyCode: payload.meta.property_code, upstreamVouchers: sizeOf(vars.voucherSearch.voucher default []), vouchers: payload.meta.voucher_count, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T05-SUCCESS"/>
+    <error-handler ref="promotions-error-handler"/>
+  </flow>
+
+  <error-handler name="promotions-error-handler">
+    <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[400]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
+      <flow-ref name="promotions-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[504]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Voucher service timed out. Retry later.', retryable: true}]"/>
+      <flow-ref name="promotions-log-downstream"/>
+      <flow-ref name="promotions-format-and-log-error"/>
+    </on-error-propagate>
+    <!-- A 400 from searchvoucher: our body was rejected, not the service being down. -->
+    <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED', message: 'Voucher service rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="promotions-log-downstream"/>
+      <flow-ref name="promotions-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Voucher service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="promotions-log-downstream"/>
+      <flow-ref name="promotions-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY" logException="true" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[500]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="promotions-format-and-log-error"/>
+    </on-error-propagate>
+  </error-handler>
+
+  <!-- The upstream status and body (first 1000 characters), the only place they can be read from. -->
+  <sub-flow name="promotions-log-downstream">
+    <try>
+      <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_promotions", correlationId: vars.traceId default correlationId, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="downstream.error"/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_promotions", correlationId: vars.traceId default correlationId, note: "downstream body is not readable"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+  </sub-flow>
+
+  <sub-flow name="promotions-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "get_promotions", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+    <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
+  </sub-flow>
+</mule>

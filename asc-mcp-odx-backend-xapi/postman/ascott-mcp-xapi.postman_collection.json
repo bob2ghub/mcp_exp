@@ -53,6 +53,159 @@
   ],
   "item": [
     {
+      "name": "T-05 Get promotions (vouchers)",
+      "item": [
+        {
+          "name": "Promotions - country only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Every public SG voucher, in upstream sequence order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryCode\": \"SG\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "promotions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Promotions - property",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Vouchers for the property plus country-wide ones.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryCode\": \"SG\",\n  \"propertyCode\": \"{{propertyCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "promotions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Promotions - filters",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Name and category filters, echoed in meta.applied_filters. Zero results is a 200.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryCode\": \"SG\",\n  \"city\": \"Singapore\",\n  \"voucherName\": \"flight\",\n  \"voucherCategory\": [\n    \"package\"\n  ],\n  \"currencyCode\": \"SGD\",\n  \"language\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "promotions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Promotions - 400 no countryCode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "400 BAD_REQUEST.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"Singapore\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "promotions"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "T-06 Compare properties",
       "item": [
         {

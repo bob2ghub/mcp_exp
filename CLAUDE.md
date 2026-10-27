@@ -30,6 +30,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details`, one or several rooms | `/api/v1/multi-room-details` (`?format=raw` returns the unmapped property) | `get-multi-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
+| T-05 `get_promotions` (vouchers only) | `/api/v1/promotions` | `t05-get-promotions.xml` | `schemas/T05-get-promotions.structured-content.schema.json` (**0.2.0**, owner's file 2026-10-28); input `schemas/T05-get-promotions.input.schema.json` (0.1.0) |
 | T-07 `compare_rooms_rates` | `/api/v1/compare-rooms` | `t07-compare-rooms.xml` | `schemas/T07-compare-rooms-rates.structured-content.schema.json` (**0.4.0**, owner's file 2026-10-28) |
 | T-08 `create_booking` | `/api/v1/create-booking` | `t08-create-booking.xml` | `schemas/T08-create-booking.structured-content.schema.json` (**0.1.0**, owner's file 2026-10-28); input `schemas/T08-create-booking.input.schema.json` (0.1.0) |
 
@@ -115,6 +116,7 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 - POI: `poisystem.{host, port, protocol, basepath, path, clientid, clientsecret, responsetimeout, reconnection.*}`. The keys are **lower case**.
 - Request defaults: `default.{language, currency, adults, children, checkinOffsetDays, nights, userCountry}`, `request.{maxAdults, maxChildren, maxNights}`, `app.{version, channel}`, `rooms.maxRooms`, `property.currency`, `asset.baseUrl`, `t03.*`.
 - T-08: optional `t08.{checkinOffsetDays (30), nights (1), addons.enabled ("false")}`; **required** `https.bookingsprocessapi.{host, port, basepath, responsetimeout, clientid, clientsecret}` (`src/main/resources/create-booking.yaml`).
+- T-05: **required** `https.cprvprocessapi.{host, port, basepath, responsetimeout, clientid, clientsecret}`; optional `t05.detailsFallbackPath` (`src/main/resources/get-promotions.yaml`).
 - T-06: `t06.{http.path, minProperties, maxProperties, checkinOffsetDays, nights, adults, children, batchLookup, batchSize, maxConcurrency, maxAmenityHighlights, maxRoomTypes}`, in `src/main/resources/compare-properties.yaml` (to append to `uat.yaml`).
 - A missing key read with `p()` gives null, and `null as Number` fails the request. `uat.yaml` has `startdate: 7`, `enddate: 8`, `noofadults: 2`, the defaults other booking search callers use. A check-in of tomorrow in UTC can already be "today" in Singapore.
 
@@ -209,6 +211,37 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
 - **Response:** upstream answers `apartmentList[i]` with `apartments[].room{i}`. By default the T-04 0.3.0 structuredContent from `dwl/room-rate-details.dwl`: `requested_rooms[i]` = `room{i}`'s room types with that room's own guests; a room upstream did not answer is `rooms: []`, `total_results: 0`. **`?format=raw`** returns the unmapped property (`propertyList[0]`, with `room0[]`, `room1[]`, …) to check what upstream sent.
 - **Logs:** `T04M.start`, `xapi.bookingsearch.request` (the exact multi-room body), `xapi.property.response`, `T04M.success` with `roomTypesPerRoom` (e.g. `{room0: 4, room1: 3, room2: 2}`), and T-04's error lines.
 - **Checks:** `tests/check_t04_multi.py` (25 checks; 12 of them single-room: five request shapes, each mapped and schema-validated, defaults only, and `rooms: 2` without a list): the owner's mobile body through the validator, the body builder (writes `examples/multi-room-booking-search-request.sample.json`), and a three-room answer built from 51052 through the mapping, validated against 0.3.0 (writes `examples/multi-room-rate-details-51052-response.sample.json`). Not run against UAT yet. Playground: `tests/playground/multi-room-booking-search-request.playground.*`. Postman: folder "T-04 Multi-room details and rates".
+
+## T-05 in this app (`t05-get-promotions.xml`, written by us 2026-10-28, not yet deployed)
+
+**Minimal, vouchers only** (owner, 2026-10-28: "keep it simple"). It is the anonymous core of the owner's mobile flow `ODX_Search_Purchase_Voucher_Flow`: one `POST /v1/searchvoucher` on the CPRV process API, with no `memberId` or `userToken`.
+
+- **`POST /api/v1/promotions`.** Input schema 0.1.0, validated by `dwl/promotions-validate-request.dwl`:
+  - `countryCode` (required, upper-cased) and optional `city`, `propertyCode` (digits), `voucherName` and `voucherCategory[]` (duplicates removed ignoring case).
+  - `currencyCode` defaults to `property.currency`.
+  - `language` is passed through when it is in the schema list, else `default.language`.
+- **Upstream:** `HTTP_Request_configuration-CPRVProcessAPI` is defined in `t05-get-promotions.xml`, with the same name and `https.cprvprocessapi.*` keys as the mobile app.
+  - Body (inline): `messageId`, `language`, `voucherName`, `country`, `voucherCategory`, `propertyCode` [code], `currency`, `sortBy "latest"`, `private false`, `channel "mobile"`. There is no paging, so upstream's default page applies.
+  - Headers: `client_id`, `client_secret`, `messageId`.
+  - **A 404 counts as zero vouchers** (PRD AC-03). Other errors map to 502 / 504 / 500 as in the other tools.
+- **Left out of the mobile flow**, so these parts are missing:
+  - The VM archive.
+  - **The ASR property cache.** `city` is not turned into property codes, only echoed and used as `location_label`. `scope_label` is built only for country-wide vouchers, from the country names in a small table in the DWL. `meta.property_name` is never sent, and an unknown `propertyCode` is not an error (no ER-04).
+  - **The AEM voucher details call.** `voucherUrl`, `imageThumbnail`, `altThumbnail`, `description` and `urgencyTrigger` are used only if `searchvoucher` sends them itself. **`details_url` (required) falls back to `t05.detailsFallbackPath`** (default `/en/member/buy-experiences`). `is_low_stock` is only sent with `urgencyTrigger`. The mobile flow also drops vouchers unknown to AEM; this one keeps them.
+- **Mapping (`dwl/promotions-response.dwl`, schema 0.2.0):**
+  - `id` ← `voucherProgrammeCode`; `title` ← `voucherTitle`, else `voucherEnTitle`.
+  - `scope_level` ← `applicableLevel` (`property_specific` / `country`).
+  - `property_codes` / `country_codes` ← `propertyCode` / `countryCode` (array or comma string, de-duplicated).
+  - `expiry_date` ← `expiryDate` cut to `YYYY-MM-DD`; null is left out.
+  - `details_url` is a full URL with the doubled `/` after the host collapsed, or a path with one leading `/`.
+  - `category` verbatim.
+  - **`price` ← `preferredCurrencyPromoPrice` (else `promoPrice`).** The request asks upstream for `currency`, so `meta.currency` = that currency, sent only when a voucher has a price. A points-only voucher has no price.
+  - `points` ← `points` > 0; `remaining` ← `inventory`.
+  - `description_text` is HTML turned into plain text, left out when it only repeats the code.
+- **Kept vouchers:** not private, with a code and a title, matching `voucherName` (in the title, ignoring case) and `voucherCategory` (ignoring case), and in scope. In scope means the voucher's country list contains `countryCode`, and with a `propertyCode`, the voucher is country-wide or lists that code. Upstream should filter already; this repeats it. Order: `sequence`, de-duplicated by `id`. `meta.voucher_count` = the number kept.
+- **Unconfirmed (no real response shared yet):** `tests/check_t05.py` (24 checks) runs against **`examples/upstream-searchvoucher.SYNTHETIC.json`**, built from the field names the mobile flow reads, and writes `examples/promotions-SG-response.sample.json`. Replace the sample with a real response when the owner sends one. The log `xapi.searchvoucher.response` lists the real top-level and first-voucher field names. The DataWeave itself has not been run. Postman: folder "T-05 Get promotions (vouchers)".
+- **Open items for the owner:** the price field and currency (schema open item 1/2); whether `searchvoucher` itself sends `voucherUrl` / `imageThumbnail`; and whether to add the property cache (city filter, scope labels, ER-04) and the AEM details call later.
+- **MCP server:** `asc-mcp-server`'s `getPromotions` still calls `GET /properties/{id}/promotions`. It should become `get_promotions` with the input schema above, pointing at `/api/v1/promotions`; change it only when the owner asks.
 
 ## T-07 in this app (`t07-compare-rooms.xml`, formerly `get-room-rates.xml`, written by us 2026-10-27, reworked to the owner's schema 0.4.0 on 2026-10-28, not yet deployed)
 
@@ -328,7 +361,7 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
 
 ## Product specs (PRDs) for tools not yet built
 
-Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md`, `PRD-T07-compare-rooms-rates.md` (pasted as text by the owner) and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05 yet; build one only when asked. T-08 is built: see "T-08 in this app". T-07 is built as a gather-only tool: see "T-07 in this app". T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md`, `PRD-T07-compare-rooms-rates.md` (pasted as text by the owner) and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. T-05 is built minimal: see "T-05 in this app". T-08 is built: see "T-08 in this app". T-07 is built as a gather-only tool: see "T-07 in this app". T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
 
 Tool map from the PRDs:
 
@@ -338,7 +371,7 @@ Tool map from the PRDs:
 | T-02 | Get_property_details | built |
 | T-03 | Get_service_offerings | built |
 | T-04 | Get_room_rate_details | built; rewritten for schema 0.3.0 (2026-10-26) |
-| T-05 | Get_promotions | schemas saved 2026-10-28 (vouchers only): `schemas/T05-get-promotions.structured-content.schema.json` 0.2.0 and `schemas/T05-get-promotions.input.schema.json` 0.1.0, the owner's files; no flow yet |
+| T-05 | Get_promotions | built minimal (2026-10-28): vouchers only, one `/v1/searchvoucher` call; owner's schemas 0.2.0 / 0.1.0 |
 | T-06 | Compare_properties | built: puts properties together only; mapped to the owner's schema 0.1.0 (2026-10-27) |
 | T-07 | Compare_rooms_rates | built (2026-10-27/28): 2–4 of the property's rooms by `roomCodes`, else the first four; owner's schema 0.4.0 |
 | T-08 | Create_booking | built (2026-10-28): read-only checkout hand-off, one or several rooms; owner's schemas 0.1.0 |
@@ -577,7 +610,7 @@ A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in 
 
 ## How to work on it
 
-- Diagnose from the audit log lines: `xapi.start` / `T04M.start` / `T06.start` / `T07.start` / `T08.start`, `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
+- Diagnose from the audit log lines: `xapi.start` / `T04M.start` / `T05.start` / `T06.start` / `T07.start` / `T08.start`, `xapi.searchvoucher.request` / `xapi.searchvoucher.response` (T-05), `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
 - Check any response change against the tool's schema, using a sample built from real upstream data where possible.
 - Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`, `t06.*`).
 - Commit to branch `claude/get-property-details-xapi`.

@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "country_code": "SG",
+    "location_label": "Singapore",
+    "currency": "SGD",
+    "voucher_count": 3,
+    "asset_base_url": "https://www.discoverasr.com"
+  },
+  "vouchers": [
+    {
+      "id": "SGPKG",
+      "title": "Singapore staycation package",
+      "scope_label": "Singapore",
+      "scope_level": "country",
+      "country_codes": [
+        "SG"
+      ],
+      "details_url": "/en/member/buy-experiences",
+      "category": "package",
+      "points": 12000,
+      "remaining": 40
+    },
+    {
+      "id": "TRIP50",
+      "title": "Trip voucher SGD 50",
+      "image_url": "/content/dam/vouchers/trip50.jpg",
+      "scope_level": "property",
+      "property_codes": [
+        "51052"
+      ],
+      "country_codes": [
+        "SG"
+      ],
+      "expiry_date": "2027-03-31",
+      "details_url": "https://www.discoverasr.com/en/member/buy-experiences/trip50",
+      "category": "cash",
+      "price": 45.0,
+      "remaining": 3,
+      "is_low_stock": true,
+      "description_text": "Spend on any stay.\n\nValid & transferable."
+    },
+    {
+      "id": "OTHERPROP",
+      "title": "Flight credit at another property",
+      "scope_level": "property",
+      "property_codes": [
+        "51099"
+      ],
+      "country_codes": [
+        "SG"
+      ],
+      "details_url": "/en/member/buy-experiences",
+      "category": "cash",
+      "price": 80.0
+    }
+  ]
+}
