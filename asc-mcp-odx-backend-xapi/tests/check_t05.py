@@ -155,8 +155,8 @@ def voucher(v, props=PROPS):
         "points": points, "remaining": inventory,
         "is_low_stock": inventory <= trigger if inventory is not None and trigger is not None else None,
         "description_text": None if desc is None or desc.lower() == (vid or "").lower() else desc,
-        "_private": (text(v.get("private")) or "").lower() == "yes" or v.get("private") is True,
-        "_sequence": num(v.get("sequence")) if num(v.get("sequence")) is not None else 999999,
+        "hiddenPrivate": (text(v.get("private")) or "").lower() == "yes" or v.get("private") is True,
+        "hiddenSequence": num(v.get("sequence")) if num(v.get("sequence")) is not None else 999999,
     }
     return out
 
@@ -171,16 +171,16 @@ def map_response(resp, req, props=PROPS):
         return country_ok and prop_ok
 
     items = [voucher(v, props) for v in (resp.get("voucher") or []) if isinstance(v, dict)]
-    items = [x for x in items if x["id"] and x["title"] and not x["_private"] and in_scope(x)
+    items = [x for x in items if x["id"] and x["title"] and not x["hiddenPrivate"] and in_scope(x)
              and (req["voucherName"] is None or req["voucherName"].lower() in x["title"].lower())
              and (not cats or (x["category"] or "").lower() in cats)]
-    items = sorted(items, key=lambda x: x["_sequence"])
+    items = sorted(items, key=lambda x: x["hiddenSequence"])
     seen, vouchers = set(), []
     for x in items:
         if x["id"] in seen:
             continue
         seen.add(x["id"])
-        vouchers.append({k: v for k, v in x.items() if v is not None and not k.startswith("_")})
+        vouchers.append({k: v for k, v in x.items() if v is not None and k not in ("hiddenPrivate", "hiddenSequence")})
     filters = None if req["voucherName"] is None and req["voucherCategory"] is None else \
         {k: v for k, v in {"voucher_name": req["voucherName"], "voucher_category": req["voucherCategory"]}.items() if v is not None}
     meta = {"country_code": req["countryCode"], "city": req["city"], "property_code": req["propertyCode"],

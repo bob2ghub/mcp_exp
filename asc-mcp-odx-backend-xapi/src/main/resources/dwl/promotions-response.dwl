@@ -98,8 +98,8 @@ fun voucher(v) = do {
 		is_low_stock: if ((inventory != null) and (trigger != null)) inventory <= trigger else null,
 		description_text: if ((description == null) or (lower(description) == lower(id default ""))) null else description,
 		// Not output: used by the filters below.
-		_private: lower(text(v."private") default "") == "yes" or v."private" == true,
-		_sequence: num(v.sequence) default 999999
+		hiddenPrivate: lower(text(v."private") default "") == "yes" or v."private" == true,
+		hiddenSequence: num(v.sequence) default 999999
 	}
 }
 
@@ -113,12 +113,12 @@ fun inScope(x) = do {
 
 var categories = (req.voucherCategory default []) map lower($)
 var vouchers = ((objects(resp.voucher) map voucher($))
-	filter ((x) -> (x.id != null) and (x.title != null) and !x._private and inScope(x)
+	filter ((x) -> (x.id != null) and (x.title != null) and !x.hiddenPrivate and inScope(x)
 		and ((req.voucherName == null) or (lower(x.title) contains lower(req.voucherName)))
 		and (isEmpty(categories) or (categories contains lower(x.category default "")))))
-	orderBy $._sequence
+	orderBy $.hiddenSequence
 	distinctBy $.id
-	map ($ - "_private" - "_sequence")
+	map ($ - "hiddenPrivate" - "hiddenSequence")
 ---
 {
 	meta: {
