@@ -1,6 +1,7 @@
-# Keys mcp-tool.xml needs for the four tools that call the ODX backend experience API
-# (Mule app asc-mcp-odx-backend-xapi). Append these to application_properties.yaml.
+# Keys mcp-tool.xml needs for the seven tools served by the ODX backend experience API
+# (Mule app asc-mcp-odx-backend-xapi). Merge these into application_properties.yaml (one `xapi:` block).
 # That listener has no auth, so no client id or secret belongs here.
+# Every *.path key below MUST exist: mcp-tool.xml reads them as ${...} placeholders, and Mule will not start without them.
 
 xapi:
   protocol: "HTTP"                                       # the xAPI listener is plain HTTP on CloudHub
@@ -8,8 +9,11 @@ xapi:
   port: "80"                                             # 80 for the public CloudHub URL; 8081 for mule-worker-internal-*
   timeout: "30000"
 
-  # Paths must match the xAPI's own listeners. T-03 and T-06 are ${t03.http.path} / ${t06.http.path} there.
+  # Paths must match the xAPI's own listeners (T-03 and T-06 are ${t03.http.path} / ${t06.http.path} there).
   propertydetails.path: "/api/v1/property-details"       # T-02 get_property_details
-  serviceofferings.path: "/api/v1/service-offerings"     # T-03 getServiceOfferings
-  roomdetails.path: "/api/v1/room-details"               # T-04 getRoomAndRateDetails
-  compareproperties.path: "/api/v1/compare-properties"   # T-06 compareProperties
+  serviceofferings.path: "/api/v1/service-offerings"     # T-03 get_service_offerings
+  roomdetails.path: "/api/v1/multi-room-details"         # T-04 get_room_rate_details (was /api/v1/room-details, removed by T-07)
+  promotions.path: "/api/v1/promotions"                  # T-05 get_promotions
+  compareproperties.path: "/api/v1/compare-properties"   # T-06 compare_properties
+  comparerooms.path: "/api/v1/compare-rooms"             # T-07 compare_rooms_rates
+  createbooking.path: "/api/v1/create-booking"           # T-08 create_booking
