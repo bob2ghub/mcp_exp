@@ -32,7 +32,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | T-04 `get_room_rate_details` | `/api/v1/room-details` | `get-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
 | T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (**0.1.0**, owner's file 2026-10-27) |
 
-Every response body is the tool's `structuredContent`, exactly as its schema defines it. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
+Every response body is the tool's `structuredContent`, exactly as its schema defines it. **Every listener now forces the body to JSON** (`<http:body>#[output application/json --- payload]</http:body>` plus a `Content-Type: application/json` header, on both `http:response` and `http:error-response`, added 2026-10-27): without it a payload that is still a Java object is written to the wire as Java serialization bytes (`java.util.LinkedHashMap…`), which is what UAT returned for T-02 on 2026-10-27. Errors are `{success: false, correlationId, error: {category, code, message, retryable}}`. The caller's `X-Correlation-ID` (`^[A-Za-z0-9_-]{1,80}$`) is reused as `vars.traceId` and returned as a header.
 
 ## Files in the base and what they define
 

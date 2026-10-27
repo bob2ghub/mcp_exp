@@ -11,8 +11,8 @@
 
   <flow name="get-service-offerings">
     <http:listener config-ref="common_HTTP_Listener_Config" path="${t03.http.path}" allowedMethods="POST">
-      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:response>
-      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body>#[payload]</http:body><http:headers>#[{'X-Correlation-ID': vars.traceId default correlationId}]</http:headers></http:error-response>
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
     <set-variable variableName="toolName" value="get_service_offerings"/>
     <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]"/>

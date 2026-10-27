@@ -4,8 +4,8 @@
   <!-- POST /api/v1/property-details: T-02 get_property_details. Returns the MCP structuredContent object. -->
   <flow name="get-property-details">
     <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/property-details" allowedMethods="POST">
-      <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
-      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[payload]]]></http:body><http:headers><![CDATA[#[{'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
     <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
     <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt" />
