@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
   <!-- [STUDIO:"findProperties"]<flow name="findProperties">
-    <mcp:tool-listener config-ref="asc_mcp_config" name="findProperties" doc:name="findProperties - Tool Listener" doc:id="ec088519-0d1a-480b-8e77-b2f744aff012">
+    <mcp:tool-listener config-ref="asc_mcp_config" name="findProperties" doc:name="findProperties - Tool Listener" doc:id="f68fc7b8-ef6d-44f4-8d54-35d3228a5c4f">
       <mcp:description><![CDATA[Find properties in location. Uses simulated ODX data in the local profile. Read-only operation; does not create or change reservations.&#93;&#93;></mcp:description>
       <mcp:parameters-schema><![CDATA[{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "additionalProperties": false, "properties": {"location": {"type": "string", "minLength": 1, "maxLength": 100, "description": "City or country, e.g. Singapore"}, "limit": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["location"&#93;}&#93;&#93;></mcp:parameters-schema>
       <mcp:responses><mcp:text-tool-response-content text="#[write(payload, 'application/json')&#93;"/></mcp:responses>
@@ -11,7 +11,7 @@
     <set-variable variableName="args" value="#[payload&#93;" doc:name="args"/>
     <flow-ref name="log-start" doc:name="log-start"/>
     <flow-ref name="validate-business-input" doc:name="validate-business-input"/>
-    <flow-ref name="route-findPropertiesByLocation" doc:name="search-properties" doc:id="9863ea6b-077a-406f-8477-c0821610f168"/>
+    <flow-ref name="route-findPropertiesByLocation" doc:name="search-properties" doc:id="f6bb08bc-57b6-4fa5-9c51-9f8f5528c1d3"/>
     <flow-ref name="wrap-success" doc:name="wrap-success"/>
     <error-handler ref="generic-tool-error-handler"/>
   </flow> [STUDIO] -->
@@ -24,30 +24,33 @@
       <mcp:on-error-responses><mcp:text-tool-response-content text="#[write({success: false, correlationId: vars.traceId default correlationId, error: vars.publicError default {category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}}, 'application/json')]"/></mcp:on-error-responses>
     </mcp:tool-listener>
     <set-variable variableName="toolName" value="get_property_details" doc:name="toolName"/>
-    <set-variable variableName="args" value="#[payload]" doc:name="args"/>
-    <set-variable variableName="xapiPath" value="${xapi.propertydetails.path}" doc:name="xapiPath"/>
+    <logger level="INFO" doc:name="Logger" doc:id="31394523-337c-4cd1-a2c9-612d2cce8e70" />
+		<set-variable variableName="args" value="#[payload]" doc:name="args"/>
+    <logger level="INFO" doc:name="Logger" doc:id="a0898e28-f9c9-4063-a4f6-8ad48e55a3ab" />
+		<set-variable variableName="xapiPath" value="${xapi.propertydetails.path}" doc:name="xapiPath"/>
     <flow-ref name="log-start" doc:name="log-start"/>
     <flow-ref name="call-odx-xapi" doc:name="call-odx-xapi"/>
     <error-handler ref="generic-tool-error-handler"/>
   </flow>
   <!-- T-03 getServiceOfferings -> POST ${xapi.serviceofferings.path}. -->
   <flow name="getServiceOfferings">
-    <mcp:tool-listener config-ref="asc_mcp_config" name="getServiceOfferings" doc:name="getServiceOfferings - Tool Listener">
+    <mcp:tool-listener config-ref="asc_mcp_config" name="get_service_offerings" doc:name="get_service_offerings - Tool Listener">
       <mcp:description><![CDATA[List the bookable and orderable services and facilities at one Ascott property (pool, gym, dining, lounge and so on), with their location, operating hours and description. Read-only; creates and changes nothing.]]></mcp:description>
       <mcp:parameters-schema><![CDATA[{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "additionalProperties": false, "properties": {"propertyCode": {"type": "string", "minLength": 1, "maxLength": 20, "pattern": "^[0-9]+$", "description": "Ascott property code, digits only, e.g. 8791."}, "language": {"type": "string", "pattern": "^[a-z]{2}(-[A-Za-z]{2,4})?$", "default": "en"}}, "required": ["propertyCode"]}]]></mcp:parameters-schema>
       <mcp:responses><mcp:text-tool-response-content text="#[vars.toolResponse]"/></mcp:responses>
       <mcp:on-error-responses><mcp:text-tool-response-content text="#[write({success: false, correlationId: vars.traceId default correlationId, error: vars.publicError default {category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}}, 'application/json')]"/></mcp:on-error-responses>
     </mcp:tool-listener>
     <set-variable variableName="toolName" value="getServiceOfferings" doc:name="toolName"/>
-    <set-variable variableName="args" value="#[payload]" doc:name="args"/>
+		<set-variable variableName="args" value="#[payload]" doc:name="args"/>
     <set-variable variableName="xapiPath" value="${xapi.serviceofferings.path}" doc:name="xapiPath"/>
-    <flow-ref name="log-start" doc:name="log-start"/>
+    <logger level="INFO" doc:name="Logger" doc:id="9046244a-b77f-4291-8475-0a5560d94f86" />
+		<flow-ref name="log-start" doc:name="log-start"/>
     <flow-ref name="call-odx-xapi" doc:name="call-odx-xapi"/>
     <error-handler ref="generic-tool-error-handler"/>
   </flow>
   <!-- T-04 getRoomAndRateDetails -> POST ${xapi.roomdetails.path}. -->
   <flow name="getRoomAndRateDetails">
-    <mcp:tool-listener config-ref="asc_mcp_config" name="getRoomAndRateDetails" doc:name="getRoomAndRateDetails - Tool Listener">
+    <mcp:tool-listener config-ref="asc_mcp_config" name="get_room_rate_details" doc:name="get_room_rate_details - Tool Listener">
       <mcp:description><![CDATA[List the room types available at one Ascott property for a stay, each with its rate plans, nightly and total price including taxes and fees, cancellation terms and amenities. Read-only; creates and changes nothing.]]></mcp:description>
       <mcp:parameters-schema><![CDATA[{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "additionalProperties": false, "properties": {"propertyCode": {"type": "string", "minLength": 1, "maxLength": 20, "pattern": "^[A-Za-z0-9_-]+$", "description": "Ascott property code, e.g. 8791."}, "checkin": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Check-in, YYYY-MM-DD. Defaults to a near-term stay when omitted."}, "checkout": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Check-out, YYYY-MM-DD. Must be after checkin."}, "adults": {"type": "integer", "minimum": 1, "maximum": 10, "default": 1}, "children": {"type": "integer", "minimum": 0, "maximum": 10, "default": 0}, "currency": {"type": "string", "pattern": "^[A-Za-z]{3}$", "description": "ISO 4217 code, e.g. SGD."}, "language": {"type": "string", "pattern": "^[a-z]{2}(-[A-Za-z]{2,4})?$", "default": "en"}}, "required": ["propertyCode"]}]]></mcp:parameters-schema>
       <mcp:responses><mcp:text-tool-response-content text="#[vars.toolResponse]"/></mcp:responses>
@@ -56,7 +59,8 @@
     <set-variable variableName="toolName" value="getRoomAndRateDetails" doc:name="toolName"/>
     <set-variable variableName="args" value="#[payload]" doc:name="args"/>
     <set-variable variableName="xapiPath" value="${xapi.roomdetails.path}" doc:name="xapiPath"/>
-    <flow-ref name="log-start" doc:name="log-start"/>
+    <logger level="INFO" doc:name="Logger" doc:id="070124c8-8cde-4f75-b048-f74d6146b8f3" />
+		<flow-ref name="log-start" doc:name="log-start"/>
     <flow-ref name="call-odx-xapi" doc:name="call-odx-xapi"/>
     <error-handler ref="generic-tool-error-handler"/>
   </flow>
@@ -77,7 +81,7 @@
   </flow>
   <!-- T-06 compareProperties -> POST ${xapi.compareproperties.path}. The xAPI returns the properties only; it does no comparison. -->
   <flow name="compareProperties">
-    <mcp:tool-listener config-ref="asc_mcp_config" name="compareProperties" doc:name="compareProperties - Tool Listener">
+    <mcp:tool-listener config-ref="asc_mcp_config" name="compare-properties" doc:name="compare-properties - Tool Listener">
       <mcp:description><![CDATA[Return two to four named Ascott properties side by side in one payload, each with its name, images, location, room types, amenities and lead-in price for the same stay and the same currency. It does not rank or recommend: weigh the properties yourself from the data returned. Read-only; creates and changes nothing.]]></mcp:description>
       <mcp:parameters-schema><![CDATA[{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "additionalProperties": false, "properties": {"propertyCodes": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 20, "pattern": "^[A-Za-z0-9_-]+$"}, "minItems": 2, "maxItems": 4, "uniqueItems": true, "description": "Two to four Ascott property codes to return side by side."}, "checkinDate": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Check-in, YYYY-MM-DD. Defaults to 30 days out."}, "checkoutDate": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Check-out, YYYY-MM-DD. Defaults to the day after check-in."}, "noOfadults": {"type": "integer", "minimum": 1, "maximum": 10, "default": 1}, "noOfchildren": {"type": "integer", "minimum": 0, "maximum": 10, "default": 0}, "currencyCode": {"type": "string", "pattern": "^[A-Za-z]{3}$", "description": "ISO 4217 code, e.g. SGD. Every card uses this one currency."}, "language": {"type": "string", "pattern": "^[a-z]{2}(-[A-Za-z]{2,4})?$", "default": "en"}}, "required": ["propertyCodes"]}]]></mcp:parameters-schema>
       <mcp:responses><mcp:text-tool-response-content text="#[vars.toolResponse]"/></mcp:responses>
@@ -86,7 +90,8 @@
     <set-variable variableName="toolName" value="compareProperties" doc:name="toolName"/>
     <set-variable variableName="args" value="#[payload]" doc:name="args"/>
     <set-variable variableName="xapiPath" value="${xapi.compareproperties.path}" doc:name="xapiPath"/>
-    <flow-ref name="log-start" doc:name="log-start"/>
+    <logger level="INFO" doc:name="Logger" doc:id="e0c9eae1-6f74-4ac8-aa09-560432ea60d8" />
+		<flow-ref name="log-start" doc:name="log-start"/>
     <flow-ref name="call-odx-xapi" doc:name="call-odx-xapi"/>
     <error-handler ref="generic-tool-error-handler"/>
   </flow>
@@ -126,9 +131,7 @@
     application_properties.yaml (see mcp-tool-xapi.yaml). MCP-EXP-HTTPconfig in global-config.xml points at a
     different host and stays with the tools that still use it.
   -->
-  <http:request-config name="ODX_Backend_XAPI_config">
-    <http:request-connection protocol="${xapi.protocol}" host="${xapi.host}" port="${xapi.port}"/>
-  </http:request-config>
+
 
   <!--
     POSTs vars.args to vars.xapiPath and leaves the xAPI's structuredContent in vars.toolResponse, unwrapped:
@@ -146,7 +149,7 @@ vars.args default {}]]></ee:set-variable>
       </ee:variables>
     </ee:transform>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.request", tool: vars.toolName, correlationId: vars.traceId, path: vars.xapiPath, body: vars.xapiRequest}, "application/json", {indent: false})]' doc:name="xapi.request"/>
-    <http:request method="POST" config-ref="ODX_Backend_XAPI_config" path="#[vars.xapiPath]" responseTimeout="${xapi.timeout}" requestStreamingMode="NEVER" doc:name="odx-xapi-call">
+    <http:request method="POST" config-ref="MCP-ODX_Backend_XAPI_config" path="#[vars.xapiPath]" responseTimeout="${xapi.timeout}" requestStreamingMode="NEVER" doc:name="odx-xapi-call">
       <http:body><![CDATA[#[vars.xapiRequest]]]></http:body>
       <http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId}]]]></http:headers>
       <!-- The xAPI's own error body is wanted, so its 4xx and 5xx are read here instead of becoming HTTP errors. -->
