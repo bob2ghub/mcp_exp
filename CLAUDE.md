@@ -562,6 +562,8 @@ Despite its name, T-08 is **read-only**. It never writes a reservation, holds a 
 
 ## The MCP server app (`asc-mcp-server/`, owner's files, 2026-10-26)
 
+**Re-shared by the owner on 2026-10-28:** `business-flows.xml` and `observability.xml` (identical to the copies here) and `mcp-html-widget.xml` (only change: the widget URI is now `widget-v3`). These three are current as of that date.
+
 A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in `asc-mcp-odx-backend-xapi/` is a backend; this app is the tool-call layer in front of it. Seven files were shared. **It holds two live generations side by side**, so check which one a change belongs in.
 
 | File | Defines |
@@ -572,7 +574,7 @@ A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in 
 | `observability.xml` | `log-start` (sets `vars.startedAt`, `vars.traceId` = `correlationId`, logs `tool.start`), `log-success`, `wrap-success` (**wraps the body as `{success, correlationId, mode, data}`**), `log-failure` (reads `vars.publicError`). |
 | `property-mcp-api.xml` | The **newer** style, for T-01 only: tool listener `find_properties` with the full PRD input schema (`countryCode` required; `city`, `checkinDate`, `checkoutDate`, `noOfadults`, `noOfchildren`, `noOfRooms`, `isLongStay`, `facilities[]`, `roomType`, `poi`, `currencyCode`, `maxRate`, `memberId`, `voucherCode`, `promotionCode`). Sets `vars.correlationId` = `uuid()`, normalises the body, **POST `/findproperties`** with `x-correlation-id` only, then `vars.mcpResponseText` = `write(payload, 'application/json')`. It uses none of the sub-flows above. |
 | `tool-routes.xml` | Eight `<flow>`s (`route-findPropertiesByLocation`, `route-getPropertyDetails`, `route-getServiceOfferings`, `route-getRoomAndRateDetails`, `route-getPromotionsAndDeals`, `route-compareProperties`, `route-compareRoomsAndRates`, `route-createBooking`) that POST the payload to the matching path, accept `200..299,400,404,409,422`, then `check-process-response` (≥400 → `APP:FUNCTIONAL`). **Only `route-findPropertiesByLocation` is referenced, and only from the commented-out `findProperties` flow, so none of them runs today.** This is the shape to reuse when pointing the tools at our xAPI. |
-| `mcp-html-widget.xml` | Flow `serve-html-resource-flow`: `mcp:resource-listener` serving `ui://ascott/widget-v2.html` as `text/html;profile=mcp-app`, read from `classpath://ui/ui_widget.html`. The ChatGPT widget that renders our `structuredContent`. |
+| `mcp-html-widget.xml` | Flow `serve-html-resource-flow`: `mcp:resource-listener` serving **`ui://ascott/widget-v3.html`** (was `widget-v2.html` until the owner's copy of 2026-10-28) as `text/html;profile=mcp-app`, read from `classpath://ui/ui_widget.html`. The ChatGPT widget that renders our `structuredContent`. No tool file in this repo refers to the URI (no `openai/outputTemplate`), so the link from a tool to the widget is either in a file not shared or not set; ask before relying on it. |
 
 **Registered tools (8, matching `health`):** `find_properties` (T-01, `property-mcp-api.xml`), then from `mcp-tool.xml`: `get_property_details`, `getServiceOfferings`, `getRoomAndRateDetails`, `getPromotions`, `compareProperties`, `compareRoomsAndRates`, `createBooking`. The MCP tool name and the flow name differ in two places: flow `getPromotionsAndDeals` registers as `getPromotions`, and flow `getPropertyDetails` registers as `get_property_details`. Naming is mixed: `find_properties` and `get_property_details` are snake_case, the rest camelCase.
 

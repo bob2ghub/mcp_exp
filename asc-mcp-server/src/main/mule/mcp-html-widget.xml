@@ -36,7 +36,7 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
         <mcp:resource-listener
             config-ref="asc_mcp_config"
             name="Response HTML Template"
-            uri="ui://ascott/widget-v2.html"
+            uri="ui://ascott/widget-v3.html"
             resourceMimeType="text/html;profile=mcp-app">
 
             <mcp:description><![CDATA[
