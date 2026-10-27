@@ -339,7 +339,7 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
   - **`excluded[] {property_code, reason}`** carries only `reason: "not_found"`, the schema's single enum value. A code whose lookup failed (`unavailable`) therefore has no slot: it is simply absent from the response and reported in the `xapi.downstream.error` log.
 - **Checks:** `asc-mcp-odx-backend-xapi/tests/check_t06.py` is a function-for-function Python copy of the response DataWeave. It builds `examples/compare-properties-response.sample.json` from the real 51052 response plus the 8790 / 8791 samples and runs 19 checks (not found, unavailable, no bookable rate, a listing entry, POIs and `childAges`, different cities); all validate against 0.1.0. Keep it in step with the DataWeave. The DataWeave itself has not been run here (no runtime); `tests/playground/compare-properties-response.playground.dwl` + `-input.json` run it in the DataWeave Playground.
 - **Known issues:** `compare-batch-lookup` is a fourth copy of the booking search `http:request` (see issue 8). The batch path is unconfirmed (above). Set `t06.batchLookup: "false"` to use only one-by-one calls.
-- **Postman:** `asc-mcp-odx-backend-xapi/postman/ascott-mcp-xapi.postman_collection.json` (T-02/03/04 plus a T-06 folder). Set `propertyCode4` to a real 4th code.
+- **Postman:** see "Postman collection" under "How to work on it". Set `propertyCode4` to a real 4th code.
 
 ## Wiring the MCP tools to our xAPI (added by us 2026-10-26, not yet deployed)
 
@@ -613,5 +613,12 @@ A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in 
 - Diagnose from the audit log lines: `xapi.start` / `T04M.start` / `T05.start` / `T06.start` / `T07.start` / `T08.start`, `xapi.searchvoucher.request` / `xapi.searchvoucher.response` (T-05), `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
 - Check any response change against the tool's schema, using a sample built from real upstream data where possible.
 - Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`, `t06.*`).
+- **Postman collection** (rebuilt 2026-10-28): `asc-mcp-odx-backend-xapi/postman/ascott-mcp-xapi.postman_collection.json` is **generated** by `postman/build_collection.py`. Edit the script, then run `python -I postman/build_collection.py`; never hand-edit the JSON.
+  - **Content:** 8 folders, 73 requests: one folder per tool, T-02 to T-08 (happy paths, edge cases, every 400 / 404 / 409), plus "00 Journey", the ChatGPT order T-02 → T-04 → T-07 → T-08 → T-05.
+  - **Shared scripts:** a collection pre-request sets check-in today + 21, three nights, and a fresh `X-Correlation-ID`. A collection test checks the JSON body, the echoed correlation ID and, on errors, the `{success, correlationId, error{category, code, message, retryable}}` envelope.
+  - **Per-request tests:** the status. For a 200, also the tool schema's required top-level and `meta` keys, read from `schemas/` at build time, plus request-specific checks (order, counts, `resolution`, totals, error codes).
+  - **Chaining:** the first T-04 request saves `pickedRoomCode`, `pickedRoomCode2` and `pickedRatePlanCode`, which the T-07 and T-08 "carried from T-04" requests use.
+  - **Variables:** `propertyCode` 51052, `roomCode1..4` = its room codes.
+  - **Checked here only offline:** every script passes `node --check`. The tests were also run with a small `pm` stand-in against the Python mirrors' responses; the only failures were the limits of the single 51052 / T-06 samples.
 - Commit to branch `claude/get-property-details-xapi`.
 - `asc-mcp-server/` holds the owner's MCP server files for reference. Change them only when asked, and keep the xAPI (`asc-mcp-odx-backend-xapi/`) and the MCP server apart: they are separate Mule apps.
