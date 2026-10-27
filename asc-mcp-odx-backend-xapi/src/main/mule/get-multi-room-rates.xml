@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-04 for SEVERAL rooms: POST /api/v1/multi-room-details
+
+  Same as get-room-rates.xml (T-04), but the booking search body carries one apartmentList entry per requested
+  room, so upstream answers with apartments[].room0[], room1[], room2[], … , one list per requested room.
+
+  Request: the mobile app's own booking search shape is accepted as is, e.g.
+    {propertyCode, checkinDate, checkoutDate, currencyCode, language, noOfRooms,
+     apartmentList: [{noOfadults: "2", noOfchildren: "1", childAges: [3]}, …],
+     perNightRate, isExcludePriceStartFrom, promoCorpCode, memberId, messageId, version, platform}
+  It is validated by dwl/rooms-validate-request.dwl (the T-04 validator: 1 to rooms.maxRooms entries, per-room
+  guests and child ages), plus a check here that noOfRooms, when sent, matches apartmentList. memberId, messageId,
+  version and platform are ignored (non-logged-in journey; messageId is the correlation ID).
+
+  Body: dwl/multi-room-booking-search-request.dwl -> vars.bookingSearchBody, which the shared get-property-common-info
+  (get-common-details.xml) sends instead of its single-room body. No http:request of its own.
+
+  Response: the T-04 structuredContent (schema 0.3.0) from dwl/room-rate-details.dwl: requested_rooms[i] holds the
+  room types upstream returned in room{i} for apartmentList[i]. With ?format=raw it returns the unmapped property
+  object (propertyList[0], with apartments[].room0[] … room{n}[]) instead, for checking what upstream sent.
+
+  Errors: rooms-error-handler from get-room-rates.xml (same codes as T-04).
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <flow name="get-multi-room-details">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/multi-room-details" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <set-variable variableName="toolName" value="get_multi_room_rate_details" doc:name="toolName"/>
+    <set-variable variableName="rawResponse" value="#[lower(attributes.queryParams.format default '') == 'raw']" doc:name="rawResponse"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04M.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T04M-START"/>
+    <flow-ref name="multi-rooms-validate-request" doc:name="multi-rooms-validate-request"/>
+    <flow-ref name="multi-rooms-get-rates" doc:name="multi-rooms-get-rates"/>
+    <choice doc:name="raw or mapped">
+      <when expression="#[vars.rawResponse default false]">
+        <set-payload value="#[output application/json --- vars.roomsSource]" doc:name="raw property"/>
+      </when>
+      <otherwise>
+        <flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
+      </otherwise>
+    </choice>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04M.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: vars.roomsRequest.propertyCode, noOfRooms: vars.roomsRequest.rooms, roomTypesPerRoom: (vars.roomsSource.apartments default []) reduce ((e, acc = {}) -> acc ++ (if (e is Object) (e mapObject ((v, k) -> {(k): if (v is Array) sizeOf(v) else 0})) else {})), raw: vars.rawResponse default false, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T04M-SUCCESS"/>
+    <error-handler ref="rooms-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.roomsRequest (the T-04 validator) and vars.multiRoomInput (the raw body, for the
+       pass-through flags). Unlike rooms-validate-request, several rooms are allowed. -->
+  <sub-flow name="multi-rooms-validate-request">
+    <set-variable variableName="multiRoomInput" value="#[output application/java --- if (payload is Object) payload else {}]" doc:name="multiRoomInput"/>
+    <try>
+      <ee:transform>
+        <ee:variables><ee:set-variable variableName="roomsValidation" resource="dwl/rooms-validate-request.dwl"/></ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
+          <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'rooms-validate-request.dwl failed: ' ++ (error.description default '')]"/>
+          <set-variable variableName="roomsValidation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="roomsValidation"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <!-- noOfRooms is optional, but when sent it must agree with apartmentList: upstream answers per entry. -->
+    <set-variable variableName="roomsErrors" value="#[output application/java --- do {
+	var sent = vars.multiRoomInput.noOfRooms
+	var n = if (sent is Number) sent else if ((sent is String) and (sent matches /^[0-9]+$/)) (sent as Number) else null
+	var listed = sizeOf(vars.roomsValidation.request.apartmentList default [])
+	---
+	(vars.roomsValidation.errors default []) ++ (
+		if (sent == null) []
+		else if (n == null) ['noOfRooms must be a whole number.']
+		else if (n != listed) ['noOfRooms is ' ++ (n as String) ++ ' but apartmentList describes ' ++ (listed as String) ++ ' room(s): send one apartmentList entry per room.']
+		else [])
+}]" doc:name="roomsErrors"/>
+    <choice>
+      <when expression="#[not isEmpty(vars.roomsErrors default [])]">
+        <set-variable variableName="errorMessage" value="#[(vars.roomsErrors default []) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid get_multi_room_rate_details request"/>
+      </when>
+    </choice>
+    <set-variable variableName="roomsRequest" value="#[vars.roomsValidation.request]" doc:name="roomsRequest"/>
+  </sub-flow>
+
+  <!-- One booking search call for the property with every requested room: vars.roomsSource = propertyList[0]. -->
+  <sub-flow name="multi-rooms-get-rates">
+    <ee:transform doc:name="multi-room body">
+      <ee:variables><ee:set-variable variableName="bookingSearchBody" resource="dwl/multi-room-booking-search-request.dwl"/></ee:variables>
+    </ee:transform>
+    <!-- property-info-request.dwl is not used (bookingSearchBody wins), but get-property-common-info's checks read vars.request. -->
+    <set-variable variableName="request" value="#[vars.roomsRequest]" doc:name="request"/>
+    <flow-ref name="get-property-common-info" doc:name="get-property-common-info"/>
+    <set-variable variableName="roomsSource" value="#[vars.property]" doc:name="roomsSource"/>
+    <choice>
+      <when expression="#[!(vars.roomsSource is Object)]">
+        <set-variable variableName="errorMessage" value="No rooms found for this property." doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>
+</mule>

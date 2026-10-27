@@ -1,0 +1,79 @@
+{
+  "roomsRequest": {
+    "propertyCode": "51052",
+    "checkin": "2026-11-03",
+    "checkout": "2026-11-06",
+    "nights": 3,
+    "adults": 5,
+    "children": 3,
+    "childAges": [
+      3,
+      2,
+      10
+    ],
+    "rooms": 3,
+    "apartmentList": [
+      {
+        "noOfadults": 2,
+        "noOfchildren": 1,
+        "childAges": [
+          3
+        ]
+      },
+      {
+        "noOfadults": 1,
+        "noOfchildren": 2,
+        "childAges": [
+          2,
+          10
+        ]
+      },
+      {
+        "noOfadults": 2,
+        "noOfchildren": 0,
+        "childAges": []
+      }
+    ],
+    "currency": "SGD",
+    "language": "en",
+    "maxPois": 0
+  },
+  "multiRoomInput": {
+    "isExcludePriceStartFrom": false,
+    "perNightRate": false,
+    "promoCorpCode": "",
+    "version": "10.9",
+    "memberId": "",
+    "checkinDate": "2026-11-03",
+    "language": "en",
+    "platform": "iOS",
+    "messageId": "Q7Gc8ffBQPzUHXYd",
+    "currencyCode": "SGD",
+    "checkoutDate": "2026-11-06",
+    "propertyCode": "51052",
+    "noOfRooms": 3,
+    "apartmentList": [
+      {
+        "noOfadults": "2",
+        "noOfchildren": "1",
+        "childAges": [
+          3
+        ]
+      },
+      {
+        "noOfadults": "1",
+        "noOfchildren": "2",
+        "childAges": [
+          2,
+          10
+        ]
+      },
+      {
+        "noOfadults": "2",
+        "noOfchildren": "0",
+        "childAges": []
+      }
+    ]
+  },
+  "traceId": "trace-1"
+}

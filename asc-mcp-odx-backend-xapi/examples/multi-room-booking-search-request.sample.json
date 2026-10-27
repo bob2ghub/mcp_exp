@@ -1,0 +1,46 @@
+{
+  "messageId": "trace-1",
+  "memberId": "",
+  "language": "en",
+  "currencyCode": "SGD",
+  "promoCorpCode": "",
+  "propertyListing": false,
+  "isModifyJourney": false,
+  "propertyCode": [
+    "51052"
+  ],
+  "checkinDate": "2026-12-03",
+  "checkoutDate": "2026-12-06",
+  "voucherCode": "",
+  "noOfRooms": 3,
+  "noOfadults": "5",
+  "noOfchildren": "3",
+  "minPrice": "",
+  "maxPrice": "",
+  "perNightRate": false,
+  "apartmentList": [
+    {
+      "childAges": [
+        3
+      ],
+      "noOfadults": "2",
+      "noOfchildren": "1"
+    },
+    {
+      "childAges": [
+        2,
+        10
+      ],
+      "noOfadults": "1",
+      "noOfchildren": "2"
+    },
+    {
+      "childAges": [],
+      "noOfadults": "2",
+      "noOfchildren": "0"
+    }
+  ],
+  "userCountry": "SG",
+  "isExcludePriceStartFrom": false,
+  "channel": "mobile"
+}

@@ -9,9 +9,18 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
 
 <sub-flow name="get-property-common-info" doc:id="315f897e-5abc-4365-b074-cd1ed1bf945b">
-    <ee:transform>
-      <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
-    </ee:transform>
+    <!-- A caller that needs a different body (the multi-room flow, get-multi-room-rates.xml) builds it into
+         vars.bookingSearchBody first; everyone else gets the single-room body from property-info-request.dwl. -->
+    <choice doc:name="booking search body">
+      <when expression="#[vars.bookingSearchBody != null]">
+        <set-variable variableName="propertyInfoRequest" value="#[vars.bookingSearchBody]" doc:name="propertyInfoRequest"/>
+      </when>
+      <otherwise>
+        <ee:transform>
+          <ee:variables><ee:set-variable variableName="propertyInfoRequest" resource="dwl/property-info-request.dwl"/></ee:variables>
+        </ee:transform>
+      </otherwise>
+    </choice>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.bookingsearch.request", tool: vars.toolName default "get_property_details", correlationId: vars.traceId, body: vars.propertyInfoRequest}, "application/json", {indent: false})]'/>
     <!-- [STUDIO:"Request"]<http:request config-ref="HTTP_Request_configuration1" method="POST" path="${property.path}" responseTimeout="${property.timeout}">
       <http:body><![CDATA[#[vars.propertyInfoRequest&#93;&#93;&#93;></http:body>

@@ -1,0 +1,1275 @@
+{
+  "meta": {
+    "property_code": "51052",
+    "property_name": "Ascott Raffles Place Singapore",
+    "brand_code": "ascott-the-residence",
+    "country_code": "SG",
+    "asset_base_url": "https://www.discoverasr.com",
+    "checkin_date": "2026-12-03",
+    "checkout_date": "2026-12-06",
+    "noOfadults": 5,
+    "noOfchildren": 3,
+    "noOfRooms": 3,
+    "is_all_avail": true,
+    "currency": "SGD"
+  },
+  "requested_rooms": [
+    {
+      "room_index": 1,
+      "noOfadults": 2,
+      "noOfchildren": 1,
+      "childAges": [
+        3
+      ],
+      "total_results": 4,
+      "rooms": [
+        {
+          "room_code": "0BRCT",
+          "room_name": "Studio Cutler Suite",
+          "room_category": "Studio",
+          "ranking": 1,
+          "description": "Experience modern living with this contemporary studio apartment, which blends the perfect location with the ultimate stylish residence. The residence also comes with wireless Internet access, air-conditioning and daily housekeeping for your total convenience and comfort.Apartment type comes in either Twin beds or 1 King-size bed.",
+          "bed_type": "1 King-size bed or Twin Beds",
+          "max_person_in_room": "Max 2 pax",
+          "max_occupancy": 3,
+          "size_sqm": 48.0,
+          "units_remaining": 91,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_cutler-suite---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_cutler-suite---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-cutler-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Couch.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Kitchen.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Bedroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed or 2 single beds",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Steam iron & ironing board (master bedroom)"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster",
+                "Washing machine & dryer"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "2-3 seater sofa",
+                "Coffee table",
+                "Flat screen television with cable channels",
+                "Work desk & chair",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Accessible room upon request",
+                "Complimentary WiFi & broadband internet access",
+                "Air-conditioning with individually controlled thermostats",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "ASRAPPFX",
+              "rate_plan_name": "Lowest App Rate",
+              "description": "Lowest Available rate for Mobile App",
+              "is_tax_inclusive": false,
+              "per_night_rate": 211.5,
+              "total_stay_rate": 423,
+              "per_night_tax": 42.09,
+              "total_tax": 84.18,
+              "earn_asr_points": 4230,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "SSPM",
+              "rate_plan_name": "Seasonal Promotion Standalone",
+              "is_tax_inclusive": false,
+              "per_night_rate": 240,
+              "total_stay_rate": 480,
+              "per_night_tax": 47.76,
+              "total_tax": 95.52,
+              "earn_asr_points": 4800,
+              "non_refundable": true,
+              "cancellation_description": "Booking is non-refundable. Cancellation and non-arrival will be subjected to a charge amounting to full rental fee.",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 399.5,
+              "total_stay_rate": 799,
+              "per_night_tax": 79.5,
+              "total_tax": 159,
+              "earn_asr_points": 7990,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "BASB",
+              "rate_plan_name": "Blue Army - Score Big for ASR Member (ASR)",
+              "description": "Includes: \r\n- Room for 2 nights\r\n- Daily breakfast\r\n- Stadium Tour \r\n(Package - CFC Stadium Experience)",
+              "is_tax_inclusive": false,
+              "per_night_rate": 423,
+              "total_stay_rate": 846,
+              "per_night_tax": 84.18,
+              "total_tax": 168.36,
+              "earn_asr_points": 8460,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 470,
+              "total_stay_rate": 940,
+              "per_night_tax": 93.53,
+              "total_tax": 187.06,
+              "earn_asr_points": 9400,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1DLXT",
+          "room_name": "One-Bedroom Collyer Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 2,
+          "description": "Whip up a home-cooked meal in the privacy and comfort of your residence, or unwind with a movie from our DVD library. Ideal for either short or long stays, the Collyer suite offers all the comforts of home with the conveniences of a hotel.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax",
+          "max_occupancy": 4,
+          "size_sqm": 52.0,
+          "units_remaining": 30,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-collyer-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bedroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Flat screen television with cable channels (master bedroom)",
+                "In-room electronic safe",
+                "Work desk & chair",
+                "Steam iron & ironing board (master bedroom)"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "2-3 seater sofa",
+                "Coffee table",
+                "Flat screen television with cable channels",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Housekeeping service (except Sundays & public holidays)",
+                "Air-conditioning with individually controlled thermostats"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 765,
+              "total_stay_rate": 1530,
+              "per_night_tax": 152.24,
+              "total_tax": 304.48,
+              "earn_asr_points": 15300,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 900,
+              "total_stay_rate": 1800,
+              "per_night_tax": 179.1,
+              "total_tax": 358.2,
+              "earn_asr_points": 18000,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1BRT",
+          "room_name": "One-Bedroom Brown Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 3,
+          "description": "Whether you’re in Singapore for business or leisure, enjoy this plush, spacious suite that features elegant and comfortable living, dining and sleeping areas, and amenities such as wireless Internet access, air-conditioning and daily housekeeping services.*Third person is chargeable.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax (3rd pax chargeable)",
+          "max_occupancy": 4,
+          "size_sqm": 75.0,
+          "units_remaining": 14,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_brown-suite_living-room---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_brown-suite_living-room---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-brown-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bathroom Living Room.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bedroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Walk-in closet",
+                "Work desk & chair",
+                "Steam iron & ironing board (master bedroom)",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "Coffee table",
+                "Dining table with chairs",
+                "Flat screen television with cable channels",
+                "Sofa set",
+                "1 armchair",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Air-conditioning with individually controlled thermostats",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 590,
+              "total_stay_rate": 1180,
+              "per_night_tax": 117.41,
+              "total_tax": 234.82,
+              "earn_asr_points": 11800,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1BRMT",
+          "room_name": "One-Bedroom Finlayson Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 4,
+          "description": "Dressed in contemporary chic finishings, this spacious suite features stylishly appointed designer furnishings and fittings, large windows, a modern kitchen, and a large living and dining area.*Third person is chargeable.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax (3rd pax chargeable)",
+          "max_occupancy": 5,
+          "size_sqm": 108.0,
+          "units_remaining": 9,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_finlayson-suite_bedroom---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_finlayson-suite_bathroom---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-finlayson-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Bathroom - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Living Area - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Dining Area - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-desktop.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-tablet.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-mobile.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Bedroom - HR.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Dressing table",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Walk-in closet",
+                "Steam iron & ironing board (master bedroom)",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "Coffee table",
+                "Dining table with chairs",
+                "Flat screen television with cable channels",
+                "Sofa set",
+                "Work desk & chair",
+                "Telephone",
+                "1 armchair"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "ASRAPPFX",
+              "rate_plan_name": "Lowest App Rate",
+              "description": "Lowest Available rate for Mobile App",
+              "is_tax_inclusive": false,
+              "per_night_rate": 292.5,
+              "total_stay_rate": 585,
+              "per_night_tax": 58.21,
+              "total_tax": 116.42,
+              "earn_asr_points": 5850,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 552.5,
+              "total_stay_rate": 1105,
+              "per_night_tax": 109.95,
+              "total_tax": 219.9,
+              "earn_asr_points": 11050,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 650,
+              "total_stay_rate": 1300,
+              "per_night_tax": 129.35,
+              "total_tax": 258.7,
+              "earn_asr_points": 13000,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "room_index": 2,
+      "noOfadults": 1,
+      "noOfchildren": 2,
+      "childAges": [
+        2,
+        10
+      ],
+      "total_results": 3,
+      "rooms": [
+        {
+          "room_code": "1DLXT",
+          "room_name": "One-Bedroom Collyer Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 2,
+          "description": "Whip up a home-cooked meal in the privacy and comfort of your residence, or unwind with a movie from our DVD library. Ideal for either short or long stays, the Collyer suite offers all the comforts of home with the conveniences of a hotel.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax",
+          "max_occupancy": 4,
+          "size_sqm": 52.0,
+          "units_remaining": 30,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-collyer-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bedroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Flat screen television with cable channels (master bedroom)",
+                "In-room electronic safe",
+                "Work desk & chair",
+                "Steam iron & ironing board (master bedroom)"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "2-3 seater sofa",
+                "Coffee table",
+                "Flat screen television with cable channels",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Housekeeping service (except Sundays & public holidays)",
+                "Air-conditioning with individually controlled thermostats"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 765,
+              "total_stay_rate": 1530,
+              "per_night_tax": 152.24,
+              "total_tax": 304.48,
+              "earn_asr_points": 15300,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 900,
+              "total_stay_rate": 1800,
+              "per_night_tax": 179.1,
+              "total_tax": 358.2,
+              "earn_asr_points": 18000,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1BRT",
+          "room_name": "One-Bedroom Brown Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 3,
+          "description": "Whether you’re in Singapore for business or leisure, enjoy this plush, spacious suite that features elegant and comfortable living, dining and sleeping areas, and amenities such as wireless Internet access, air-conditioning and daily housekeeping services.*Third person is chargeable.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax (3rd pax chargeable)",
+          "max_occupancy": 4,
+          "size_sqm": 75.0,
+          "units_remaining": 14,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_brown-suite_living-room---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_brown-suite_living-room---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-brown-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bathroom Living Room.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-brown-suite/gallery/Brown Suite Bedroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Walk-in closet",
+                "Work desk & chair",
+                "Steam iron & ironing board (master bedroom)",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "Coffee table",
+                "Dining table with chairs",
+                "Flat screen television with cable channels",
+                "Sofa set",
+                "1 armchair",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Air-conditioning with individually controlled thermostats",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 590,
+              "total_stay_rate": 1180,
+              "per_night_tax": 117.41,
+              "total_tax": 234.82,
+              "earn_asr_points": 11800,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1BRMT",
+          "room_name": "One-Bedroom Finlayson Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 4,
+          "description": "Dressed in contemporary chic finishings, this spacious suite features stylishly appointed designer furnishings and fittings, large windows, a modern kitchen, and a large living and dining area.*Third person is chargeable.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax (3rd pax chargeable)",
+          "max_occupancy": 5,
+          "size_sqm": 108.0,
+          "units_remaining": 9,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_finlayson-suite_bedroom---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_finlayson-suite_bathroom---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-finlayson-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Bathroom - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Living Area - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Dining Area - HR.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-desktop.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-tablet.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/ascott-rafflesplace-singapore-finlayson-suite-mobile.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/finlayson-suite/SR_Singapore_Asc Raffles Place_Finlayson Suite_Bedroom - HR.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Dressing table",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Walk-in closet",
+                "Steam iron & ironing board (master bedroom)",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "Coffee table",
+                "Dining table with chairs",
+                "Flat screen television with cable channels",
+                "Sofa set",
+                "Work desk & chair",
+                "Telephone",
+                "1 armchair"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "ASRAPPFX",
+              "rate_plan_name": "Lowest App Rate",
+              "description": "Lowest Available rate for Mobile App",
+              "is_tax_inclusive": false,
+              "per_night_rate": 292.5,
+              "total_stay_rate": 585,
+              "per_night_tax": 58.21,
+              "total_tax": 116.42,
+              "earn_asr_points": 5850,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 552.5,
+              "total_stay_rate": 1105,
+              "per_night_tax": 109.95,
+              "total_tax": 219.9,
+              "earn_asr_points": 11050,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 650,
+              "total_stay_rate": 1300,
+              "per_night_tax": 129.35,
+              "total_tax": 258.7,
+              "earn_asr_points": 13000,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "room_index": 3,
+      "noOfadults": 2,
+      "noOfchildren": 0,
+      "childAges": [],
+      "total_results": 2,
+      "rooms": [
+        {
+          "room_code": "0BRCT",
+          "room_name": "Studio Cutler Suite",
+          "room_category": "Studio",
+          "ranking": 1,
+          "description": "Experience modern living with this contemporary studio apartment, which blends the perfect location with the ultimate stylish residence. The residence also comes with wireless Internet access, air-conditioning and daily housekeeping for your total convenience and comfort.Apartment type comes in either Twin beds or 1 King-size bed.",
+          "bed_type": "1 King-size bed or Twin Beds",
+          "max_person_in_room": "Max 2 pax",
+          "max_occupancy": 3,
+          "size_sqm": 48.0,
+          "units_remaining": 91,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_cutler-suite---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_cutler-suite---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-cutler-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Couch.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Kitchen.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Bedroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/studio-cutler-suite/gallery/Cutler Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed or 2 single beds",
+                "Flat screen television with cable channels",
+                "In-room electronic safe",
+                "Steam iron & ironing board (master bedroom)"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Rice cooker (upon request)",
+                "Toaster",
+                "Washing machine & dryer"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "2-3 seater sofa",
+                "Coffee table",
+                "Flat screen television with cable channels",
+                "Work desk & chair",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Accessible room upon request",
+                "Complimentary WiFi & broadband internet access",
+                "Air-conditioning with individually controlled thermostats",
+                "Housekeeping service (except Sundays & public holidays)"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "ASRAPPFX",
+              "rate_plan_name": "Lowest App Rate",
+              "description": "Lowest Available rate for Mobile App",
+              "is_tax_inclusive": false,
+              "per_night_rate": 211.5,
+              "total_stay_rate": 423,
+              "per_night_tax": 42.09,
+              "total_tax": 84.18,
+              "earn_asr_points": 4230,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "SSPM",
+              "rate_plan_name": "Seasonal Promotion Standalone",
+              "is_tax_inclusive": false,
+              "per_night_rate": 240,
+              "total_stay_rate": 480,
+              "per_night_tax": 47.76,
+              "total_tax": 95.52,
+              "earn_asr_points": 4800,
+              "non_refundable": true,
+              "cancellation_description": "Booking is non-refundable. Cancellation and non-arrival will be subjected to a charge amounting to full rental fee.",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 399.5,
+              "total_stay_rate": 799,
+              "per_night_tax": 79.5,
+              "total_tax": 159,
+              "earn_asr_points": 7990,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "BASB",
+              "rate_plan_name": "Blue Army - Score Big for ASR Member (ASR)",
+              "description": "Includes: \r\n- Room for 2 nights\r\n- Daily breakfast\r\n- Stadium Tour \r\n(Package - CFC Stadium Experience)",
+              "is_tax_inclusive": false,
+              "per_night_rate": 423,
+              "total_stay_rate": 846,
+              "per_night_tax": 84.18,
+              "total_tax": 168.36,
+              "earn_asr_points": 8460,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 470,
+              "total_stay_rate": 940,
+              "per_night_tax": 93.53,
+              "total_tax": 187.06,
+              "earn_asr_points": 9400,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        },
+        {
+          "room_code": "1DLXT",
+          "room_name": "One-Bedroom Collyer Suite",
+          "room_category": "1 Bedroom",
+          "ranking": 2,
+          "description": "Whip up a home-cooked meal in the privacy and comfort of your residence, or unwind with a movie from our DVD library. Ideal for either short or long stays, the Collyer suite offers all the comforts of home with the conveniences of a hotel.",
+          "bed_type": "1 King-size bed",
+          "max_person_in_room": "Max 2 pax",
+          "max_occupancy": 4,
+          "size_sqm": 52.0,
+          "units_remaining": 30,
+          "thumbnail_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_53_350x350.jpg.transform/ascott-lowres/image.jpg",
+          "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_collyer-suite_bedroom---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+          "floor_plan_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/floor-plan/ascott-raffles-place-singapore-collyer-floor-plan.jpg.transform/ascott-lowres/image.jpg",
+          "gallery": [
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bathroom.jpg.transform/cap-lowres/image.jpg"
+            },
+            {
+              "path": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/one-bedroom-collyer-suite/gallery/Collyer Suite Bedroom.jpg.transform/cap-lowres/image.jpg"
+            }
+          ],
+          "amenity_groups": [
+            {
+              "group": "bathroom",
+              "amenities": [
+                "Bathtub (master bathroom)",
+                "Eco-friendly bath amenities",
+                "Standing shower",
+                "Towels"
+              ]
+            },
+            {
+              "group": "bedroom",
+              "amenities": [
+                "1 king-size bed",
+                "Flat screen television with cable channels (master bedroom)",
+                "In-room electronic safe",
+                "Work desk & chair",
+                "Steam iron & ironing board (master bedroom)"
+              ]
+            },
+            {
+              "group": "kitchen",
+              "amenities": [
+                "Built-in microwave oven",
+                "Coffee machine",
+                "Cooker hob & hood",
+                "Dish washer",
+                "Electric kettle",
+                "Glassware, crockery, cutlery & utensils",
+                "Refrigerator",
+                "Toaster"
+              ]
+            },
+            {
+              "group": "livingroom",
+              "amenities": [
+                "2-3 seater sofa",
+                "Coffee table",
+                "Flat screen television with cable channels",
+                "Telephone"
+              ]
+            },
+            {
+              "group": "others",
+              "amenities": [
+                "Complimentary WiFi & broadband internet access",
+                "Washing machine & dryer",
+                "Housekeeping service (except Sundays & public holidays)",
+                "Air-conditioning with individually controlled thermostats"
+              ]
+            }
+          ],
+          "rate_plans": [
+            {
+              "rate_plan_code": "Flexi Monthly Rate",
+              "rate_plan_name": "Best Flexible Monthly Daily Rate",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\n\r\nBlackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 300,
+              "total_stay_rate": 600,
+              "per_night_tax": 59.7,
+              "total_tax": 119.4,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            },
+            {
+              "rate_plan_code": "ASRAP-15",
+              "rate_plan_name": "ASR Advance Purchase Promotion - 15pct",
+              "description": "Rate includes local calls, use of recreational facilities, broadband internet access and daily housekeeping service (except on Sunday and public holidays). Blackout dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 765,
+              "total_stay_rate": 1530,
+              "per_night_tax": 152.24,
+              "total_tax": 304.48,
+              "earn_asr_points": 15300,
+              "non_refundable": false,
+              "cancellation_description": "Booking must be cancelled by 3PM on the day of arrival to avoid a cancellation charge amounting to 2 nights rental fee.",
+              "is_app_exclusive": true
+            },
+            {
+              "rate_plan_code": "ZZFLEX",
+              "rate_plan_name": "Best Flexible Rate",
+              "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+              "is_tax_inclusive": false,
+              "per_night_rate": 900,
+              "total_stay_rate": 1800,
+              "per_night_tax": 179.1,
+              "total_tax": 358.2,
+              "earn_asr_points": 18000,
+              "non_refundable": false,
+              "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+              "is_app_exclusive": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
