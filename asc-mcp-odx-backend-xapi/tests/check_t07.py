@@ -2,11 +2,14 @@
 
 1. dwl/compare-rooms-validate-request.dwl (room codes; mirrored here) and dwl/rooms-validate-request.dwl
    (stay and guests; mirror: tests/check_t04_request.py) plus multi-rooms-validate-request's noOfRooms check
-   (mirror: tests/check_t04_multi.py);
+   (mirror: tests/check_t04_multi.py) and the flow's one-room check;
 2. the booking search body from multi-rooms-get-rates (mirror: tests/check_t04_multi.py), to show childAges reach upstream;
 3. dwl/room-rate-details.dwl (mirror: tests/check_t04.py) followed by dwl/compare-rooms-response.dwl (mirrored here)
-   on the real 51052 response, validated against the draft schema T07 0.1.0;
-4. the flow's 404 rule (every requested code not_found -> ROOM_CODES_NOT_FOUND, listing the property's codes).
+   on the real 51052 response, validated against the owner's schema T07 0.4.0;
+4. the flow's two-room rule (fewer than two rooms -> 404 NOT_ENOUGH_ROOMS).
+
+T07 0.4.0 refers to the T-04 0.4.0 `room`, which is not in this repo yet; the T-04 0.3.0 schema is registered under the
+0.4.0 id until it arrives (0.4.0 only adds an optional `is_member_rate` on rates).
 
 Run: python -I tests/check_t07.py   (needs: pip install jsonschema)
 """
@@ -14,6 +17,7 @@ import copy, json, re, sys
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,29 +38,34 @@ no_of_rooms_errors = multi_mirror["no_of_rooms_errors"]
 booking_body = multi_mirror["booking_body"]
 
 SCHEMA = json.loads((ROOT / "schemas/T07-compare-rooms-rates.structured-content.schema.json").read_text(encoding="utf-8"))
-VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())
+T04 = json.loads((ROOT / "schemas/T04-get-room-rate-details.structured-content.schema.json").read_text(encoding="utf-8"))
+REGISTRY = Registry().with_resource("urn:ascott:mcp:get_room_rate_details:structured-content:0.4.0", Resource.from_contents(T04))
+VALIDATOR = Draft202012Validator(SCHEMA, registry=REGISTRY, format_checker=FormatChecker())
 
 
 # ---------------------------------------------------------------- dwl/compare-rooms-validate-request.dwl
 
-def validate_codes(body, max_codes=4):
+def validate_codes(body):
     body = body if isinstance(body, dict) else {}
     codes_in = body.get("roomCodes") if body.get("roomCodes") is not None else body.get("roomCategoryCodes")
 
     def code(v):
-        return v.strip().upper() if isinstance(v, str) and v.strip() else None
+        return v.strip() if isinstance(v, str) and v.strip() else None
 
     listed = [code(v) for v in codes_in] if isinstance(codes_in, list) else []
-    distinct = []
+    distinct, seen = [], set()
     for c in listed:
-        if c is not None and c not in distinct:
+        if c is not None and c.upper() not in seen:
+            seen.add(c.upper())
             distinct.append(c)
     errors = [
         'roomCodes must be an array of room codes, for example ["0BRCT", "1DLXT"].' if codes_in is not None and not isinstance(codes_in, list) else None,
         "roomCodes must contain only non-blank strings." if isinstance(codes_in, list) and None in listed else None,
-        "Each room code must be 1 to 40 letters, digits, hyphens or underscores." if any(not re.fullmatch(r"[A-Z0-9_-]{1,40}", c) for c in distinct) else None,
+        "Each room code must be 1 to 40 letters, digits, hyphens or underscores." if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", c) for c in distinct) else None,
+        None if (not distinct or 2 <= len(distinct) <= 4) else
+        "roomCodes must name 2 to 4 different room types (it names %d); omit it to compare the property's first four." % len(distinct),
     ]
-    return {"errors": [e for e in errors if e], "roomCodes": distinct[:max_codes], "droppedRoomCodes": distinct[max_codes:]}
+    return {"errors": [e for e in errors if e], "roomCodes": distinct}
 
 
 # ---------------------------------------------------------------- dwl/compare-rooms-response.dwl
@@ -69,61 +78,51 @@ def objects(v):
     return [x for x in v if isinstance(x, dict)] if isinstance(v, list) else []
 
 
-def compare_rooms(t04, codes_req, src):
+def compare_rooms(t04, codes_req):
     codes = codes_req.get("roomCodes") or []
-    dropped = codes_req.get("droppedRoomCodes") or []
+    m = t04.get("meta") or {}
+    requested = (objects(t04.get("requested_rooms")) or [{}])[0]
+    available = objects(requested.get("rooms"))
 
     def matches(r, c):
-        return upper_of(r.get("room_code")) == c or upper_of(r.get("room_category")) == c
+        return upper_of(r.get("room_code")) == c.upper() or upper_of(r.get("room_category")) == c.upper()
 
-    def code_index(r):
-        return next((i for i, c in enumerate(codes) if matches(r, c)), 999999)
-
-    requested = []
-    for rr in objects(t04.get("requested_rooms")):
-        rooms = objects(rr.get("rooms"))
-        kept = rooms if not codes else sorted([r for r in rooms if code_index(r) != 999999], key=code_index)
-        e = {k: v for k, v in rr.items() if k not in ("total_results", "rooms")}
-        e.update(total_results=len(kept), rooms=kept)
-        requested.append(e)
-
-    upstream = [a for e in objects(src.get("apartments")) for v in e.values() for a in objects(v)]
-
-    def at_property(c):
-        return any(upper_of(a.get("apartmentType")) == c or upper_of(a.get("apartmentCategoryCode")) == c for a in upstream)
-
-    def returned(c):
-        return any(matches(r, c) for rr in requested for r in rr["rooms"])
-
-    meta = dict(t04.get("meta") or {})
-    if codes:
-        meta["room_codes"] = codes
-    if dropped:
-        meta["dropped_room_codes"] = dropped
-    return {
-        "meta": meta,
-        "requested_rooms": requested,
-        "excluded": [{"room_code": c, "reason": "no_available_rate" if at_property(c) else "not_found"}
-                     for c in codes if not returned(c)],
+    picks = []
+    for c in codes:
+        taken = [x["room"]["room_code"] for x in picks if x["room"] is not None]
+        hit = next((r for r in available if matches(r, c) and r.get("room_code") not in taken), None)
+        picks.append({"code": c, "room": hit})
+    if not codes:
+        rooms = available[:4]
+        excluded = [{"room_code": r["room_code"], "reason": "over_limit"} for r in available[4:]]
+    else:
+        rooms = [x["room"] for x in picks if x["room"] is not None]
+        excluded = [{"room_code": x["code"], "reason": "not_available"} for x in picks if x["room"] is None]
+    meta = {
+        "property_code": m.get("property_code"), "property_name": m.get("property_name"), "brand_code": m.get("brand_code"),
+        "country_code": m.get("country_code"), "asset_base_url": m.get("asset_base_url"), "total_results": len(rooms),
+        "currency": m.get("currency"), "checkin_date": m.get("checkin_date"), "checkout_date": m.get("checkout_date"),
+        "noOfadults": requested.get("noOfadults", m.get("noOfadults")),
+        "noOfchildren": requested.get("noOfchildren", m.get("noOfchildren")),
+        "childAges": requested.get("childAges") or [], "price_includes_tax": m.get("price_includes_tax"),
     }
+    out = {"meta": {k: v for k, v in meta.items() if v is not None}, "rooms": rooms}
+    if excluded:
+        out["excluded"] = excluded
+    return out
 
 
-def not_found_error(out, codes_req, src, property_code):
-    """The flow's 404 rule; None when the call succeeds."""
-    codes = codes_req["roomCodes"]
-    if not codes or len([x for x in out["excluded"] if x["reason"] == "not_found"]) != len(codes):
+def not_enough_error(out, t04, property_code):
+    """The flow's two-room rule; None when the call succeeds."""
+    if len(out["rooms"]) >= 2:
         return None
-    known = []
-    for e in objects(src.get("apartments")):
-        for v in e.values():
-            for a in objects(v):
-                t = a.get("apartmentType") or ""
-                if t and t not in known:
-                    known.append(t)
-    msg = "None of the room codes %s exists at property %s." % (", ".join(codes), property_code)
-    if known:
-        msg += " Its room codes are %s." % ", ".join(known)
-    return {"code": "ROOM_CODES_NOT_FOUND", "status": 404, "message": msg}
+    with_rates = [r["room_code"] for r in (objects(t04.get("requested_rooms")) or [{}])[0].get("rooms", []) if r.get("room_code")]
+    missing = [x["room_code"] for x in out.get("excluded", []) if x["reason"] == "not_available"]
+    msg = "Fewer than two room types can be compared at property %s for this stay." % property_code
+    if missing:
+        msg += " Not available: %s." % ", ".join(missing)
+    msg += (" Room types with rates: %s." % ", ".join(with_rates)) if with_rates else " No room type has a bookable rate."
+    return {"code": "NOT_ENOUGH_ROOMS", "status": 404, "message": msg}
 
 
 # ---------------------------------------------------------------- the whole chain
@@ -139,8 +138,11 @@ def run(body, src):
     errors = v["errors"] + no_of_rooms_errors(v["request"])
     if errors:
         return {"status": 400, "errors": errors}
-    out = compare_rooms(map_rooms(src, v["request"], PROPS), codes_req, src)
-    err = not_found_error(out, codes_req, src, v["request"]["propertyCode"])
+    if len(v["request"]["apartmentList"]) > 1:
+        return {"status": 400, "errors": ["compare_rooms_rates compares room types for one room."]}
+    t04 = map_rooms(src, v["request"], PROPS)
+    out = compare_rooms(t04, codes_req)
+    err = not_enough_error(out, t04, v["request"]["propertyCode"])
     if err:
         return {"status": 404, "error": err}
     return {"status": 200, "body": out, "request": v["request"]}
@@ -159,21 +161,23 @@ def check(label, cond):
     return bool(cond)
 
 
-def codes_of(res, i=0):
-    return [r["room_code"] for r in res["body"]["requested_rooms"][i]["rooms"]]
+def codes_of(res):
+    return [r["room_code"] for r in res["body"]["rooms"]]
 
 
 src = json.loads((ROOT / "examples/upstream-property-details-51052.json").read_text(encoding="utf-8"))["propertyList"][0]
 OWNER = {"propertyCode": "51052", "roomCodes": ["0BRXA", "1BRXB", "2BRXC"], "checkinDate": "2027-05-04",
          "checkoutDate": "2027-05-13", "noOfadults": 2, "noOfchildren": 1, "childAges": [6], "currencyCode": "SGD",
          "priceIncludesTax": True, "language": "en"}
+NO_CODES = {k: v for k, v in OWNER.items() if k != "roomCodes"}
 results = []
 
 # The owner's request as sent: none of its codes is a 51052 room code.
 res = run(OWNER, src)
-results.append(check("owner's request: 404 ROOM_CODES_NOT_FOUND naming 51052's real codes",
+results.append(check("owner's request: 404 NOT_ENOUGH_ROOMS naming the missing codes and 51052's real ones",
                      res["status"] == 404 and res["error"]["message"] ==
-                     "None of the room codes 0BRXA, 1BRXB, 2BRXC exists at property 51052. Its room codes are 0BRCT, 1DLXT, 1BRT, 1BRMT."))
+                     "Fewer than two room types can be compared at property 51052 for this stay. Not available: 0BRXA, 1BRXB, 2BRXC."
+                     " Room types with rates: 0BRCT, 1DLXT, 1BRT, 1BRMT."))
 
 # The same request with real codes: the sample response.
 real = dict(OWNER, roomCodes=["1BRMT", "0brct", "1DLXT"])
@@ -181,90 +185,90 @@ res = run(real, src)
 (ROOT / "examples/compare-rooms-51052-request.sample.json").write_text(json.dumps(real, indent=2) + "\n", encoding="utf-8")
 (ROOT / "examples/compare-rooms-51052-response.sample.json").write_text(
     json.dumps(res["body"], indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-results.append(validate("real codes: response validates against T07 0.1.0", res["body"]))
-results.append(check("real codes: only those rooms, in request order, case ignored",
-                     codes_of(res) == ["1BRMT", "0BRCT", "1DLXT"] and res["body"]["requested_rooms"][0]["total_results"] == 3))
-results.append(check("real codes: meta echoes codes upper case, stay, guests; excluded is []",
-                     res["body"]["meta"]["room_codes"] == ["1BRMT", "0BRCT", "1DLXT"]
-                     and res["body"]["meta"]["checkin_date"] == "2027-05-04" and res["body"]["meta"]["noOfchildren"] == 1
-                     and res["body"]["meta"]["price_includes_tax"] is True and res["body"]["excluded"] == []))
-results.append(check("real codes: the room's childAges echoed",
-                     res["body"]["requested_rooms"][0]["childAges"] == [6]))
+results.append(validate("real codes: response validates against T07 0.4.0", res["body"]))
+results.append(check("real codes: those rooms, in request order, case ignored, no excluded",
+                     codes_of(res) == ["1BRMT", "0BRCT", "1DLXT"] and "excluded" not in res["body"]))
+meta = res["body"]["meta"]
+results.append(check("meta: total_results 3, stay, one room's guests, childAges and the tax flag echoed",
+                     meta["total_results"] == 3 and meta["checkin_date"] == "2027-05-04" and meta["checkout_date"] == "2027-05-13"
+                     and meta["noOfadults"] == 2 and meta["noOfchildren"] == 1 and meta["childAges"] == [6]
+                     and meta["price_includes_tax"] is True and meta["property_code"] == "51052" and meta["currency"] == "SGD"))
+results.append(check("each room is the T-04 room unchanged",
+                     res["body"]["rooms"][1] == map_rooms(src, res["request"], PROPS)["requested_rooms"][0]["rooms"][0]))
 body = booking_body(res["request"])
 results.append(check("booking search body carries childAges [6] and the 2 + 1 guests",
                      body["apartmentList"] == [{"childAges": [6], "noOfadults": "2", "noOfchildren": "1"}]
                      and body["noOfRooms"] == 1 and body["propertyCode"] == ["51052"]))
 
-# No codes: every room, identical to T-04.
-for label, b in [("no roomCodes", {k: v for k, v in OWNER.items() if k != "roomCodes"}),
-                 ("roomCodes []", dict(OWNER, roomCodes=[])), ("roomCodes null", dict(OWNER, roomCodes=None))]:
+# No codes: the first four, in ranking order.
+for label, b in [("no roomCodes", NO_CODES), ("roomCodes []", dict(OWNER, roomCodes=[])), ("roomCodes null", dict(OWNER, roomCodes=None))]:
     res = run(b, src)
-    results.append(check(label + ": every room in ranking order, no room_codes, excluded []",
-                         res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT", "1BRT", "1BRMT"]
-                         and "room_codes" not in res["body"]["meta"] and res["body"]["excluded"] == []))
-    results.append(validate(label + ": validates", res["body"]))
+    results.append(check(label + ": 51052's four room types, ranking order, no excluded",
+                         res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT", "1BRT", "1BRMT"] and "excluded" not in res["body"]))
+results.append(validate("no roomCodes: validates", res["body"]))
 
-# Mixed: one found, one unknown.
-res = run(dict(OWNER, roomCodes=["1DLXT", "XXXX"]), src)
-results.append(check("mixed: 200 with the known room, unknown code excluded as not_found",
-                     res["status"] == 200 and codes_of(res) == ["1DLXT"]
-                     and res["body"]["excluded"] == [{"room_code": "XXXX", "reason": "not_found"}]))
+# Six room types, no codes: four compared, two over_limit.
+s5 = copy.deepcopy(src)
+room0 = s5["apartments"][0]["room0"]
+for n, code in ((5, "2BRXT"), (6, "3BRXT")):
+    extra = copy.deepcopy(room0[0])
+    extra.update(apartmentType=code, apartmentName="Extra %s" % code, ranking=n)
+    room0.append(extra)
+res = run(NO_CODES, s5)
+results.append(check("six room types, no codes: first four, the rest over_limit with their own codes",
+                     res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT", "1BRT", "1BRMT"]
+                     and res["body"]["excluded"] == [{"room_code": "2BRXT", "reason": "over_limit"}, {"room_code": "3BRXT", "reason": "over_limit"}]))
+results.append(validate("over_limit: validates", res["body"]))
+
+# Mixed: two found, one unknown, echoed as requested.
+res = run(dict(OWNER, roomCodes=["1DLXT", "xxxx", "0BRCT"]), src)
+results.append(check("mixed: two rooms compared, unknown code excluded as not_available, as written",
+                     res["status"] == 200 and codes_of(res) == ["1DLXT", "0BRCT"]
+                     and res["body"]["excluded"] == [{"room_code": "xxxx", "reason": "not_available"}]))
 results.append(validate("mixed: validates", res["body"]))
+res = run(dict(OWNER, roomCodes=["1DLXT", "XXXX"]), src)
+results.append(check("only one code available: 404 NOT_ENOUGH_ROOMS", res["status"] == 404 and "Not available: XXXX." in res["error"]["message"]))
 
-# A room that exists but has no bookable rate (only member / test rates left).
+# A room that exists but has no bookable rate (only member rates left): also not_available.
 s2 = copy.deepcopy(src)
 for a in s2["apartments"][0]["room0"]:
     if a["apartmentType"] == "1BRT":
         for rp in a["ratePlan"]:
             rp["ratePlanTemplate"] = "AOA"
-res = run(dict(OWNER, roomCodes=["1BRT", "0BRCT"]), s2)
-results.append(check("no bookable rate: 200, code excluded as no_available_rate",
-                     res["status"] == 200 and codes_of(res) == ["0BRCT"]
-                     and res["body"]["excluded"] == [{"room_code": "1BRT", "reason": "no_available_rate"}]))
-res = run(dict(OWNER, roomCodes=["1BRT"]), s2)
-results.append(check("only code has no bookable rate: still 200 (not 404), rooms []",
-                     res["status"] == 200 and res["body"]["requested_rooms"][0]["rooms"] == []
-                     and res["body"]["excluded"][0]["reason"] == "no_available_rate"))
-results.append(validate("no bookable rate: validates", res["body"]))
+res = run(dict(OWNER, roomCodes=["1BRT", "0BRCT", "1DLXT"]), s2)
+results.append(check("no bookable rate: excluded as not_available",
+                     res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT"]
+                     and res["body"]["excluded"] == [{"room_code": "1BRT", "reason": "not_available"}]))
+s6 = copy.deepcopy(src)
+s6["apartments"][0]["room0"] = s6["apartments"][0]["room0"][:1]
+res = run(NO_CODES, s6)
+results.append(check("one bookable room type at the property, no codes: 404", res["status"] == 404))
 
-# Category code (apartmentCategoryCode) as a fallback match.
-res = run(dict(OWNER, roomCodes=["1 Bedroom"]), src)
-results.append(check("a space is not a valid code: 400", res["status"] == 400))
+# Category code (apartmentCategoryCode) as a fallback match, via the PRD name.
 s3 = copy.deepcopy(src)
 for a in s3["apartments"][0]["room0"]:
     a["apartmentCategoryCode"] = {"0BRCT": "CUTLER-STUDIO"}.get(a["apartmentType"], a["apartmentCategoryCode"])
-no_codes = {k: v for k, v in OWNER.items() if k != "roomCodes"}
-res = run(dict(no_codes, roomCategoryCodes=["cutler-studio", "1BRT"]), s3)
+res = run(dict(NO_CODES, roomCategoryCodes=["cutler-studio", "1BRT"]), s3)
 results.append(check("roomCategoryCodes alias, matched by apartmentCategoryCode too",
                      res["status"] == 200 and codes_of(res) == ["0BRCT", "1BRT"]))
 
-# Duplicates and a 5th code.
-res = run(dict(OWNER, roomCodes=["0BRCT", "0brct", "1DLXT", "1BRT", "1BRMT", "ZZZ"]), src)
-results.append(check("duplicates removed, 5th code dropped and echoed",
-                     res["status"] == 200 and res["body"]["meta"]["room_codes"] == ["0BRCT", "1DLXT", "1BRT", "1BRMT"]
-                     and res["body"]["meta"]["dropped_room_codes"] == ["ZZZ"]))
-results.append(validate("dropped codes: validates", res["body"]))
-
-# Bad input.
+# Code counts and bad input.
+res = run(dict(OWNER, roomCodes=["0BRCT", "0brct", "1DLXT"]), src)
+results.append(check("duplicates removed ignoring case: two rooms", res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT"]))
+results.append(check("one code: 400", run(dict(OWNER, roomCodes=["0BRCT"]), src)["status"] == 400))
+results.append(check("five codes: 400", run(dict(OWNER, roomCodes=["A1", "A2", "A3", "A4", "A5"]), src)["status"] == 400))
 results.append(check("roomCodes not an array: 400", run(dict(OWNER, roomCodes="0BRCT"), src)["status"] == 400))
 results.append(check("roomCodes with a blank entry: 400", run(dict(OWNER, roomCodes=["0BRCT", " "]), src)["status"] == 400))
-res = run(dict(OWNER, roomCodes=["0BRCT"], checkinDate="2020-01-01"), src)
+results.append(check("a space in a code: 400", run(dict(OWNER, roomCodes=["1 Bedroom", "0BRCT"]), src)["status"] == 400))
+res = run(dict(OWNER, roomCodes=["0BRCT", "1DLXT"], checkinDate="2020-01-01"), src)
 results.append(check("past check-in: 400 from the T-04 validator", res["status"] == 400 and "past" in " ".join(res["errors"])))
-# The T-04 validator compares childAges with noOfchildren per apartmentList entry only, not for the top-level shape.
-res = run(dict(OWNER, roomCodes=["0BRCT"], apartmentList=[{"noOfadults": 2, "noOfchildren": 0, "childAges": [6]}]), src)
-results.append(check("apartmentList entry with more childAges than children: 400", res["status"] == 400))
-
-# Two requested rooms (mobile app body): each keeps only the requested codes.
-s4 = copy.deepcopy(src)
-room0 = s4["apartments"][0]["room0"]
-s4["apartments"] = [{"room0": room0, "room1": room0[1:3]}]
 two = dict(OWNER, roomCodes=["1BRT", "0BRCT"], noOfRooms=2,
            apartmentList=[{"noOfadults": 2, "noOfchildren": 1, "childAges": [6]}, {"noOfadults": 1, "noOfchildren": 0}])
-res = run(two, s4)
-results.append(check("two rooms: room 1 has both codes, room 2 only 1BRT; nothing excluded",
-                     res["status"] == 200 and codes_of(res, 0) == ["1BRT", "0BRCT"] and codes_of(res, 1) == ["1BRT"]
-                     and res["body"]["excluded"] == []))
-results.append(validate("two rooms: validates", res["body"]))
+results.append(check("two apartmentList rooms: 400 (one room's guests only)", run(two, src)["status"] == 400))
+one = dict(NO_CODES, apartmentList=[{"noOfadults": "2", "noOfchildren": "1", "childAges": [6]}], noOfRooms=1)
+res = run(one, src)
+results.append(check("mobile body with one apartmentList entry: 200, guests from it",
+                     res["status"] == 200 and res["body"]["meta"]["noOfadults"] == 2 and res["body"]["meta"]["childAges"] == [6]))
 
 print("\n%d/%d checks passed" % (sum(results), len(results)))
 sys.exit(0 if all(results) else 1)

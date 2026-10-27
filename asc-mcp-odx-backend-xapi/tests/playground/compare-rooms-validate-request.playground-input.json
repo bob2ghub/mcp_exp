@@ -3,10 +3,8 @@
   "roomCodes": [
     "1brmt",
     "0BRCT",
-    "0BRCT",
-    "1DLXT",
-    "1BRT",
-    "ZZZ"
+    "0brct",
+    "1DLXT"
   ],
   "checkinDate": "2027-05-04",
   "checkoutDate": "2027-05-13",

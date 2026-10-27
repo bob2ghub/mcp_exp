@@ -17,7 +17,8 @@ The result depends on today's date only through the defaults; the sample sets bo
 
 ## T-07 compare_rooms_rates
 
-- `compare-rooms-validate-request.playground.dwl` + `-input.json`: the owner's body with duplicates, lower case and a
-  5th code. Expect `roomCodes` `["1BRMT", "0BRCT", "1DLXT", "1BRT"]`, `droppedRoomCodes` `["ZZZ"]`, no errors.
-- `compare-rooms-response.playground.dwl` + `-input.json`: the 51052 T-04 sample filtered to `1BRMT`, `0BRCT`, `XXXX`.
-  Expect `1BRMT` then `0BRCT` in `requested_rooms[0].rooms`, and `excluded` `[{room_code: "XXXX", reason: "not_found"}]`.
+- `compare-rooms-validate-request.playground.dwl` + `-input.json`: the owner's body with a duplicate in another case.
+  Expect `roomCodes` `["1brmt", "0BRCT", "1DLXT"]` (as written, duplicates removed ignoring case), no errors.
+- `compare-rooms-response.playground.dwl` + `-input.json`: the 51052 T-04 sample with codes `1BRMT`, `0brct`, `XXXX`.
+  Expect `rooms` 1BRMT then 0BRCT, `meta.total_results` 2, and `excluded` `[{room_code: "XXXX", reason: "not_available"}]`.
+  Schema: T07 0.4.0.

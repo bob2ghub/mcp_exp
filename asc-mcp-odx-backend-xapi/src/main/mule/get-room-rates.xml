@@ -2,37 +2,37 @@
 <!--
   T-07 compare_rooms_rates: POST /api/v1/compare-rooms
 
-  Gathers the room types at ONE property, filtered to the room codes asked for; with no codes, every room type.
-  It does not compare, rank or recommend (owner decision 2026-10-26): the model and the widget do that.
+  2 to 4 room types of ONE property side by side, for one stay and one room's guests. It gathers the rooms only: no
+  ranking or recommendation (owner decision 2026-10-26); the model recommends in its reply.
 
   Request:
-    {propertyCode, roomCodes: ["0BRCT", "1DLXT"] (optional; PRD name roomCategoryCodes also accepted),
+    {propertyCode, roomCodes: ["0BRCT", "1DLXT"] (optional, 2 to 4 codes; PRD name roomCategoryCodes also accepted),
      checkinDate | checkin, checkoutDate | checkout, noOfadults | adults, noOfchildren | children, childAges,
      currencyCode | currency, language, priceIncludesTax}
-    or the same stay as the mobile app's multi-room body (noOfRooms + apartmentList), exactly as /api/v1/multi-room-details.
+    One room's guests only: an apartmentList with more than one entry (or noOfRooms > 1) is refused.
   Room codes are matched against upstream apartmentType (what T-04 returns as room_code), else apartmentCategoryCode,
-  ignoring case. Duplicates are removed; codes past t07.maxRoomCodes (optional key, default 4) are dropped and echoed.
+  ignoring case. Without roomCodes the property's first four room types are compared.
 
   Steps:
     compare-rooms-validate-request  dwl/compare-rooms-validate-request.dwl -> vars.roomCodesRequest, then the T-04
-                                    validator (multi-rooms-validate-request) -> vars.roomsRequest
-    multi-rooms-get-rates           ONE booking search call for the property (childAges and every room sent upstream)
-                                    -> vars.roomsSource
-    compare-rooms-map-response      dwl/room-rate-details.dwl (T-04 0.3.0), then dwl/compare-rooms-response.dwl keeps
-                                    the requested codes and lists the rest in excluded[]
+                                    validator (multi-rooms-validate-request) -> vars.roomsRequest, then the one-room check
+    multi-rooms-get-rates           ONE booking search call for the property (childAges sent upstream) -> vars.roomsSource
+    compare-rooms-map-response      dwl/room-rate-details.dwl -> vars.roomsT04 (T-04 structuredContent), then
+                                    dwl/compare-rooms-response.dwl -> payload, then the two-room check
 
-  Response: schemas/T07-compare-rooms-rates.structured-content.schema.json 0.1.0 (draft): the T-04 shape plus
-  meta.room_codes, meta.dropped_room_codes and excluded[{room_code, reason: not_found | no_available_rate}].
-  404 ROOM_CODES_NOT_FOUND when none of the requested codes exists at the property (the message lists the codes
-  that do); a code that exists but has no bookable rate is a 200 with that code in excluded[].
+  Response: schemas/T07-compare-rooms-rates.structured-content.schema.json 0.4.0 (the owner's file, 2026-10-28):
+  {meta, rooms[2..4], excluded[]}. Each room is a T-04 room. excluded[] (left out when empty):
+  "not_available" for a requested code with no bookable room type, "over_limit" for the room types past the first four
+  when roomCodes was omitted. Fewer than two rooms left: 404 NOT_ENOUGH_ROOMS (the tool's isError, ER-05 / EC-04);
+  the message lists the room types that do have rates.
 
   2026-10-27: this file was T-04 (POST /api/v1/room-details, flow get-room-details). T-04 is now served by
   get-multi-room-rates.xml (POST /api/v1/multi-room-details), whose sub-flows multi-rooms-validate-request and
   multi-rooms-get-rates this flow reuses, so get-multi-room-rates.xml must be deployed with it. The MCP tool
   getRoomAndRateDetails must be moved to /api/v1/multi-room-details before this file is deployed.
 
-  Properties: t07.maxRoomCodes (optional), rooms.maxRooms plus the shared app.*, default.*, request.*, asset.* and
-  property.currency keys. Listener: common_HTTP_Listener_Config (global-config.xml).
+  Properties: rooms.maxRooms plus the shared app.*, default.*, request.*, asset.* and property.currency keys.
+  Listener: common_HTTP_Listener_Config (global-config.xml).
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
@@ -50,7 +50,7 @@
     <!-- get-multi-room-rates.xml: one booking search call, vars.roomsSource = propertyList[0]. -->
     <flow-ref name="multi-rooms-get-rates" doc:name="multi-rooms-get-rates"/>
     <flow-ref name="compare-rooms-map-response" doc:name="compare-rooms-map-response"/>
-    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T07.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, roomCodes: vars.roomCodesRequest.roomCodes default [], roomTypes: (payload.requested_rooms default []) map ($.total_results default 0), excluded: payload.excluded default [], elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T07-SUCCESS"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T07.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, roomCodes: vars.roomCodesRequest.roomCodes default [], rooms: (payload.rooms default []) map $.room_code, excluded: payload.excluded default [], elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T07-SUCCESS"/>
     <error-handler ref="compare-rooms-error-handler"/>
   </flow>
 
@@ -65,7 +65,7 @@
         <!-- The real reason is in this ERROR line; the caller only gets "not valid JSON". -->
         <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
           <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'compare-rooms-validate-request.dwl failed: ' ++ (error.description default '')]"/>
-          <set-variable variableName="roomCodesRequest" value="#[{errors: ['Request body must be valid JSON.'], roomCodes: [], droppedRoomCodes: []}]" doc:name="roomCodesRequest"/>
+          <set-variable variableName="roomCodesRequest" value="#[{errors: ['Request body must be valid JSON.'], roomCodes: []}]" doc:name="roomCodesRequest"/>
         </on-error-continue>
       </error-handler>
     </try>
@@ -77,32 +77,40 @@
     </choice>
     <!-- get-multi-room-rates.xml: dwl/rooms-validate-request.dwl plus its noOfRooms check -> vars.roomsRequest. -->
     <flow-ref name="multi-rooms-validate-request" doc:name="multi-rooms-validate-request"/>
+    <!-- T-07 compares room types for ONE room's guests (schema 0.4.0 meta.noOfadults / noOfchildren). -->
+    <choice>
+      <when expression="#[sizeOf(vars.roomsRequest.apartmentList default []) > 1]">
+        <set-variable variableName="errorMessage" value="compare_rooms_rates compares room types for one room: send one apartmentList entry, or the guests at the top level." doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="More than one room"/>
+      </when>
+    </choice>
   </sub-flow>
 
-  <!-- vars.roomsSource + vars.roomsRequest -> T-04 structuredContent -> T-07 (requested codes only, plus excluded[]). -->
+  <!-- vars.roomsSource + vars.roomsRequest -> T-04 structuredContent (vars.roomsT04) -> T-07 structuredContent (0.4.0). -->
   <sub-flow name="compare-rooms-map-response">
     <ee:transform doc:name="room-rate-details">
-      <ee:message>
-        <ee:set-payload resource="dwl/room-rate-details.dwl"/>
-      </ee:message>
+      <ee:variables>
+        <ee:set-variable variableName="roomsT04" resource="dwl/room-rate-details.dwl"/>
+      </ee:variables>
     </ee:transform>
     <ee:transform doc:name="compare-rooms-response">
       <ee:message>
         <ee:set-payload resource="dwl/compare-rooms-response.dwl"/>
       </ee:message>
     </ee:transform>
-    <!-- None of the requested codes exists at the property: 404, naming the codes that do, so the model can retry. -->
+    <!-- The schema needs 2 to 4 rooms: fewer is the tool's isError (ER-05, EC-04), naming what is available so the model can retry. -->
     <choice>
-      <when expression="#[not isEmpty(vars.roomCodesRequest.roomCodes default []) and (sizeOf((payload.excluded default []) filter ($.reason == 'not_found')) == sizeOf(vars.roomCodesRequest.roomCodes))]">
-        <set-variable variableName="errorCode" value="ROOM_CODES_NOT_FOUND" doc:name="errorCode"/>
+      <when expression="#[sizeOf(payload.rooms default []) &lt; 2]">
+        <set-variable variableName="errorCode" value="NOT_ENOUGH_ROOMS" doc:name="errorCode"/>
         <set-variable variableName="errorMessage" value="#[do {
-	var rooms = flatten((vars.roomsSource.apartments default []) map ((e) -> if (e is Object) flatten(e pluck ((v) -> if (v is Array) v else [])) else []))
-	var known = ((rooms map ((a) -> if (a is Object) (a.apartmentType default '') else '')) filter ((c) -> c != '')) distinctBy ((c) -> c)
+	var withRates = (((vars.roomsT04.requested_rooms default [])[0].rooms default []) map ((r) -> r.room_code default '')) filter ((c) -> c != '')
+	var missing = ((payload.excluded default []) filter ((x) -> x.reason == 'not_available')) map ((x) -> x.room_code)
 	---
-	'None of the room codes ' ++ (vars.roomCodesRequest.roomCodes joinBy ', ') ++ ' exists at property ' ++ (vars.roomsRequest.propertyCode default '') ++ '.'
-		++ (if (isEmpty(known)) '' else ' Its room codes are ' ++ (known joinBy ', ') ++ '.')
+	'Fewer than two room types can be compared at property ' ++ (vars.roomsRequest.propertyCode default '') ++ ' for this stay.'
+		++ (if (isEmpty(missing)) '' else ' Not available: ' ++ (missing joinBy ', ') ++ '.')
+		++ (if (isEmpty(withRates)) ' No room type has a bookable rate.' else ' Room types with rates: ' ++ (withRates joinBy ', ') ++ '.')
 }]" doc:name="errorMessage"/>
-        <raise-error type="APP:NOT_FOUND" description="Room codes not found"/>
+        <raise-error type="APP:NOT_FOUND" description="Fewer than two rooms to compare"/>
       </when>
     </choice>
   </sub-flow>

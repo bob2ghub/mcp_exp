@@ -1,59 +1,69 @@
 %dw 2.0
-// T-04 structuredContent (payload, from dwl/room-rate-details.dwl) + the requested room codes (ctx.roomCodesRequest)
-// + the upstream property (ctx.roomsSource) -> compare_rooms_rates (T-07) structuredContent,
-// schemas/T07-compare-rooms-rates.structured-content.schema.json 0.1.0 (draft).
+// T-04 structuredContent (vars.roomsT04, from dwl/room-rate-details.dwl) + the requested room codes
+// (vars.roomCodesRequest) -> compare_rooms_rates (T-07) structuredContent,
+// schemas/T07-compare-rooms-rates.structured-content.schema.json 0.4.0 (the owner's file, 2026-10-28).
 //
-// T-07 only gathers the rooms (owner decision 2026-10-26): no recommendation, ranking or filtering beyond the codes.
-// The shape is T-04's, so the same widget can draw it, with three additions:
-//   meta.room_codes          the codes searched for (absent when the caller sent none: every room is returned)
-//   meta.dropped_room_codes  codes past t07.maxRoomCodes, not searched
-//   excluded[]               {room_code, reason} per requested code that has no room in the response:
-//                            "not_found" (no such room at the property) or "no_available_rate" (the room exists but
-//                            has no bookable rate for this stay). Always present; [] when nothing was excluded.
-// With codes, each requested room keeps only the matching room types, in the order the codes were given.
-// Without codes it is the T-04 answer unchanged (every room with a bookable rate, in ranking order).
+// {meta, rooms[], excluded[]}: one stay, one room's guests, 2 to 4 room types side by side. Each room is the T-04 `room`
+// object unchanged (same fields, bookable rate_plans cheapest first), taken from requested_rooms[0].rooms, which holds
+// only room types with a bookable rate, in ranking order.
+//   With roomCodes: one room per code, in the order of the codes. A code matches apartmentType (room_code), else
+//     apartmentCategoryCode (room_category), ignoring case; the first match not already picked wins. A code with no
+//     match is excluded as "not_available" (no such room, or no bookable rate: upstream cannot tell them apart).
+//   Without roomCodes: the first four room types; the rest are excluded as "over_limit" with their own room_code.
+// excluded is left out when empty. Fewer than two rooms is an error, raised by the flow (get-room-rates.xml).
 output application/json skipNullOn="everywhere"
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
 // Copy of dwl/compare-rooms-response.dwl for https://dataweave.mulesoft.com/learn/playground.
-// Input 'payload' = {t04: <room-rate-details.dwl output>, roomCodesRequest: <ctx.roomCodesRequest>,
-//                    roomsSource: <propertyList[0]>} (compare-rooms-response.playground-input.json)
+// Input 'payload' = {roomsT04: <room-rate-details.dwl output>, roomCodesRequest: <vars.roomCodesRequest>}
+// (compare-rooms-response.playground-input.json)
 var ctx = payload
 // ---------- END SHIM
 
-var t04 = ctx.t04 default {}
+var t04 = ctx.roomsT04 default {}
 var codes = ctx.roomCodesRequest.roomCodes default []
-var dropped = ctx.roomCodesRequest.droppedRoomCodes default []
-var src = ctx.roomsSource default {}
 
 fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else null
 fun objects(v) = if (v is Array) (v filter ($ is Object)) else []
 fun upperOf(v) = upper(text(v) default "")
 
-// A room type answers a code by apartmentType (room_code) or by apartmentCategoryCode (room_category).
-fun matches(r, c) = (upperOf(r.room_code) == c) or (upperOf(r.room_category) == c)
-fun codeIndex(r) = ((codes map ((c, i) -> if (matches(r, c)) i else null)) filter ($ != null))[0] default 999999
+var m = t04.meta default {}
+// T-07 compares one room's guests: the validator refuses more than one requested room.
+var requested = objects(t04.requested_rooms)[0] default {}
+var available = objects(requested.rooms)
 
-var requestedRooms = objects(t04.requested_rooms) map ((rr) -> do {
-	var all = objects(rr.rooms)
-	var kept = if (isEmpty(codes)) all else ((all filter ((r) -> codeIndex(r) != 999999)) orderBy codeIndex($))
+fun matches(r, c) = (upperOf(r.room_code) == upper(c)) or (upperOf(r.room_category) == upper(c))
+
+var picks = codes reduce ((c, acc = []) -> do {
+	var taken = (acc filter ($.room != null)) map $.room.room_code
+	var hit = (available filter ((r) -> matches(r, c) and !(taken contains r.room_code)))[0]
 	---
-	(rr - "total_results" - "rooms") ++ {total_results: sizeOf(kept), rooms: kept}
+	acc + {code: c, room: hit}
 })
 
-// Every room type upstream sent, whatever its room{i} key and whether or not it has a bookable rate.
-var upstreamRooms = flatten(objects(src.apartments) map ((e) -> flatten((e pluck $) map ((v) -> objects(v)))))
-fun atProperty(c) = !isEmpty(upstreamRooms filter ((a) -> (upperOf(a.apartmentType) == c) or (upperOf(a.apartmentCategoryCode) == c)))
-fun returned(c) = !isEmpty(flatten(requestedRooms map ((rr) -> rr.rooms)) filter ((r) -> matches(r, c)))
+var rooms = if (isEmpty(codes)) (available filter ((r, i) -> i < 4))
+	else ((picks filter ($.room != null)) map $.room)
+
+var excluded = if (isEmpty(codes))
+		((available filter ((r, i) -> i >= 4)) map {room_code: $.room_code, reason: "over_limit"})
+	else ((picks filter ($.room == null)) map {room_code: $.code, reason: "not_available"})
 ---
 {
-	meta: (t04.meta default {}) ++ {
-		room_codes: if (isEmpty(codes)) null else codes,
-		dropped_room_codes: if (isEmpty(dropped)) null else dropped
+	meta: {
+		property_code: m.property_code,
+		property_name: m.property_name,
+		brand_code: m.brand_code,
+		country_code: m.country_code,
+		asset_base_url: m.asset_base_url,
+		total_results: sizeOf(rooms),
+		currency: m.currency,
+		checkin_date: m.checkin_date,
+		checkout_date: m.checkout_date,
+		noOfadults: requested.noOfadults default m.noOfadults,
+		noOfchildren: requested.noOfchildren default m.noOfchildren,
+		childAges: requested.childAges default [],
+		price_includes_tax: m.price_includes_tax
 	},
-	requested_rooms: requestedRooms,
-	excluded: (codes filter ((c) -> !returned(c))) map ((c) -> {
-		room_code: c,
-		reason: if (atProperty(c)) "no_available_rate" else "not_found"
-	})
+	rooms: rooms,
+	excluded: if (isEmpty(excluded)) null else excluded
 }

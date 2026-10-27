@@ -813,7 +813,7 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "Only these room types, in this order. 51052's codes: 0BRCT, 1DLXT, 1BRT, 1BRMT.",
+            "description": "Three rooms in this order. 51052's codes: 0BRCT, 1DLXT, 1BRT, 1BRMT.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"0BRCT\",\n    \"1DLXT\",\n    \"1BRMT\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
@@ -837,7 +837,7 @@
           }
         },
         {
-          "name": "Compare rooms - no roomCodes (every room)",
+          "name": "Compare rooms - no roomCodes (first four)",
           "request": {
             "method": "POST",
             "header": [
@@ -850,7 +850,7 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "Every room type with a bookable rate, in ranking order; excluded [].",
+            "description": "The property's first four room types in ranking order; any more come back in excluded[] as over_limit.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
@@ -887,10 +887,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "200: 1DLXT, and XXXX in excluded[] as not_found.",
+            "description": "200: 1DLXT and 0BRCT, and XXXX in excluded[] as not_available.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"1DLXT\",\n    \"XXXX\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"1DLXT\",\n    \"XXXX\",\n    \"0BRCT\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -911,7 +911,7 @@
           }
         },
         {
-          "name": "Compare rooms - 404 no code exists",
+          "name": "Compare rooms - 404 fewer than two available",
           "request": {
             "method": "POST",
             "header": [
@@ -924,7 +924,7 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "404 ROOM_CODES_NOT_FOUND; the message lists the property's real room codes.",
+            "description": "404 NOT_ENOUGH_ROOMS; the message lists the room types with rates.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"0BRXA\",\n    \"1BRXB\",\n    \"2BRXC\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
@@ -948,7 +948,7 @@
           }
         },
         {
-          "name": "Compare rooms - 400 roomCodes not an array",
+          "name": "Compare rooms - 400 one code",
           "request": {
             "method": "POST",
             "header": [
@@ -961,10 +961,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "400 BAD_REQUEST.",
+            "description": "400 BAD_REQUEST: roomCodes must name 2 to 4 room types.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": \"0BRCT\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"0BRCT\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
