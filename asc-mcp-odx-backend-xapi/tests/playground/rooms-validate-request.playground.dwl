@@ -11,6 +11,7 @@
 // see it and meta.voucher_code_valid would report a flag computed without it.
 output application/java
 import try from dw::Runtime
+import days from dw::core::Periods
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
 // Copy of dwl/rooms-validate-request.dwl for https://dataweave.mulesoft.com/learn/playground.
@@ -22,7 +23,6 @@ var props = {
 }
 fun p(key: String) = props[key]
 // ---------- END SHIM
-import days from dw::core::Periods
 
 fun text(v) = if (v is String) (if (isBlank(v)) null else trim(v)) else if (v is Number) (v as String) else null
 fun number(v) = if (v is Number) v else if ((v is String) and !isBlank(v)) try(() -> trim(v) as Number).result else null
@@ -130,6 +130,12 @@ var errors = ([
 		language: language,
 		priceIncludesTax: if (body.priceIncludesTax is Boolean) body.priceIncludesTax else null,
 		// get-poi-details.xml only runs when maxPois > 0; T-04 never asks for POIs.
-		maxPois: 0
+		maxPois: 0,
+		// Carried for the multi-room flow (get-multi-room-rates.xml), which sends them on to booking search and checks
+		// noOfRooms against apartmentList. property-info-request.dwl (single room) reads none of them.
+		noOfRoomsSent: body.noOfRooms,
+		perNightRate: if (body.perNightRate is Boolean) body.perNightRate else null,
+		isExcludePriceStartFrom: if (body.isExcludePriceStartFrom is Boolean) body.isExcludePriceStartFrom else null,
+		promoCorpCode: text(body.promoCorpCode)
 	}
 }

@@ -36,44 +36,10 @@
     ],
     "currency": "SGD",
     "language": "en",
-    "maxPois": 0
-  },
-  "multiRoomInput": {
-    "isExcludePriceStartFrom": false,
+    "maxPois": 0,
+    "noOfRoomsSent": 3,
     "perNightRate": false,
-    "promoCorpCode": "",
-    "version": "10.9",
-    "memberId": "",
-    "checkinDate": "2026-11-03",
-    "language": "en",
-    "platform": "iOS",
-    "messageId": "Q7Gc8ffBQPzUHXYd",
-    "currencyCode": "SGD",
-    "checkoutDate": "2026-11-06",
-    "propertyCode": "51052",
-    "noOfRooms": 3,
-    "apartmentList": [
-      {
-        "noOfadults": "2",
-        "noOfchildren": "1",
-        "childAges": [
-          3
-        ]
-      },
-      {
-        "noOfadults": "1",
-        "noOfchildren": "2",
-        "childAges": [
-          2,
-          10
-        ]
-      },
-      {
-        "noOfadults": "2",
-        "noOfchildren": "0",
-        "childAges": []
-      }
-    ]
+    "isExcludePriceStartFrom": false
   },
   "traceId": "trace-1"
 }

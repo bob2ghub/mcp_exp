@@ -1,6 +1,6 @@
 %dw 2.0
-// Booking search POST /v3/checkpropertyavailability body for SEVERAL rooms, built from vars.roomsRequest (validated
-// by dwl/rooms-validate-request.dwl) and the caller's own body (vars.multiRoomInput) for the few pass-through flags.
+// Booking search POST /v3/checkpropertyavailability body for SEVERAL rooms, built only from vars.roomsRequest
+// (validated by dwl/rooms-validate-request.dwl, which also carries the caller's pass-through flags).
 //
 // Same contract as dwl/property-info-request.dwl (the single-room body every other tool sends), except that
 // apartmentList carries one entry per requested room, with that room's guests and child ages, and noOfRooms is its
@@ -11,15 +11,14 @@
 output application/json skipNullOn="everywhere"
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
-// Copy of dwl/multi-room-booking-search-request.dwl for https://dataweave.mulesoft.com/learn/playground.
-// Input 'payload' = {roomsRequest: <vars.roomsRequest>, multiRoomInput: <the caller's body>, traceId}
+// Copy of the inline "multi-room body" DataWeave in get-multi-room-rates.xml.
+// Input 'payload' = {roomsRequest: <vars.roomsRequest>, traceId}
 var ctx = payload
 var props = {"default.userCountry": "SG", "property.currency": "SGD"}
 fun p(key: String) = props[key]
 // ---------- END SHIM
 
 var r = ctx.roomsRequest default {}
-var input = if (ctx.multiRoomInput is Object) ctx.multiRoomInput else {}
 var rooms = r.apartmentList default []
 fun bool(v, dflt) = if (v is Boolean) v else dflt
 fun text(v) = if (v is String) trim(v) else ""
@@ -29,7 +28,7 @@ fun text(v) = if (v is String) trim(v) else ""
 	memberId: "",
 	language: r.language,
 	currencyCode: r.currency default p('property.currency'),
-	promoCorpCode: text(input.promoCorpCode),
+	promoCorpCode: text(r.promoCorpCode),
 	propertyListing: false,
 	isModifyJourney: false,
 	// An array, one code: propertyListing false allows exactly one.
@@ -44,7 +43,7 @@ fun text(v) = if (v is String) trim(v) else ""
 	noOfchildren: (r.children default 0) as String,
 	minPrice: "",
 	maxPrice: "",
-	perNightRate: bool(input.perNightRate, true),
+	perNightRate: bool(r.perNightRate, true),
 	apartmentList: rooms map ((a) -> {
 		childAges: a.childAges default [],
 		noOfadults: (a.noOfadults default 1) as String,
@@ -52,7 +51,7 @@ fun text(v) = if (v is String) trim(v) else ""
 	}),
 	// Booking search's minBaseRate fails (500) when userCountry is empty.
 	userCountry: p('default.userCountry') default "SG",
-	isExcludePriceStartFrom: bool(input.isExcludePriceStartFrom, false),
+	isExcludePriceStartFrom: bool(r.isExcludePriceStartFrom, false),
 	// Rate plans are tagged MOBILE / WEB; "mcp" matches none.
 	channel: "mobile"
 }

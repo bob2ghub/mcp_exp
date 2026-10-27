@@ -142,6 +142,10 @@ def validate(body):
             "currency": currency, "language": language,
             "priceIncludesTax": body.get("priceIncludesTax") if isinstance(body.get("priceIncludesTax"), bool) else None,
             "maxPois": 0,
+            "noOfRoomsSent": body.get("noOfRooms"),
+            "perNightRate": body.get("perNightRate") if isinstance(body.get("perNightRate"), bool) else None,
+            "isExcludePriceStartFrom": body.get("isExcludePriceStartFrom") if isinstance(body.get("isExcludePriceStartFrom"), bool) else None,
+            "promoCorpCode": text(body.get("promoCorpCode")),
         },
     }
 

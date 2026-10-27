@@ -29,8 +29,8 @@ map_rooms = map_mirror["map_rooms"]
 VALIDATOR = map_mirror["VALIDATOR"]
 
 
-def no_of_rooms_errors(body, request):
-    sent = body.get("noOfRooms")
+def no_of_rooms_errors(request):
+    sent = request.get("noOfRoomsSent")
     if sent is None:
         return []
     n = sent if isinstance(sent, int) and not isinstance(sent, bool) else (int(sent) if isinstance(sent, str) and sent.isdigit() else None)
@@ -42,13 +42,13 @@ def no_of_rooms_errors(body, request):
     return []
 
 
-def booking_body(r, body, trace_id="trace-1", props=None):
+def booking_body(r, trace_id="trace-1", props=None):
     props = props or {"default.userCountry": "SG", "property.currency": "SGD"}
     rooms = r.get("apartmentList") or []
     out = {
         "messageId": trace_id, "memberId": "", "language": r.get("language"),
         "currencyCode": r.get("currency") or props.get("property.currency"),
-        "promoCorpCode": body.get("promoCorpCode").strip() if isinstance(body.get("promoCorpCode"), str) else "",
+        "promoCorpCode": r.get("promoCorpCode").strip() if isinstance(r.get("promoCorpCode"), str) else "",
         "propertyListing": False, "isModifyJourney": False,
         "propertyCode": None if r.get("propertyCode") is None else [r["propertyCode"]],
         "checkinDate": r.get("checkin"), "checkoutDate": r.get("checkout"), "voucherCode": "",
@@ -56,11 +56,11 @@ def booking_body(r, body, trace_id="trace-1", props=None):
         "noOfadults": str(r.get("adults") if r.get("adults") is not None else 1),
         "noOfchildren": str(r.get("children") if r.get("children") is not None else 0),
         "minPrice": "", "maxPrice": "",
-        "perNightRate": body["perNightRate"] if isinstance(body.get("perNightRate"), bool) else True,
+        "perNightRate": r["perNightRate"] if isinstance(r.get("perNightRate"), bool) else True,
         "apartmentList": [{"childAges": a.get("childAges") or [], "noOfadults": str(a["noOfadults"]),
                            "noOfchildren": str(a["noOfchildren"])} for a in rooms],
         "userCountry": props.get("default.userCountry") or "SG",
-        "isExcludePriceStartFrom": body["isExcludePriceStartFrom"] if isinstance(body.get("isExcludePriceStartFrom"), bool) else False,
+        "isExcludePriceStartFrom": r["isExcludePriceStartFrom"] if isinstance(r.get("isExcludePriceStartFrom"), bool) else False,
         "channel": "mobile",
     }
     return {k: v for k, v in out.items() if v is not None}
@@ -95,12 +95,12 @@ results = []
 v = validate_request(BODY)
 r = v["request"]
 results.append(check("validator accepts the mobile body: string guest counts, PRD names",
-                     v["errors"] == [] and no_of_rooms_errors(BODY, r) == []))
+                     v["errors"] == [] and no_of_rooms_errors(r) == []))
 results.append(check("three requested rooms, guests summed, 3 nights",
                      r["rooms"] == 3 and r["adults"] == 5 and r["children"] == 3 and r["nights"] == 3
                      and r["apartmentList"][1] == {"noOfadults": 1, "noOfchildren": 2, "childAges": [2, 10]}))
 
-body = booking_body(r, BODY)
+body = booking_body(r)
 (ROOT / "examples/multi-room-booking-search-request.sample.json").write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
 results.append(check("booking search body: noOfRooms 3, one apartmentList entry per room, strings as upstream wants",
                      body["noOfRooms"] == 3 and body["propertyCode"] == ["51052"]
@@ -116,11 +116,11 @@ results.append(check("pass-through flags kept, memberId / messageId / version / 
 
 bad = dict(BODY, noOfRooms=2)
 results.append(check("noOfRooms that disagrees with apartmentList is refused",
-                     no_of_rooms_errors(bad, validate_request(bad)["request"])
+                     no_of_rooms_errors(validate_request(bad)["request"])
                      == ["noOfRooms is 2 but apartmentList describes 3 room(s): send one apartmentList entry per room."]))
 bad = {k: v for k, v in BODY.items() if k != "apartmentList"}
 results.append(check("noOfRooms 3 without an apartmentList is refused, not searched as one room",
-                     no_of_rooms_errors(bad, validate_request(bad)["request"]) != []))
+                     no_of_rooms_errors(validate_request(bad)["request"]) != []))
 bad = dict(BODY, apartmentList=[{"noOfadults": "1", "noOfchildren": "1", "childAges": [3, 5]}], noOfRooms=1)
 results.append(check("per-room child ages are checked against that room's children",
                      "apartmentList[0].childAges cannot list more ages than noOfchildren." in validate_request(bad)["errors"]))

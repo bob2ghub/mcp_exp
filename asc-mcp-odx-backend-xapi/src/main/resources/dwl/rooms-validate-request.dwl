@@ -119,6 +119,12 @@ var errors = ([
 		language: language,
 		priceIncludesTax: if (body.priceIncludesTax is Boolean) body.priceIncludesTax else null,
 		// get-poi-details.xml only runs when maxPois > 0; T-04 never asks for POIs.
-		maxPois: 0
+		maxPois: 0,
+		// Carried for the multi-room flow (get-multi-room-rates.xml), which sends them on to booking search and checks
+		// noOfRooms against apartmentList. property-info-request.dwl (single room) reads none of them.
+		noOfRoomsSent: body.noOfRooms,
+		perNightRate: if (body.perNightRate is Boolean) body.perNightRate else null,
+		isExcludePriceStartFrom: if (body.isExcludePriceStartFrom is Boolean) body.isExcludePriceStartFrom else null,
+		promoCorpCode: text(body.promoCorpCode)
 	}
 }
