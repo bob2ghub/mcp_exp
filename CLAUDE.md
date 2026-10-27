@@ -227,7 +227,7 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
   - 404 `ROOMS_NOT_FOUND` when the property is not found.
   - 502 `DOWNSTREAM_REJECTED` / `DOWNSTREAM_UNAVAILABLE`, 504 `DOWNSTREAM_TIMEOUT`, 500 `INTERNAL_ERROR`.
 - **Logs:** `T07.start`, `xapi.bookingsearch.request`, `xapi.property.response`, `T07.success` (`roomCodes`, `rooms`, `excluded`), `xapi.downstream.error`, `xapi.failure`.
-- **Checks:** `tests/check_t07.py` runs 27 checks:
+- **Checks:** `tests/check_t07.py` runs 30 checks (including the owner's minimal `{propertyCode, roomCodes}` body):
   - the owner's body → 404, and real codes → `examples/compare-rooms-51052-{request,response}.sample.json`, validated against 0.4.0;
   - no codes / `[]` / null, and six room types → `over_limit`;
   - an unknown code, one available, and no bookable rate;

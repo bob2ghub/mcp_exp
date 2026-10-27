@@ -270,5 +270,18 @@ res = run(one, src)
 results.append(check("mobile body with one apartmentList entry: 200, guests from it",
                      res["status"] == 200 and res["body"]["meta"]["noOfadults"] == 2 and res["body"]["meta"]["childAges"] == [6]))
 
+# The minimal request (owner, 2026-10-28): propertyCode and roomCodes only, every other field defaulted.
+res = run({"propertyCode": "51052", "roomCodes": ["0BRXA", "1BRXB"]}, src)
+results.append(check("minimal request, owner's codes: 404 NOT_ENOUGH_ROOMS listing 51052's codes",
+                     res["status"] == 404 and res["error"]["message"] ==
+                     "Fewer than two room types can be compared at property 51052 for this stay. Not available: 0BRXA, 1BRXB."
+                     " Room types with rates: 0BRCT, 1DLXT, 1BRT, 1BRMT."))
+res = run({"propertyCode": "51052", "roomCodes": ["0BRCT", "1DLXT"]}, src)
+results.append(check("minimal request, real codes: 200 with the default stay and guests, no childAges or tax flag",
+                     res["status"] == 200 and codes_of(res) == ["0BRCT", "1DLXT"] and res["body"]["meta"]["noOfadults"] == 2
+                     and res["body"]["meta"]["noOfchildren"] == 0 and res["body"]["meta"]["childAges"] == []
+                     and "price_includes_tax" not in res["body"]["meta"] and res["body"]["meta"]["currency"] == "SGD"))
+results.append(validate("minimal request, real codes: validates", res["body"]))
+
 print("\n%d/%d checks passed" % (sum(results), len(results)))
 sys.exit(0 if all(results) else 1)
