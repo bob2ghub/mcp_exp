@@ -1,0 +1,21 @@
+{
+  "propertyCode": "51052",
+  "roomCodes": [
+    "1brmt",
+    "0BRCT",
+    "0BRCT",
+    "1DLXT",
+    "1BRT",
+    "ZZZ"
+  ],
+  "checkinDate": "2027-05-04",
+  "checkoutDate": "2027-05-13",
+  "noOfadults": 2,
+  "noOfchildren": 1,
+  "childAges": [
+    6
+  ],
+  "currencyCode": "SGD",
+  "priceIncludesTax": true,
+  "language": "en"
+}

@@ -1,147 +1,163 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  T-04 get_room_rate_details: POST /api/v1/room-details
+  T-07 compare_rooms_rates: POST /api/v1/compare-rooms
 
-  Validates the tool arguments (dwl/rooms-validate-request.dwl -> vars.roomsRequest), calls booking search
-  through the SHARED sub-flow get-property-common-info (get-common-details.xml), which builds the body from
-  dwl/property-info-request.dwl and unwraps the property into vars.property, and maps that into the T-04
-  structuredContent with dwl/room-rate-details.dwl (schema 0.3.0: meta + requested_rooms[]).
+  Gathers the room types at ONE property, filtered to the room codes asked for; with no codes, every room type.
+  It does not compare, rank or recommend (owner decision 2026-10-26): the model and the widget do that.
 
-  Properties: rooms.maxRooms plus the shared app.*, default.*, request.*, asset.* and property.currency keys.
-  Listener: common_HTTP_Listener_Config (global-config.xml).
+  Request:
+    {propertyCode, roomCodes: ["0BRCT", "1DLXT"] (optional; PRD name roomCategoryCodes also accepted),
+     checkinDate | checkin, checkoutDate | checkout, noOfadults | adults, noOfchildren | children, childAges,
+     currencyCode | currency, language, priceIncludesTax}
+    or the same stay as the mobile app's multi-room body (noOfRooms + apartmentList), exactly as /api/v1/multi-room-details.
+  Room codes are matched against upstream apartmentType (what T-04 returns as room_code), else apartmentCategoryCode,
+  ignoring case. Duplicates are removed; codes past t07.maxRoomCodes (optional key, default 4) are dropped and echoed.
 
-  2026-10-26: rewritten. vars.roomsRequest is now actually set (it never was: rooms-validate-request was
-  commented out), the response is the T-04 schema instead of the old flat apartments[] mapping, the duplicate
-  booking search http:request is gone in favour of get-property-common-info, the success log reads payload.meta.*,
-  vars.toolName is set so the shared loggers label T-04 lines, and the error handler has an HTTP:BAD_REQUEST
-  branch and logs the downstream status and body.
+  Steps:
+    compare-rooms-validate-request  dwl/compare-rooms-validate-request.dwl -> vars.roomCodesRequest, then the T-04
+                                    validator (multi-rooms-validate-request) -> vars.roomsRequest
+    multi-rooms-get-rates           ONE booking search call for the property (childAges and every room sent upstream)
+                                    -> vars.roomsSource
+    compare-rooms-map-response      dwl/room-rate-details.dwl (T-04 0.3.0), then dwl/compare-rooms-response.dwl keeps
+                                    the requested codes and lists the rest in excluded[]
+
+  Response: schemas/T07-compare-rooms-rates.structured-content.schema.json 0.1.0 (draft): the T-04 shape plus
+  meta.room_codes, meta.dropped_room_codes and excluded[{room_code, reason: not_found | no_available_rate}].
+  404 ROOM_CODES_NOT_FOUND when none of the requested codes exists at the property (the message lists the codes
+  that do); a code that exists but has no bookable rate is a 200 with that code in excluded[].
+
+  2026-10-27: this file was T-04 (POST /api/v1/room-details, flow get-room-details). T-04 is now served by
+  get-multi-room-rates.xml (POST /api/v1/multi-room-details), whose sub-flows multi-rooms-validate-request and
+  multi-rooms-get-rates this flow reuses, so get-multi-room-rates.xml must be deployed with it. The MCP tool
+  getRoomAndRateDetails must be moved to /api/v1/multi-room-details before this file is deployed.
+
+  Properties: t07.maxRoomCodes (optional), rooms.maxRooms plus the shared app.*, default.*, request.*, asset.* and
+  property.currency keys. Listener: common_HTTP_Listener_Config (global-config.xml).
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
-  <flow name="get-room-details">
-    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/room-details" allowedMethods="POST">
+  <flow name="compare-rooms-rates">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/compare-rooms" allowedMethods="POST">
       <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
       <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
     </http:listener>
     <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
     <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
     <!-- The shared loggers in get-common-details.xml read vars.toolName. -->
-    <set-variable variableName="toolName" value="get_room_rate_details" doc:name="toolName"/>
-    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T04-START"/>
-    <flow-ref name="rooms-validate-request" doc:name="rooms-validate-request"/>
-    <flow-ref name="rooms-get-rates" doc:name="rooms-get-rates"/>
-    <flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
-    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, noOfRooms: payload.meta.noOfRooms, roomTypes: sum((payload.requested_rooms default []) map ($.total_results default 0)), elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T04-SUCCESS"/>
-    <error-handler ref="rooms-error-handler"/>
+    <set-variable variableName="toolName" value="compare_rooms_rates" doc:name="toolName"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T07.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T07-START"/>
+    <flow-ref name="compare-rooms-validate-request" doc:name="compare-rooms-validate-request"/>
+    <!-- get-multi-room-rates.xml: one booking search call, vars.roomsSource = propertyList[0]. -->
+    <flow-ref name="multi-rooms-get-rates" doc:name="multi-rooms-get-rates"/>
+    <flow-ref name="compare-rooms-map-response" doc:name="compare-rooms-map-response"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T07.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, roomCodes: vars.roomCodesRequest.roomCodes default [], roomTypes: (payload.requested_rooms default []) map ($.total_results default 0), excluded: payload.excluded default [], elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T07-SUCCESS"/>
+    <error-handler ref="compare-rooms-error-handler"/>
   </flow>
 
-  <!-- Tool arguments -> vars.roomsRequest. Its own validator, because T-04 needs nights and one entry per
-       requested room, which dwl/validate-request.dwl (common-validate-request) does not produce. -->
-  <sub-flow name="rooms-validate-request">
+  <!-- Room codes -> vars.roomCodesRequest; stay and guests -> vars.roomsRequest (the T-04 validator, which ignores roomCodes).
+       The codes are checked first, so a request with bad codes and a bad stay reports the codes first. -->
+  <sub-flow name="compare-rooms-validate-request">
     <try>
-      <ee:transform>
-        <ee:variables><ee:set-variable variableName="roomsValidation" resource="dwl/rooms-validate-request.dwl"/></ee:variables>
+      <ee:transform doc:name="room codes">
+        <ee:variables><ee:set-variable variableName="roomCodesRequest" resource="dwl/compare-rooms-validate-request.dwl"/></ee:variables>
       </ee:transform>
       <error-handler>
         <!-- The real reason is in this ERROR line; the caller only gets "not valid JSON". -->
         <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
-          <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'rooms-validate-request.dwl failed: ' ++ (error.description default '')]"/>
-          <set-variable variableName="roomsValidation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="roomsValidation"/>
+          <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'compare-rooms-validate-request.dwl failed: ' ++ (error.description default '')]"/>
+          <set-variable variableName="roomCodesRequest" value="#[{errors: ['Request body must be valid JSON.'], roomCodes: [], droppedRoomCodes: []}]" doc:name="roomCodesRequest"/>
         </on-error-continue>
       </error-handler>
     </try>
     <choice>
-      <when expression="#[not isEmpty(vars.roomsValidation.errors default [])]">
-        <set-variable variableName="errorMessage" value="#[(vars.roomsValidation.errors default []) joinBy ' ']" doc:name="errorMessage"/>
-        <raise-error type="APP:BAD_REQUEST" description="Invalid get_room_rate_details request"/>
+      <when expression="#[not isEmpty(vars.roomCodesRequest.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[(vars.roomCodesRequest.errors default []) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid compare_rooms_rates request"/>
       </when>
     </choice>
-    <set-variable variableName="roomsRequest" value="#[vars.roomsValidation.request]" doc:name="roomsRequest"/>
-    <!-- One room only, for now: property-info-request.dwl sends noOfRooms 1 and a single-entry apartmentList,
-         so upstream would answer room0 alone and the other tabs would come back empty. Delete this guard once
-         that file passes vars.request.apartmentList and vars.request.rooms through. -->
-    <choice>
-      <when expression="#[(sizeOf(vars.roomsRequest.apartmentList default []) > 1)]">
-        <set-variable variableName="errorMessage" value="Only one room per request is supported today: send a single apartmentList entry." doc:name="errorMessage"/>
-        <raise-error type="APP:BAD_REQUEST" description="Multiple rooms not supported"/>
-      </when>
-    </choice>
+    <!-- get-multi-room-rates.xml: dwl/rooms-validate-request.dwl plus its noOfRooms check -> vars.roomsRequest. -->
+    <flow-ref name="multi-rooms-validate-request" doc:name="multi-rooms-validate-request"/>
   </sub-flow>
 
-  <!-- Booking search for one property, through the shared sub-flow: the property object ends up in vars.roomsSource. -->
-  <sub-flow name="rooms-get-rates">
-    <!-- property-info-request.dwl and get-property-common-info read vars.request. -->
-    <set-variable variableName="request" value="#[vars.roomsRequest]" doc:name="request"/>
-    <flow-ref name="get-property-common-info" doc:name="get-property-common-info"/>
-    <set-variable variableName="roomsSource" value="#[vars.property]" doc:name="roomsSource"/>
-    <choice>
-      <when expression="#[!(vars.roomsSource is Object)]">
-        <set-variable variableName="errorMessage" value="No rooms found for this property." doc:name="errorMessage"/>
-        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
-      </when>
-    </choice>
-  </sub-flow>
-
-  <!-- vars.roomsSource + vars.roomsRequest -> T-04 structuredContent (schema 0.3.0). -->
-  <sub-flow name="rooms-map-response">
+  <!-- vars.roomsSource + vars.roomsRequest -> T-04 structuredContent -> T-07 (requested codes only, plus excluded[]). -->
+  <sub-flow name="compare-rooms-map-response">
     <ee:transform doc:name="room-rate-details">
       <ee:message>
         <ee:set-payload resource="dwl/room-rate-details.dwl"/>
       </ee:message>
     </ee:transform>
+    <ee:transform doc:name="compare-rooms-response">
+      <ee:message>
+        <ee:set-payload resource="dwl/compare-rooms-response.dwl"/>
+      </ee:message>
+    </ee:transform>
+    <!-- None of the requested codes exists at the property: 404, naming the codes that do, so the model can retry. -->
+    <choice>
+      <when expression="#[not isEmpty(vars.roomCodesRequest.roomCodes default []) and (sizeOf((payload.excluded default []) filter ($.reason == 'not_found')) == sizeOf(vars.roomCodesRequest.roomCodes))]">
+        <set-variable variableName="errorCode" value="ROOM_CODES_NOT_FOUND" doc:name="errorCode"/>
+        <set-variable variableName="errorMessage" value="#[do {
+	var rooms = flatten((vars.roomsSource.apartments default []) map ((e) -> if (e is Object) flatten(e pluck ((v) -> if (v is Array) v else [])) else []))
+	var known = ((rooms map ((a) -> if (a is Object) (a.apartmentType default '') else '')) filter ((c) -> c != '')) distinctBy ((c) -> c)
+	---
+	'None of the room codes ' ++ (vars.roomCodesRequest.roomCodes joinBy ', ') ++ ' exists at property ' ++ (vars.roomsRequest.propertyCode default '') ++ '.'
+		++ (if (isEmpty(known)) '' else ' Its room codes are ' ++ (known joinBy ', ') ++ '.')
+}]" doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Room codes not found"/>
+      </when>
+    </choice>
   </sub-flow>
 
-  <error-handler name="rooms-error-handler">
+  <error-handler name="compare-rooms-error-handler">
     <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[400]"/>
       <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
     <on-error-propagate type="APP:NOT_FOUND" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[404]"/>
-      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'ROOMS_NOT_FOUND', message: vars.errorMessage default 'No rooms found for this property.', retryable: false}]"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: vars.errorCode default 'ROOMS_NOT_FOUND', message: vars.errorMessage default 'No rooms found for this property.', retryable: false}]"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
     <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[504]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Room and rate service timed out. Retry later.', retryable: true}]"/>
-      <flow-ref name="rooms-log-downstream"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <flow-ref name="compare-rooms-log-downstream"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
     <!-- A 400 from booking search is its own category: our body was rejected, not the service being down. -->
     <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[502]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED', message: 'Room and rate service rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
-      <flow-ref name="rooms-log-downstream"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <flow-ref name="compare-rooms-log-downstream"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
     <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[502]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Room and rate service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
-      <flow-ref name="rooms-log-downstream"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <flow-ref name="compare-rooms-log-downstream"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
     <on-error-propagate type="ANY" logException="true" enableNotifications="false">
       <set-variable variableName="httpStatus" value="#[500]"/>
       <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
-      <flow-ref name="rooms-format-and-log-error"/>
+      <flow-ref name="compare-rooms-format-and-log-error"/>
     </on-error-propagate>
   </error-handler>
 
   <!-- The upstream status and body (first 1000 characters), the only place they can be read from. -->
-  <sub-flow name="rooms-log-downstream">
+  <sub-flow name="compare-rooms-log-downstream">
     <try>
-      <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_room_rate_details", correlationId: vars.traceId default correlationId, propertyCode: vars.roomsRequest.propertyCode default null, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="downstream.error"/>
+      <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "compare_rooms_rates", correlationId: vars.traceId default correlationId, propertyCode: vars.roomsRequest.propertyCode default null, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="downstream.error"/>
       <error-handler>
         <on-error-continue type="ANY" logException="false" enableNotifications="false">
-          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_room_rate_details", correlationId: vars.traceId default correlationId, note: "downstream body is not readable"}, "application/json", {indent: false})]'/>
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "compare_rooms_rates", correlationId: vars.traceId default correlationId, note: "downstream body is not readable"}, "application/json", {indent: false})]'/>
         </on-error-continue>
       </error-handler>
     </try>
   </sub-flow>
 
-  <sub-flow name="rooms-format-and-log-error">
-    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "get_room_rate_details", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+  <sub-flow name="compare-rooms-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "compare_rooms_rates", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
     <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
   </sub-flow>
 </mule>

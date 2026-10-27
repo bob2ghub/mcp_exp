@@ -797,44 +797,10 @@
       ]
     },
     {
-      "name": "T-04 Room details and rates",
+      "name": "T-07 Compare rooms and rates",
       "item": [
         {
-          "name": "Room details - by property code",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Flat property row\", () => {",
-                  "  pm.expect(b.property_code).to.be.a(\"string\").and.not.empty;",
-                  "  [\"checkin\",\"checkout\"].forEach(k => pm.expect(b[k]).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
-                  "  [\"nights\",\"adults\",\"children\",\"rooms\",\"apartment_count\"].forEach(k => pm.expect(b[k]).to.be.a(\"number\"));",
-                  "  Object.entries(b).forEach(([k, v]) => {",
-                  "    if (k !== \"apartments\") pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true;",
-                  "  });",
-                  "});",
-                  "pm.test(\"Rates are numbers when present\", () => {",
-                  "  [\"per_night_rate\",\"total_stay_rate\",\"per_night_rate_pref_curr\",\"total_stay_rate_pref_curr\"].forEach(k => { if (k in b) pm.expect(b[k]).to.be.a(\"number\"); });",
-                  "});",
-                  "pm.test(\"apartments[] are flat rows tagged by room\", () => {",
-                  "  pm.expect(b.apartments).to.be.an(\"array\");",
-                  "  pm.expect(b.apartment_count).to.eql(b.apartments.length);",
-                  "  b.apartments.forEach(a => {",
-                  "    pm.expect(a.room_key).to.match(/^room\\d+$/);",
-                  "    pm.expect(a.room_index).to.be.a(\"number\");",
-                  "    pm.expect(a.apartment_index).to.be.a(\"number\");",
-                  "    Object.entries(a).forEach(([k, v]) => pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true);",
-                  "  });",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "name": "Compare rooms - three codes (51052)",
           "request": {
             "method": "POST",
             "header": [
@@ -847,10 +813,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "Full request. Dates come from the collection pre-request script (today + 21 days, 3 nights).",
+            "description": "Only these room types, in this order. 51052's codes: 0BRCT, 1DLXT, 1BRT, 1BRMT.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2,\n  \"children\": 1,\n  \"rooms\": 1,\n  \"currency\": \"{{currency}}\",\n  \"language\": \"en\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"0BRCT\",\n    \"1DLXT\",\n    \"1BRMT\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -858,55 +824,20 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
+              "raw": "{{baseUrl}}/api/v1/compare-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "room-details"
+                "compare-rooms"
               ]
             }
-          },
-          "response": []
+          }
         },
         {
-          "name": "Room details - by property name",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Flat property row\", () => {",
-                  "  pm.expect(b.property_code).to.be.a(\"string\").and.not.empty;",
-                  "  [\"checkin\",\"checkout\"].forEach(k => pm.expect(b[k]).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
-                  "  [\"nights\",\"adults\",\"children\",\"rooms\",\"apartment_count\"].forEach(k => pm.expect(b[k]).to.be.a(\"number\"));",
-                  "  Object.entries(b).forEach(([k, v]) => {",
-                  "    if (k !== \"apartments\") pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true;",
-                  "  });",
-                  "});",
-                  "pm.test(\"Rates are numbers when present\", () => {",
-                  "  [\"per_night_rate\",\"total_stay_rate\",\"per_night_rate_pref_curr\",\"total_stay_rate_pref_curr\"].forEach(k => { if (k in b) pm.expect(b[k]).to.be.a(\"number\"); });",
-                  "});",
-                  "pm.test(\"apartments[] are flat rows tagged by room\", () => {",
-                  "  pm.expect(b.apartments).to.be.an(\"array\");",
-                  "  pm.expect(b.apartment_count).to.eql(b.apartments.length);",
-                  "  b.apartments.forEach(a => {",
-                  "    pm.expect(a.room_key).to.match(/^room\\d+$/);",
-                  "    pm.expect(a.room_index).to.be.a(\"number\");",
-                  "    pm.expect(a.apartment_index).to.be.a(\"number\");",
-                  "    Object.entries(a).forEach(([k, v]) => pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true);",
-                  "  });",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "name": "Compare rooms - no roomCodes (every room)",
           "request": {
             "method": "POST",
             "header": [
@@ -919,10 +850,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "No propertyCode: the upstream is searched by name.",
+            "description": "Every room type with a bookable rate, in ranking order; excluded [].",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyName\": \"{{propertyName}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -930,56 +861,20 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
+              "raw": "{{baseUrl}}/api/v1/compare-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "room-details"
+                "compare-rooms"
               ]
             }
-          },
-          "response": []
+          }
         },
         {
-          "name": "Room details - two rooms",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Flat property row\", () => {",
-                  "  pm.expect(b.property_code).to.be.a(\"string\").and.not.empty;",
-                  "  [\"checkin\",\"checkout\"].forEach(k => pm.expect(b[k]).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
-                  "  [\"nights\",\"adults\",\"children\",\"rooms\",\"apartment_count\"].forEach(k => pm.expect(b[k]).to.be.a(\"number\"));",
-                  "  Object.entries(b).forEach(([k, v]) => {",
-                  "    if (k !== \"apartments\") pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true;",
-                  "  });",
-                  "});",
-                  "pm.test(\"Rates are numbers when present\", () => {",
-                  "  [\"per_night_rate\",\"total_stay_rate\",\"per_night_rate_pref_curr\",\"total_stay_rate_pref_curr\"].forEach(k => { if (k in b) pm.expect(b[k]).to.be.a(\"number\"); });",
-                  "});",
-                  "pm.test(\"apartments[] are flat rows tagged by room\", () => {",
-                  "  pm.expect(b.apartments).to.be.an(\"array\");",
-                  "  pm.expect(b.apartment_count).to.eql(b.apartments.length);",
-                  "  b.apartments.forEach(a => {",
-                  "    pm.expect(a.room_key).to.match(/^room\\d+$/);",
-                  "    pm.expect(a.room_index).to.be.a(\"number\");",
-                  "    pm.expect(a.apartment_index).to.be.a(\"number\");",
-                  "    Object.entries(a).forEach(([k, v]) => pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true);",
-                  "  });",
-                  "});",
-                  "pm.test(\"Rows for room0 and room1 (if upstream has them)\", () => pm.expect(b.rooms).to.eql(2));"
-                ]
-              }
-            }
-          ],
+          "name": "Compare rooms - one unknown code",
           "request": {
             "method": "POST",
             "header": [
@@ -992,10 +887,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "rooms=2: expect room0 and room1 rows in apartments[].",
+            "description": "200: 1DLXT, and XXXX in excluded[] as not_found.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 4,\n  \"children\": 0,\n  \"rooms\": 2,\n  \"currency\": \"{{currency}}\",\n  \"language\": \"en\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"1DLXT\",\n    \"XXXX\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1003,56 +898,20 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
+              "raw": "{{baseUrl}}/api/v1/compare-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "room-details"
+                "compare-rooms"
               ]
             }
-          },
-          "response": []
+          }
         },
         {
-          "name": "Room details - defaults only",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Correlation header echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-ID\")).to.eql(pm.variables.get(\"correlationId\")));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Flat property row\", () => {",
-                  "  pm.expect(b.property_code).to.be.a(\"string\").and.not.empty;",
-                  "  [\"checkin\",\"checkout\"].forEach(k => pm.expect(b[k]).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
-                  "  [\"nights\",\"adults\",\"children\",\"rooms\",\"apartment_count\"].forEach(k => pm.expect(b[k]).to.be.a(\"number\"));",
-                  "  Object.entries(b).forEach(([k, v]) => {",
-                  "    if (k !== \"apartments\") pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true;",
-                  "  });",
-                  "});",
-                  "pm.test(\"Rates are numbers when present\", () => {",
-                  "  [\"per_night_rate\",\"total_stay_rate\",\"per_night_rate_pref_curr\",\"total_stay_rate_pref_curr\"].forEach(k => { if (k in b) pm.expect(b[k]).to.be.a(\"number\"); });",
-                  "});",
-                  "pm.test(\"apartments[] are flat rows tagged by room\", () => {",
-                  "  pm.expect(b.apartments).to.be.an(\"array\");",
-                  "  pm.expect(b.apartment_count).to.eql(b.apartments.length);",
-                  "  b.apartments.forEach(a => {",
-                  "    pm.expect(a.room_key).to.match(/^room\\d+$/);",
-                  "    pm.expect(a.room_index).to.be.a(\"number\");",
-                  "    pm.expect(a.apartment_index).to.be.a(\"number\");",
-                  "    Object.entries(a).forEach(([k, v]) => pm.expect(v === null || typeof v !== \"object\" || Array.isArray(v), k + \" must not be a nested object\").to.be.true);",
-                  "  });",
-                  "});",
-                  "pm.test(\"Server defaults applied\", () => { pm.expect(b.adults).to.eql(1); pm.expect(b.children).to.eql(0); pm.expect(b.rooms).to.eql(1); pm.expect(b.nights).to.eql(1); });"
-                ]
-              }
-            }
-          ],
+          "name": "Compare rooms - 404 no code exists",
           "request": {
             "method": "POST",
             "header": [
@@ -1065,10 +924,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "Only propertyCode: checkin = tomorrow, 1 night, 1 adult, 0 children, 1 room.",
+            "description": "404 ROOM_CODES_NOT_FOUND; the message lists the property's real room codes.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": [\n    \"0BRXA\",\n    \"1BRXB\",\n    \"2BRXC\"\n  ],\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1076,39 +935,20 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
+              "raw": "{{baseUrl}}/api/v1/compare-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "room-details"
+                "compare-rooms"
               ]
             }
-          },
-          "response": []
+          }
         },
         {
-          "name": "Room details - 400 missing property",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"propertyCode or propertyName\"));"
-                ]
-              }
-            }
-          ],
+          "name": "Compare rooms - 400 roomCodes not an array",
           "request": {
             "method": "POST",
             "header": [
@@ -1121,10 +961,10 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "",
+            "description": "400 BAD_REQUEST.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"roomCodes\": \"0BRCT\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"SGD\",\n  \"priceIncludesTax\": true,\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1132,349 +972,17 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
+              "raw": "{{baseUrl}}/api/v1/compare-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "room-details"
+                "compare-rooms"
               ]
             }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 400 checkout before checkin",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"checkout must be after checkin\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkout}}\",\n  \"checkout\": \"{{checkin}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 400 checkin in the past",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"past\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"2020-01-01\",\n  \"checkout\": \"2020-01-03\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 400 rooms out of range",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"rooms\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"rooms\": 10\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 400 bad date and currency",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"checkin must be a date\"));",
-                  "pm.test(\"All problems reported together\", () => pm.expect(b.error.message).to.include(\"currency\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"12/11/2026\",\n  \"currency\": \"sgdollar\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 400 invalid JSON",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"400\", () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Error envelope\", () => {",
-                  "  pm.expect(b.success).to.eql(false);",
-                  "  pm.expect(b.correlationId).to.be.a(\"string\");",
-                  "  pm.expect(b.error.code).to.eql(\"BAD_REQUEST\");",
-                  "});",
-                  "pm.test(\"Message names the problem\", () => pm.expect(b.error.message).to.include(\"valid JSON\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\"propertyCode\": \"50926\",",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Room details - 404 unknown property",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"404 when the upstream has no such property\", () => pm.response.to.have.status(404));",
-                  "pm.test(\"ROOMS_NOT_FOUND\", () => pm.expect(pm.response.json().error.code).to.eql(\"ROOMS_NOT_FOUND\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "description": "Depends on the upstream returning 404 or an empty result for unknown codes. The mocking service may return its example instead.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"00000\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/room-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "room-details"
-              ]
-            }
-          },
-          "response": []
+          }
         }
       ]
     },
