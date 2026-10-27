@@ -2,7 +2,7 @@
 
 1. dwl/rooms-validate-request.dwl on the mobile app's multi-room body (mirror: tests/check_t04_request.py),
    plus the flow's noOfRooms check;
-2. dwl/multi-room-booking-search-request.dwl, the booking search body (mirrored here);
+2. the inline booking search body DataWeave in get-multi-room-rates.xml (mirrored here);
 3. dwl/room-rate-details.dwl on a three-room upstream answer (mirror: tests/check_t04.py), validated against
    schema 0.3.0. The upstream answer is built from the real 51052 response: room0 as sent, room1 and room2 cut
    down from it, the way upstream returns fewer room types for rooms with more guests.
