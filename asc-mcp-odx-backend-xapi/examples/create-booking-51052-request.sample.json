@@ -1,0 +1,18 @@
+{
+  "propertyCode": "51052",
+  "checkinDate": "2026-12-06",
+  "checkoutDate": "2026-12-08",
+  "currencyCode": "SGD",
+  "language": "th",
+  "apartmentList": [
+    {
+      "noOfadults": 2,
+      "noOfchildren": 1,
+      "childAges": [
+        6
+      ],
+      "roomCode": "0brct",
+      "ratePlanCode": "zzflex"
+    }
+  ]
+}

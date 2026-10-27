@@ -987,6 +987,233 @@
       ]
     },
     {
+      "name": "T-08 Create booking (checkout hand-off, read-only)",
+      "item": [
+        {
+          "name": "Create booking - minimal (cheapest, 1 adult, defaults)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "One room, 1 adult, today + 30, one night; the server picks the cheapest rate (resolution cheapest).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create booking - one room selected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "The user's pick from T-04. Use a room_code + rate_plan_code from a fresh T-04 call for the same stay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"currencyCode\": \"SGD\",\n  \"language\": \"en\",\n  \"apartmentList\": [\n    {\n      \"noOfadults\": 2,\n      \"noOfchildren\": 1,\n      \"childAges\": [\n        6\n      ],\n      \"roomCode\": \"0BRCT\",\n      \"ratePlanCode\": \"ZZFLEX\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create booking - three rooms, mixed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Room 1 picked, rooms 2 and 3 cheapest (resolution mixed).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"apartmentList\": [\n    {\n      \"noOfadults\": 2,\n      \"noOfchildren\": 0,\n      \"childAges\": [],\n      \"roomCode\": \"1DLXT\",\n      \"ratePlanCode\": \"Flexi Monthly Rate\"\n    },\n    {\n      \"noOfadults\": 1,\n      \"noOfchildren\": 1,\n      \"childAges\": [\n        4\n      ]\n    },\n    {\n      \"noOfadults\": 2,\n      \"noOfchildren\": 0,\n      \"childAges\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create booking - with voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "meta.voucher_code_valid says whether upstream accepted it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"voucherCode\": \"SUMMER24\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create booking - 409 rate not available",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "409 RATE_NOT_AVAILABLE; the message lists the room's bookable rates.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"apartmentList\": [\n    {\n      \"noOfadults\": 1,\n      \"noOfchildren\": 0,\n      \"childAges\": [],\n      \"roomCode\": \"0BRCT\",\n      \"ratePlanCode\": \"NOSUCHRATE\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create booking - 400 childAges mismatch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "400 BAD_REQUEST: one age per child.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"apartmentList\": [\n    {\n      \"noOfadults\": 2,\n      \"noOfchildren\": 2,\n      \"childAges\": [\n        5\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/create-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "create-booking"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "T-03 Service offerings",
       "item": [
         {

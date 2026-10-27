@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  T-08 create_booking: POST /api/v1/create-booking
+
+  READ-ONLY checkout hand-off (PRD AC-08): nothing is reserved, held or paid. It re-checks that the rooms are bookable now
+  and returns a summary the widget turns into a discoverasr.com checkout link. No reservation, cart or payment API is called.
+
+  Request: schemas/T08-create-booking.input.schema.json 0.1.0 (the owner's file, 2026-10-28)
+    {propertyCode, checkinDate, checkoutDate, currencyCode, voucherCode, language,
+     apartmentList: [{noOfadults, noOfchildren, childAges, roomCode, ratePlanCode}, …]}
+    One entry per room to book, as T-04 multi-room (get-multi-room-rates.xml): upstream answers apartmentList[i] with
+    apartments[].room{i}. Without apartmentList: one room for 1 adult. Per room, roomCode + ratePlanCode = the user's pick
+    ("selected"); neither = the server picks that room's cheapest rate ("cheapest", PRD AC-02).
+  Response: schemas/T08-create-booking.structured-content.schema.json 0.1.0 (the owner's file, 2026-10-28)
+    {meta, rooms[], add_ons[]}: each room's `rate` is the T-04 rate object unchanged.
+
+  Steps:
+    create-booking-validate-request  dwl/create-booking-validate-request.dwl -> vars.bookingRequest
+    create-booking-get-rates         ONE booking search call (inline body: one apartmentList entry per room, childAges and
+                                     voucherCode included) through the shared get-property-common-info -> vars.roomsSource
+    create-booking-resolve           dwl/room-rate-details.dwl -> vars.roomsT04 (T-04 rules: bookable rates only, ranking
+                                     order, upstream's tax basis), then dwl/create-booking-response.dwl -> vars.bookingResult
+                                     {problems, response}; any problem is an error (ER-02 / ER-04)
+    create-booking-add-ons           OPTIONAL, only when t08.addons.enabled is "true": bookings process API POST /v1/addonlist
+                                     (as ODX_Booking_AddOn_ListFlow) -> dwl/create-booking-add-ons.dwl -> vars.addOns.
+                                     Any failure leaves add_ons out; it never fails the call.
+
+  Errors: 400 BAD_REQUEST; 409 RATE_NOT_AVAILABLE (a picked room + rate is gone, ER-04; the message lists what is
+  available for that room); 404 NO_AVAILABILITY (a room with nothing bookable, ER-02); 404 PROPERTY_NOT_FOUND;
+  502 DOWNSTREAM_REJECTED / DOWNSTREAM_UNAVAILABLE; 504 DOWNSTREAM_TIMEOUT; 500 INTERNAL_ERROR.
+
+  Properties: rooms.maxRooms, request.*, default.language, default.userCountry, property.currency, asset.baseUrl (as T-04);
+  optional t08.checkinOffsetDays (30), t08.nights (1), t08.addons.enabled ("false"); and, for HTTP_Request_Bookings_config
+  below, https.bookingsprocessapi.{host, port, basepath, responsetimeout, clientid, clientsecret}: see
+  src/main/resources/create-booking.yaml. Those keys must exist even with add-ons off, or the app does not start.
+  Listener: common_HTTP_Listener_Config (global-config.xml).
+-->
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+
+  <!-- The bookings process API (the add-on list), the same config name and keys as the mobile xAPI's ODX_Booking_AddOn_ListFlow. -->
+  <http:request-config name="HTTP_Request_Bookings_config" doc:name="HTTP Request configuration" basePath="${https.bookingsprocessapi.basepath}" responseTimeout="${https.bookingsprocessapi.responsetimeout}">
+    <http:request-connection protocol="HTTPS" host="${https.bookingsprocessapi.host}" port="${https.bookingsprocessapi.port}">
+      <tls:context enabledProtocols="TLSv1.2">
+        <tls:trust-store insecure="true"/>
+      </tls:context>
+    </http:request-connection>
+  </http:request-config>
+
+  <flow name="t08-create-booking">
+    <http:listener config-ref="common_HTTP_Listener_Config" path="/api/v1/create-booking" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]"><http:body><![CDATA[#[output application/json --- payload]]]></http:body><http:headers><![CDATA[#[{'Content-Type': 'application/json', 'X-Correlation-ID': vars.traceId default correlationId}]]]></http:headers></http:error-response>
+    </http:listener>
+    <set-variable variableName="traceId" value="#[do { var h = attributes.headers.'x-correlation-id' default '' --- if (h matches /^[A-Za-z0-9_-]{1,80}$/) h else correlationId }]" doc:name="traceId"/>
+    <set-variable variableName="startedAt" value="#[now() as Number {unit: 'milliseconds'}]" doc:name="startedAt"/>
+    <!-- The shared loggers in get-common-details.xml read vars.toolName. -->
+    <set-variable variableName="toolName" value="create_booking" doc:name="toolName"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T08.start", tool: vars.toolName, correlationId: vars.traceId}, "application/json", {indent: false})]' doc:name="T08-START"/>
+    <flow-ref name="create-booking-validate-request" doc:name="create-booking-validate-request"/>
+    <flow-ref name="create-booking-get-rates" doc:name="create-booking-get-rates"/>
+    <flow-ref name="create-booking-resolve" doc:name="create-booking-resolve"/>
+    <flow-ref name="create-booking-add-ons" doc:name="create-booking-add-ons"/>
+    <set-payload value='#[output application/json skipNullOn="everywhere" --- (vars.bookingResult.response default {}) ++ (if (isEmpty(vars.addOns default [])) {} else {add_ons: vars.addOns})]' doc:name="structuredContent"/>
+    <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T08.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: payload.meta.property_code, resolution: payload.meta.resolution, rooms: (payload.rooms default []) map {room: $.room_code, rate: $.rate.rate_plan_code}, totalStayPrice: payload.meta.total_stay_price, currency: payload.meta.currency, addOns: sizeOf(payload.add_ons default []), elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T08-SUCCESS"/>
+    <error-handler ref="create-booking-error-handler"/>
+  </flow>
+
+  <!-- Tool arguments -> vars.bookingRequest. -->
+  <sub-flow name="create-booking-validate-request">
+    <try>
+      <ee:transform doc:name="validate">
+        <ee:variables><ee:set-variable variableName="bookingValidation" resource="dwl/create-booking-validate-request.dwl"/></ee:variables>
+      </ee:transform>
+      <error-handler>
+        <!-- The real reason is in this ERROR line; the caller only gets "not valid JSON". -->
+        <on-error-continue type="MULE:EXPRESSION" logException="true" enableNotifications="false">
+          <logger category="ascott.audit" level="ERROR" message="#[output text/plain --- 'create-booking-validate-request.dwl failed: ' ++ (error.description default '')]"/>
+          <set-variable variableName="bookingValidation" value="#[{errors: ['Request body must be valid JSON.']}]" doc:name="bookingValidation"/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <choice>
+      <when expression="#[not isEmpty(vars.bookingValidation.errors default [])]">
+        <set-variable variableName="errorMessage" value="#[(vars.bookingValidation.errors default []) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:BAD_REQUEST" description="Invalid create_booking request"/>
+      </when>
+    </choice>
+    <set-variable variableName="bookingRequest" value="#[vars.bookingValidation.request]" doc:name="bookingRequest"/>
+  </sub-flow>
+
+  <!-- One booking search call for the property with every room to book: vars.roomsSource = propertyList[0]. -->
+  <sub-flow name="create-booking-get-rates">
+    <ee:transform doc:name="booking search body">
+      <ee:variables>
+        <ee:set-variable variableName="bookingSearchBody"><![CDATA[%dw 2.0
+// Booking search POST /v3/checkpropertyavailability body for the rooms to book, built only from vars.bookingRequest.
+// The multi-room body of get-multi-room-rates.xml (one apartmentList entry per room, noOfRooms = their count, guest
+// counts as strings, childAges passed through), plus the caller's voucherCode, which T-08 sends and T-04 does not.
+// memberId stays "" (anonymous MVP); messageId is the correlation ID.
+output application/json skipNullOn="everywhere"
+
+var r = vars.bookingRequest default {}
+var rooms = r.apartmentList default []
+---
+{
+	messageId: vars.traceId,
+	memberId: "",
+	language: r.language,
+	currencyCode: r.currency default p('property.currency'),
+	promoCorpCode: "",
+	propertyListing: false,
+	isModifyJourney: false,
+	// An array, one code: propertyListing false allows exactly one.
+	propertyCode: [r.propertyCode],
+	checkinDate: r.checkin,
+	checkoutDate: r.checkout,
+	voucherCode: r.voucherCode default "",
+	noOfRooms: sizeOf(rooms),
+	// The guests of all rooms together, as the multi-room body.
+	noOfadults: (r.adults default 1) as String,
+	noOfchildren: (r.children default 0) as String,
+	minPrice: "",
+	maxPrice: "",
+	perNightRate: true,
+	apartmentList: rooms map ((a) -> {
+		childAges: a.childAges default [],
+		noOfadults: (a.noOfadults default 1) as String,
+		noOfchildren: (a.noOfchildren default 0) as String
+	}),
+	// Booking search's minBaseRate fails (500) when userCountry is empty.
+	userCountry: p('default.userCountry') default "SG",
+	isExcludePriceStartFrom: false,
+	// Rate plans are tagged MOBILE / WEB; "mcp" matches none.
+	channel: "mobile"
+}]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <!-- get-property-common-info's checks read vars.request; dwl/room-rate-details.dwl reads vars.roomsRequest. -->
+    <set-variable variableName="request" value="#[vars.bookingRequest]" doc:name="request"/>
+    <set-variable variableName="roomsRequest" value="#[vars.bookingRequest]" doc:name="roomsRequest"/>
+    <flow-ref name="get-property-common-info" doc:name="get-property-common-info"/>
+    <set-variable variableName="roomsSource" value="#[vars.property]" doc:name="roomsSource"/>
+    <choice>
+      <when expression="#[!(vars.roomsSource is Object)]">
+        <set-variable variableName="errorMessage" value="Property not found." doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="Property not found"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- Price every room with the T-04 rules, then pick each room's room + rate; any room that cannot be booked is an error. -->
+  <sub-flow name="create-booking-resolve">
+    <ee:transform doc:name="room-rate-details">
+      <ee:variables>
+        <ee:set-variable variableName="roomsT04" resource="dwl/room-rate-details.dwl"/>
+      </ee:variables>
+    </ee:transform>
+    <ee:transform doc:name="create-booking-response">
+      <ee:variables>
+        <ee:set-variable variableName="bookingResult" resource="dwl/create-booking-response.dwl"/>
+      </ee:variables>
+    </ee:transform>
+    <choice>
+      <!-- ER-04: a room + rate the user picked is no longer available. The message lists what that room can still have. -->
+      <when expression="#[not isEmpty((vars.bookingResult.problems default []) filter ($.reason == 'not_available'))]">
+        <set-variable variableName="errorCode" value="RATE_NOT_AVAILABLE" doc:name="errorCode"/>
+        <set-variable variableName="errorMessage" value="#[((vars.bookingResult.problems default []) map $.message) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:CONFLICT" description="Selected room or rate not available"/>
+      </when>
+      <!-- ER-02: a room has nothing bookable for this stay and these guests. -->
+      <when expression="#[not isEmpty(vars.bookingResult.problems default [])]">
+        <set-variable variableName="errorCode" value="NO_AVAILABILITY" doc:name="errorCode"/>
+        <set-variable variableName="errorMessage" value="#[((vars.bookingResult.problems default []) map $.message) joinBy ' ']" doc:name="errorMessage"/>
+        <raise-error type="APP:NOT_FOUND" description="No availability"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <!-- OPTIONAL add-on list (schema: add_ons is optional and RESERVED). Off unless t08.addons.enabled is "true";
+       any failure leaves add_ons out and is logged as xapi.addons.unavailable. -->
+  <sub-flow name="create-booking-add-ons">
+    <set-variable variableName="addOns" value="#[null]" doc:name="addOns"/>
+    <choice doc:name="add-ons enabled?">
+      <when expression="#[(p('t08.addons.enabled') default 'false') as String == 'true']">
+        <try>
+          <!-- The body of ODX_Booking_AddOn_ListFlow's "Request Payload", for this booking: anonymous (memberId ""),
+               the booked rates' codes, and the real children count (that flow hardcodes noOfChildren "1"). -->
+          <ee:transform doc:name="add-on list body">
+            <ee:variables>
+              <ee:set-variable variableName="addOnRequest"><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var r = vars.bookingRequest default {}
+var meta = vars.bookingResult.response.meta default {}
+var rooms = vars.bookingResult.response.rooms default []
+---
+{
+	messageId: vars.traceId,
+	memberId: "",
+	language: r.language,
+	currencyCode: meta.currency,
+	propertyCode: r.propertyCode,
+	checkinDate: meta.checkin_date,
+	checkoutDate: meta.checkout_date,
+	noOfAdults: (meta.noOfadults default 1) as String,
+	noOfChildren: (meta.noOfchildren default 0) as String,
+	ratePlanCodes: (rooms map $.rate.rate_plan_code) distinctBy $,
+	channel: "mobile",
+	promoCorpCode: "",
+	voucherCode: r.voucherCode
+}]]></ee:set-variable>
+            </ee:variables>
+          </ee:transform>
+          <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.addons.request", tool: vars.toolName, correlationId: vars.traceId, body: vars.addOnRequest}, "application/json", {indent: false})]' doc:name="addons.request"/>
+          <http:request method="POST" doc:name="Request Booking AddOns" config-ref="HTTP_Request_Bookings_config" path="/v1/addonlist">
+            <http:body><![CDATA[#[vars.addOnRequest]]]></http:body>
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json",
+	"client_id" : Mule::p('https.bookingsprocessapi.clientid'),
+	"client_secret" : Mule::p('https.bookingsprocessapi.clientsecret'),
+	"messageId" : vars.traceId,
+	"userToken" : ""
+}]]]></http:headers>
+          </http:request>
+          <!-- Field names only, so the unconfirmed mapping in create-booking-add-ons.dwl can be fixed from the log. -->
+          <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "xapi.addons.response", tool: vars.toolName, correlationId: vars.traceId, status: attributes.statusCode, topLevel: if (payload is Object) (keysOf(payload) map ($ as String)) else typeOf(payload) as String, firstEntry: do { var arrays = if (payload is Array) [payload] else if (payload is Object) ((payload pluck $) filter ($ is Array)) else [] --- if (isEmpty(arrays) or isEmpty(arrays[0])) null else if (arrays[0][0] is Object) (keysOf(arrays[0][0]) map ($ as String)) else typeOf(arrays[0][0]) as String }}, "application/json", {indent: false})]' doc:name="addons.response"/>
+          <ee:transform doc:name="create-booking-add-ons">
+            <ee:variables>
+              <ee:set-variable variableName="addOns" resource="dwl/create-booking-add-ons.dwl"/>
+            </ee:variables>
+          </ee:transform>
+          <error-handler>
+            <on-error-continue type="ANY" logException="false" enableNotifications="false">
+              <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.addons.unavailable", tool: vars.toolName, correlationId: vars.traceId, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+              <set-variable variableName="addOns" value="#[null]" doc:name="addOns"/>
+            </on-error-continue>
+          </error-handler>
+        </try>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <error-handler name="create-booking-error-handler">
+    <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[400]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:CONFLICT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[409]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: vars.errorCode default 'RATE_NOT_AVAILABLE', message: vars.errorMessage default 'The selected room or rate is no longer available.', retryable: false}]"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:NOT_FOUND" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[404]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: vars.errorCode default 'PROPERTY_NOT_FOUND', message: vars.errorMessage default 'Property not found.', retryable: false}]"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[504]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Room and rate service timed out. Retry later.', retryable: true}]"/>
+      <flow-ref name="create-booking-log-downstream"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <!-- A 400 from booking search is its own category: our body was rejected, not the service being down. -->
+    <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED', message: 'Room and rate service rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="create-booking-log-downstream"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Room and rate service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="create-booking-log-downstream"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY" logException="true" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[500]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="create-booking-format-and-log-error"/>
+    </on-error-propagate>
+  </error-handler>
+
+  <!-- The upstream status and body (first 1000 characters), the only place they can be read from. -->
+  <sub-flow name="create-booking-log-downstream">
+    <try>
+      <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "create_booking", correlationId: vars.traceId default correlationId, propertyCode: vars.bookingRequest.propertyCode default null, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="downstream.error"/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "create_booking", correlationId: vars.traceId default correlationId, note: "downstream body is not readable"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+  </sub-flow>
+
+  <sub-flow name="create-booking-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "create_booking", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+    <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
+  </sub-flow>
+</mule>

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:create_booking:input:0.1.0",
+  "title": "Create booking (checkout hand-off) — tool input (arguments of tools/call)",
+  "description": "The `inputSchema` of the `create_booking` MCP tool: what the model sends. Both servers must declare exactly this. READ-ONLY: nothing is reserved, held or paid; the tool re-checks availability and returns a summary the widget turns into a discoverasr.com checkout link (README). PRD T-08 §5, with the guests and the room + rate given PER ROOM in `apartmentList` (as T-04 0.3.0, Figma MVP 1630:50627 books several rooms; PRD EC-06 is superseded, README decision 2). Left out: `memberId` (anonymous MVP) and `enrollAsrOnCheckout` (the MVP has no enrolment checkbox, decision 6). 0.1.0, provisional (2026-10-28).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "propertyCode"
+  ],
+  "properties": {
+    "propertyCode": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "The property's code, e.g. \"51052\". Carried from a get_room_rate_details / compare_rooms_rates result (`meta.property_code`), or resolved from the property name the user gives (PRD ER-01).",
+      "examples": [
+        "51052"
+      ]
+    },
+    "checkinDate": {
+      "type": "string",
+      "format": "date",
+      "description": "YYYY-MM-DD, today or later. Carried from the get_room_rate_details context when present. Server default when omitted: 30 days from today (PRD §5). Must be before `checkoutDate` (enforced by the server)."
+    },
+    "checkoutDate": {
+      "type": "string",
+      "format": "date",
+      "description": "YYYY-MM-DD, after `checkinDate`. Server default when omitted: the day after check-in (PRD §5: 31 days from today)."
+    },
+    "apartmentList": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per room to book, in the user's order (upstream's `apartmentList`, as get_room_rate_details). Default when omitted: one room for 1 adult, the cheapest room and rate. Each entry's guests, and its `roomCode` + `ratePlanCode` when the user picked them (from a get_room_rate_details / compare_rooms_rates result: the room's `room_code` and the rate's `rate_plan_code` for THAT requested room). Without them the server picks that room's cheapest room type and rate (PRD AC-02). Carry the same guests per room as the room-rate search; for several rooms, if the user has not said how the guests are split, ask before calling.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "noOfadults",
+          "noOfchildren",
+          "childAges"
+        ],
+        "properties": {
+          "noOfadults": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Adults in this room; at least 1."
+          },
+          "noOfchildren": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Children in this room."
+          },
+          "childAges": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Each child's age in years, one per child: its length MUST equal `noOfchildren` (`[]` when none). If the user mentions children but not their ages, ASK before calling; never guess them."
+          },
+          "roomCode": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The room type to book: a `room_code` from get_room_rate_details, e.g. \"0BRCT\". With `ratePlanCode`, or neither."
+          },
+          "ratePlanCode": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The rate to book: that room's `rate_plan_code`, e.g. \"ZZFLEX\". With `roomCode`, or neither."
+          }
+        },
+        "dependentRequired": {
+          "roomCode": [
+            "ratePlanCode"
+          ],
+          "ratePlanCode": [
+            "roomCode"
+          ]
+        }
+      }
+    },
+    "currencyCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217; every price in the response uses it (AC-07). Carried from the context. Server default when omitted: the property's own currency, as T-04."
+    },
+    "voucherCode": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A promotion or voucher code the user gave, or one from a get_promotions result (PRD `voucherCode` / `promotionCode`). Passed to upstream; whether it was accepted comes back in `meta.voucher_code_valid`."
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "fr",
+        "de",
+        "es",
+        "ko",
+        "ja",
+        "id",
+        "vi",
+        "th"
+      ],
+      "description": "The language the user is writing in, set by the model and never asked of the user: a BCP 47 tag from this list. Omit for any other language, or when unsure. The widget shows its own UI text and website links in it; property data (names, descriptions) stays in the API's language for now. Servers accept it and pass it through untouched. Same field and values as T-01 to T-07.",
+      "examples": [
+        "en",
+        "th"
+      ]
+    }
+  }
+}

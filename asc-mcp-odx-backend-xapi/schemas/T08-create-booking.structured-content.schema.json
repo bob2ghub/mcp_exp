@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:create_booking:structured-content:0.1.0",
+  "title": "Create booking (checkout hand-off) — structuredContent",
+  "description": "The `structuredContent` of the `create_booking` MCP tool: a summary of the rooms about to be booked, re-checked for availability, for the T-08 inline card (Figma MVP 1630:50627 several rooms, 1630:50749 one room) and the discoverasr.com checkout link the widget builds from it (README, 'Checkout link'). Built from the same upstream call as get_room_rate_details (README decision 3): each room's rate is a T-04 0.4.0 rate. Nothing is reserved, held or paid (PRD AC-08). 0.1.0, provisional (2026-10-28).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "rooms"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "property_code",
+        "property_name",
+        "brand_code",
+        "checkin_date",
+        "checkout_date",
+        "noOfRooms",
+        "noOfadults",
+        "noOfchildren",
+        "currency",
+        "resolution",
+        "total_stay_price"
+      ],
+      "properties": {
+        "property_code": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "The input's `propertyCode` echoed. The checkout link's `hotel`."
+        },
+        "property_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The ENGLISH property name, as T-04. The card title and the checkout link's `searchdest`."
+        },
+        "brand_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "As T-04: the upstream `brand` slug verbatim. Picks the card's brand panel colour."
+        },
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "As T-04, optional."
+        },
+        "asset_base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "As T-01 to T-07: the origin relative image paths resolve against; default https://www.discoverasr.com."
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD `address` ← upstream property `address`, verbatim, e.g. \"2 Finlayson Green, Singapore 049247\". The card's location line. Optional."
+        },
+        "banner_image_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PRD hero image ← upstream property `bannerImageMobile`. The card's photo; without it the widget uses the first room's photo, then a placeholder (EC-07). Optional."
+        },
+        "checkin_date": {
+          "type": "string",
+          "format": "date",
+          "description": "The stay booked, after server defaults. The checkout link's `arrive`."
+        },
+        "checkout_date": {
+          "type": "string",
+          "format": "date",
+          "description": "The checkout link's `depart`. The widget counts the nights from the two dates."
+        },
+        "noOfRooms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The number of rooms booked: the length of `rooms`. The checkout link's `rooms`."
+        },
+        "noOfadults": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The adults of all rooms together. The card's guest line."
+        },
+        "noOfchildren": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The children of all rooms together."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217 code of EVERY price in the response (AC-07)."
+        },
+        "resolution": {
+          "enum": [
+            "selected",
+            "cheapest",
+            "mixed"
+          ],
+          "description": "PRD `resolution_method`: \"selected\" when every room came with `roomCode` + `ratePlanCode`, \"cheapest\" when the server picked every one (AC-02), \"mixed\" otherwise. For the model: it says when it chose the room for the user."
+        },
+        "total_stay_price": {
+          "type": "number",
+          "minimum": 0,
+          "description": "\"Rooms total\": the whole stay of every room INCLUDING taxes, in `currency`: the sum of each rate's `total_stay_rate`, plus its `total_tax` when `is_tax_inclusive` is false (README decision 3). So the model never adds prices itself."
+        },
+        "total_earn_asr_points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The sum of the booked rates' `earn_asr_points`. The gold \"Members can earn up to … Pts for this stay!\" banner. Optional; absent when no rate earns points."
+        },
+        "voucher_code_valid": {
+          "type": "boolean",
+          "description": "As T-04: with `voucherCode` only, whether upstream accepted it (`isCodeValid`). Optional."
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The rooms booked, one per input `apartmentList` entry, in that order (\"Room 1\", \"Room 2\", …). Every one is bookable right now: a picked room + rate that is no longer available, or a room with nothing available, makes the call an error instead (ER-02, ER-04).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "room_index",
+          "noOfadults",
+          "noOfchildren",
+          "childAges",
+          "room_code",
+          "room_name",
+          "rate"
+        ],
+        "properties": {
+          "room_index": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based, as T-04 `requested_rooms[].room_index`."
+          },
+          "noOfadults": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "This room's guests, echoed."
+          },
+          "noOfchildren": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "childAges": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "room_code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "T-04 `room_code` (upstream `apartmentType`). The checkout link's `selectedRoomTypeCode`."
+          },
+          "room_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "T-04 `room_name`. The card's room line."
+          },
+          "banner_image_url": {
+            "type": "string",
+            "minLength": 1,
+            "description": "T-04 `banner_image_url` of the room. Optional; the card's photo fallback."
+          },
+          "rate": {
+            "$ref": "urn:ascott:mcp:get_room_rate_details:structured-content:0.4.0#/$defs/ratePlan",
+            "description": "The booked rate, exactly as T-04 sends it: name, prices and taxes, points, refund flags, `is_member_rate`. The checkout link's `selectedRatePlanCode` is its `rate_plan_code`."
+          }
+        }
+      }
+    },
+    "add_ons": {
+      "type": "array",
+      "description": "Optional and RESERVED (user, 2026-10-28; README decision 5): the MVP's \"Add-ons\" row (Airport Transfer, Daily breakfast…), chosen on the ASR website. No upstream source is known yet; the widget hides the row until it is sent.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "e.g. \"Airport Transfer\"."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One line, e.g. \"Breakfast AUD 17 nett per meal per person\"."
+          },
+          "image_url": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Upstream path or absolute URL."
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "description": "In `meta.currency`."
+          }
+        }
+      }
+    }
+  }
+}

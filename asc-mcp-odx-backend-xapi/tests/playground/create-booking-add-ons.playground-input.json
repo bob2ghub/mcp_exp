@@ -1,0 +1,16 @@
+{
+  "messageId": "x",
+  "addOnList": [
+    {
+      "addOnName": "Airport Transfer",
+      "description": "<p>One way, up to 3 guests</p>",
+      "imageUrl": "/content/addons/transfer.jpg",
+      "preferredCurrencyPrice": "85.5"
+    },
+    {
+      "addOnName": "Daily breakfast",
+      "shortDescription": "Breakfast SGD 25 nett per meal per person",
+      "price": 25
+    }
+  ]
+}

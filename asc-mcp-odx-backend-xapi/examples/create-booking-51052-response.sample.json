@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "property_code": "51052",
+    "property_name": "Ascott Raffles Place Singapore",
+    "brand_code": "ascott-the-residence",
+    "country_code": "SG",
+    "asset_base_url": "https://www.discoverasr.com",
+    "address": "2 Finlayson Green, Singapore 049247",
+    "banner_image_url": "/content/dam/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/overview/sr_singapore_asc-raffles-place_grand-entrance---hr_44_750x490.jpg",
+    "checkin_date": "2026-12-06",
+    "checkout_date": "2026-12-08",
+    "noOfRooms": 1,
+    "noOfadults": 2,
+    "noOfchildren": 1,
+    "currency": "SGD",
+    "resolution": "selected",
+    "total_stay_price": 1127.06,
+    "total_earn_asr_points": 9400
+  },
+  "rooms": [
+    {
+      "room_index": 1,
+      "noOfadults": 2,
+      "noOfchildren": 1,
+      "childAges": [
+        6
+      ],
+      "room_code": "0BRCT",
+      "room_name": "Studio Cutler Suite",
+      "banner_image_url": "/assets/tal/media/images/properties/singapore/singapore/ascott-raffles-place-singapore/apartment-types/sr_singapore_asc-raffles-place_cutler-suite---hr_54_750x490.jpg.transform/ascott-lowres/image.jpg",
+      "rate": {
+        "rate_plan_code": "ZZFLEX",
+        "rate_plan_name": "Best Flexible Rate",
+        "description": "Rate includes the following complimentary amenities: Local calls, broadband internet access and daily housekeeping service (except on Sunday and public holidays). \r\nJoin Ascott Star Rewards membership for free and earn reward points for this reservation.\r\n\r\nBlack-out dates apply.",
+        "is_tax_inclusive": false,
+        "per_night_rate": 470,
+        "total_stay_rate": 940,
+        "per_night_tax": 93.53,
+        "total_tax": 187.06,
+        "earn_asr_points": 9400,
+        "non_refundable": false,
+        "cancellation_description": "Cancel 24hrs prior to arrival by 1500hrs. Late cancellation or amendment will incur a 1-night rental penalty charge for stays less than 29 nights only",
+        "is_app_exclusive": false
+      }
+    }
+  ]
+}

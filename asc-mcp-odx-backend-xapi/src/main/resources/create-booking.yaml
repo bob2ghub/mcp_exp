@@ -1,0 +1,23 @@
+# T-08 create_booking (t08-create-booking.xml): keys to append to uat.yaml.
+#
+# The https.bookingsprocessapi.* keys MUST exist even with add-ons off: t08-create-booking.xml defines
+# HTTP_Request_Bookings_config with them, and Mule cannot start with an unresolved ${...} placeholder.
+# Use the same values as the mobile xAPI's ODX_Booking_AddOn_ListFlow (bookings process API). Keep the client ID and
+# secret in the secure properties file, never in this file or in git.
+# uat.yaml already has an `https:` block (bookingsearchprocessapi): add `bookingsprocessapi:` INSIDE it rather than
+# appending a second `https:` key, which YAML does not allow.
+
+t08:
+  checkinOffsetDays: "30"     # default check-in: today + 30 (PRD §5)
+  nights: "1"                 # default stay length when checkoutDate is omitted
+  addons:
+    enabled: "false"          # "true" calls POST /v1/addonlist and fills add_ons[]; any failure leaves it out
+
+https:
+  bookingsprocessapi:
+    host: "<bookings process API host>"
+    port: "<port>"
+    basepath: "<base path, e.g. /api>"
+    responsetimeout: "10000"
+    clientid: "<from secure properties>"
+    clientsecret: "<from secure properties>"

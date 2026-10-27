@@ -22,3 +22,11 @@ The result depends on today's date only through the defaults; the sample sets bo
 - `compare-rooms-response.playground.dwl` + `-input.json`: the 51052 T-04 sample with codes `1BRMT`, `0brct`, `XXXX`.
   Expect `rooms` 1BRMT then 0BRCT, `meta.total_results` 2, and `excluded` `[{room_code: "XXXX", reason: "not_available"}]`.
   Schema: T07 0.4.0.
+
+## T-08 create_booking
+
+- `create-booking-validate-request.playground.dwl` + `-input.json`: the selected one-room example (0BRCT + ZZFLEX,
+  2 adults, 1 child aged 6). Expect no errors and one apartmentList entry. Defaults depend on today's date.
+- `create-booking-response.playground.dwl` + `-input.json`: the 51052 T-04 answer for that request. Expect `problems: []`
+  and `response.rooms[0]` = 0BRCT with rate ZZFLEX, `meta.resolution` "selected".
+- `create-booking-add-ons.playground.dwl` + `-input.json`: a GUESSED addonlist response (no real sample yet). Expect two add-ons.

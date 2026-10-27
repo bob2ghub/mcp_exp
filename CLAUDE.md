@@ -31,6 +31,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details`, one or several rooms | `/api/v1/multi-room-details` (`?format=raw` returns the unmapped property) | `get-multi-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
 | T-07 `compare_rooms_rates` | `/api/v1/compare-rooms` | `t07-compare-rooms.xml` | `schemas/T07-compare-rooms-rates.structured-content.schema.json` (**0.4.0**, owner's file 2026-10-28) |
+| T-08 `create_booking` | `/api/v1/create-booking` | `t08-create-booking.xml` | `schemas/T08-create-booking.structured-content.schema.json` (**0.1.0**, owner's file 2026-10-28); input `schemas/T08-create-booking.input.schema.json` (0.1.0) |
 
 `/api/v1/room-details` (the old single-room T-04) **no longer exists** once `t07-compare-rooms.xml` replaces `get-room-rates.xml`.
 | T-06 `compare_properties` | `${t06.http.path}` (`/api/v1/compare-properties`) | `compare-properties.xml` | `schemas/T06-compare-properties.structured-content.schema.json` (**0.1.0**, owner's file 2026-10-27) |
@@ -48,6 +49,7 @@ Every response body is the tool's `structuredContent`, exactly as its schema def
 | `get-property-details.xml` | Flow `get-property-details` (T-02): `common-validate-request` → `get-property-info` → `vars.propertyCode` → `get-property-pois` → `dwl/map-structured-content.dwl` → `xapi.success`; error handler `property-details-error-handler`. Sub-flow `get-property-info` = `get-property-common-info`, then unwraps, logs and checks again. | Its old `validate-request` and `get-property-pois` copies are commented out (moved to `validate-request.xml` / `get-poi-details.xml`). |
 | `get-service-offerings.xml` | Flow `get-service-offerings` (T-03; sets `vars.toolName`): `services-validate-request` (parses the body first, so only bad JSON gives "invalid JSON"; requires a digits-only `propertyCode`; adds a default stay from `default.*`) → **`vars.servicesRequest`**. Then `services-get-facilities` copies it into `vars.request`, calls booking search **itself** (not via `get-property-common-info`) and selects the `propertyList` entry → **`vars.servicesSource`**. Then `services-map-response` → `{meta, services[]}`; **changed by us 2026-10-26** from inline DataWeave to `<ee:set-payload resource="dwl/service-offerings.dwl"/>` (see "T-03 mapping"). Error handler `property-details-error-handler`. | Its header comment is out of date (it names `Property_Info_HTTP` and `property.*`; the flow uses `HTTP_Request_Bookingsearch_config` and `https.bookingsearchprocessapi.*`). |
 | `t07-compare-rooms.xml` (**T-07, not yet deployed**; renamed 2026-10-28 from `get-room-rates.xml`, which was T-04 `/api/v1/room-details`: **delete `get-room-rates.xml` from the project**, since both define the same flow names) | Flow `compare-rooms-rates` (`vars.toolName` = `compare_rooms_rates`): `compare-rooms-validate-request` (`dwl/compare-rooms-validate-request.dwl` → **`vars.roomCodesRequest`**, then `multi-rooms-validate-request` → `vars.roomsRequest`) plus a one-room check → `multi-rooms-get-rates` → `compare-rooms-map-response` (`dwl/room-rate-details.dwl` → `vars.roomsT04`, then `dwl/compare-rooms-response.dwl`, then the two-room check) → `T07.success`. Own `compare-rooms-error-handler` / `compare-rooms-log-downstream` / `compare-rooms-format-and-log-error`. | **Depends on `get-multi-room-rates.xml`** (reuses its validate and get-rates sub-flows); deploy both. See "T-07 in this app" below. |
+| `t08-create-booking.xml` (**added by us 2026-10-28, not yet deployed**) | Flow `t08-create-booking` (`vars.toolName` = `create_booking`): `create-booking-validate-request` (`dwl/create-booking-validate-request.dwl` → **`vars.bookingRequest`**) → `create-booking-get-rates` (inline body → `vars.bookingSearchBody`, then the shared `get-property-common-info` → `vars.roomsSource`) → `create-booking-resolve` (`dwl/room-rate-details.dwl` → `vars.roomsT04`, `dwl/create-booking-response.dwl` → `vars.bookingResult {problems, response}`) → `create-booking-add-ons` (optional) → `T08.success`. Also defines **`HTTP_Request_Bookings_config`** (`https.bookingsprocessapi.*`). Own `create-booking-error-handler` / `-log-downstream` / `-format-and-log-error`. | See "T-08 in this app" below. Needs the `https.bookingsprocessapi.*` keys even with add-ons off. |
 | `get-multi-room-rates.xml` (**added by us 2026-10-27, not yet deployed**) | Flow `get-multi-room-details` (`vars.toolName` = `get_multi_room_rate_details`): `multi-rooms-validate-request` (the T-04 validator `dwl/rooms-validate-request.dwl`, plus a `noOfRooms` = `apartmentList` check) → `multi-rooms-get-rates` (inline DataWeave → `vars.bookingSearchBody`, then the shared `get-property-common-info`) → `multi-rooms-map-response`, or the raw property with `?format=raw`. Own `multi-rooms-error-handler` / `multi-rooms-log-downstream` / `multi-rooms-format-and-log-error` (since 2026-10-27, so `get-room-rates.xml` can be reworked for T-07). | Serves one room as well as several. See "T-04 multi-room" below. |
 | `compare-properties.xml` (added by us 2026-10-25, not yet deployed) | Flow `compare-properties` (T-06; `vars.toolName` = `compare_properties`): `compare-validate-request` (`dwl/compare-validate-request.dwl`) → **`vars.compareRequest`** → `compare-get-properties` → **`vars.lookups`** → `compare-check-lookups` → `dwl/compare-properties-response.dwl`. Own `compare-error-handler` / `compare-format-and-log-error`. | See "T-06 in this app" below. |
 
@@ -112,6 +114,7 @@ Response: `{messageId, propertyList: [ {…} ]}`. One property has `propertyCode
 - Booking search: `https.bookingsearchprocessapi.{host, port, basepath, path, keystorepwd, clientid, clientsecret, responsetimeout}`, `validation.successcodes`.
 - POI: `poisystem.{host, port, protocol, basepath, path, clientid, clientsecret, responsetimeout, reconnection.*}`. The keys are **lower case**.
 - Request defaults: `default.{language, currency, adults, children, checkinOffsetDays, nights, userCountry}`, `request.{maxAdults, maxChildren, maxNights}`, `app.{version, channel}`, `rooms.maxRooms`, `property.currency`, `asset.baseUrl`, `t03.*`.
+- T-08: optional `t08.{checkinOffsetDays (30), nights (1), addons.enabled ("false")}`; **required** `https.bookingsprocessapi.{host, port, basepath, responsetimeout, clientid, clientsecret}` (`src/main/resources/create-booking.yaml`).
 - T-06: `t06.{http.path, minProperties, maxProperties, checkinOffsetDays, nights, adults, children, batchLookup, batchSize, maxConcurrency, maxAmenityHighlights, maxRoomTypes}`, in `src/main/resources/compare-properties.yaml` (to append to `uat.yaml`).
 - A missing key read with `p()` gives null, and `null as Number` fails the request. `uat.yaml` has `startdate: 7`, `enddate: 8`, `noofadults: 2`, the defaults other booking search callers use. A check-in of tomorrow in UTC can already be "today" in Singapore.
 
@@ -238,6 +241,52 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
 - **Known gap (shared T-04 validator):** with the top-level shape (no `apartmentList`), `childAges` is not compared with `noOfchildren`.
 - **Not in the response:** PRD scoring fields (the schema leaves them out). The widget builds Deciding Criteria from `bed_type`, the selected rate's `non_refundable` and `amenity_groups`. `minPrice` / `maxPrice` / `requiredInclusions` / `attributeToCompare` are ignored.
 
+## T-08 in this app (`t08-create-booking.xml`, written by us 2026-10-28, not yet deployed)
+
+**Read-only checkout hand-off** (PRD AC-08): nothing is reserved, held or paid, and no cart, reservation or payment API is called. It re-checks that each room is bookable now and returns the summary the widget turns into a discoverasr.com checkout link. Owner's schemas 0.1.0 (2026-10-28): input `schemas/T08-create-booking.input.schema.json`, output `schemas/T08-create-booking.structured-content.schema.json`.
+
+- **`POST /api/v1/create-booking`.** Input: `propertyCode` (required, digits), `checkinDate` (default today + `t08.checkinOffsetDays`, 30), `checkoutDate` (default check-in + `t08.nights`, 1), `apartmentList[]`, `currencyCode`, `voucherCode` and `language`.
+  - `apartmentList[]` entries are `{noOfadults, noOfchildren, childAges, roomCode, ratePlanCode}`. Without it, the default is one room for 1 adult.
+  - **`childAges` length must equal `noOfchildren`.** `roomCode` and `ratePlanCode` come both or neither.
+  - Lower-case currency is upper-cased.
+  - A `language` outside the schema's list falls back to `default.language`; listed values are passed through untouched.
+  - `memberId`, `enrollAsrOnCheckout` and other unknown fields are ignored.
+- **Multi-room, as T-04 multi-room:** one booking search call with one `apartmentList` entry per room, `noOfRooms` = their count and summed top-level guests (inline body in `create-booking-get-rates`). Upstream answers `apartmentList[i]` with `room{i}`. **Unlike T-04, the body also carries the caller's `voucherCode`**, so `meta.voucher_code_valid` is real. Then `dwl/room-rate-details.dwl` prices every room with the T-04 rules: bookable rates only (member / ACRS / TEST dropped), ranking order, upstream's tax basis.
+- **Choosing each room (`dwl/create-booking-response.dwl`):**
+  - **Selected** (`roomCode` + `ratePlanCode`): the room whose `room_code` (else `room_category`) matches and its rate whose `rate_plan_code` matches, ignoring case, taken from that room's own `room{i}`.
+  - **Cheapest** (neither): the rate with the lowest per-night price **including tax** (`per_night_rate + per_night_tax`, so tax-inclusive and tax-exclusive rates compare fairly) across that room's types. A tie goes to the better-ranked room.
+  - `meta.resolution` is `selected` / `cheapest` / `mixed`.
+- **Response:** `{meta, rooms[], add_ons[]}`.
+  - Each room is `{room_index, noOfadults, noOfchildren, childAges, room_code, room_name, banner_image_url, rate}`, where `rate` is the **T-04 rate object unchanged**.
+  - `meta` holds `property_code`, `property_name`, `brand_code`, `country_code`, `asset_base_url`, `address` (upstream `address`), `banner_image_url` (upstream `bannerImageMobile`), the stay, `noOfRooms`, summed guests, `currency`, `resolution`, `total_stay_price`, `total_earn_asr_points` and `voucher_code_valid` (only with a `voucherCode`).
+  - `total_stay_price` = Σ `total_stay_rate` + `total_tax` when not tax-inclusive (rounded to 2 places).
+  - `total_earn_asr_points` is the sum of `earn_asr_points`, left out when 0.
+- **The schema refers to the T-04 0.4.0 `ratePlan`** (with `is_member_rate`), which is not in the repo. We map T-04 0.3.0, which drops member rates. **A member rate picked by the user therefore comes back 409** (PRD conflict noted under "T-08 Create_booking"). `tests/check_t08.py` registers 0.3.0 under the 0.4.0 id.
+- **Errors:**
+  - 400 `BAD_REQUEST`, with one message per problem.
+  - **409 `RATE_NOT_AVAILABLE`** (ER-04): a picked room + rate is not bookable now. The message lists that room's bookable rates, or the room types available.
+  - **404 `NO_AVAILABILITY`** (ER-02): a room with nothing bookable. The message names the room and its guests.
+  - 404 `PROPERTY_NOT_FOUND`.
+  - 502 `DOWNSTREAM_REJECTED` / `DOWNSTREAM_UNAVAILABLE`, 504 `DOWNSTREAM_TIMEOUT`, 500 `INTERNAL_ERROR`.
+
+  When both kinds of problem occur, 409 wins and the message covers every room.
+- **Add-ons (optional, schema RESERVED):** only when `t08.addons.enabled` is "true", `create-booking-add-ons` calls the **bookings process API `POST /v1/addonlist`** on `HTTP_Request_Bookings_config`. This is the call in the owner's mobile flow `ODX_Booking_AddOn_ListFlow` (2026-10-28).
+  - Headers: `client_id`, `client_secret`, `messageId`, `userToken` "".
+  - The body mirrors that flow's "Request Payload" for this booking: `memberId ""`, `currencyCode`, the stay, `noOfAdults` / `noOfChildren` as strings, `ratePlanCodes` (the booked rates), `channel "mobile"`, `voucherCode`. That flow hardcodes `noOfChildren "1"`; we send the real count. `perRoom` is not sent (its meaning is unknown).
+  - **No sample addonlist response has been shared**, so `dwl/create-booking-add-ons.dwl` guesses the field names (`addOnName` / `title` / `name`, `description`, `imageUrl` / `image`, `preferredCurrencyPrice` / `price`, …) and logs `xapi.addons.response` with the real field names. **Ask the owner for a response sample** and fix the lists from it.
+  - Any failure → no `add_ons` (log `xapi.addons.unavailable`); it never fails the call.
+  - **`HTTP_Request_Bookings_config` needs `https.bookingsprocessapi.*` in `uat.yaml` even with add-ons off,** or the app does not start. Nest those keys inside the existing `https:` block.
+- **Logs:** `T08.start`, `xapi.bookingsearch.request`, `xapi.property.response`, `xapi.addons.request` / `xapi.addons.response` / `xapi.addons.unavailable`, `T08.success` (resolution, room + rate per room, total, currency), `xapi.downstream.error`, `xapi.failure`.
+- **Checks:** `tests/check_t08.py` runs 44 checks:
+  - the minimal `{propertyCode}` defaults, one selected room, and three rooms mixed;
+  - a member rate, unknown room or empty room → 409 / 404;
+  - the tax-inclusive cheapest rule and the ranking tie-break;
+  - voucher, points and 14 bad inputs;
+  - guessed add-on shapes.
+
+  All outputs validate against 0.1.0, and the script writes `examples/create-booking-51052-{request,response}.sample.json`. The DataWeave itself has not been run; Playground copies are in `tests/playground/create-booking-*`, and Postman has the folder "T-08 Create booking".
+- **MCP server:** `asc-mcp-server`'s `createBooking` is still the old WRITE tool (guest, `confirmed`, `idempotencyKey`). It must be replaced by `create_booking` with the input schema above, pointing at `/api/v1/create-booking`; change it only when the owner asks.
+
 ## T-06 in this app (owner decision, 2026-10-25)
 
 **T-06 only puts the requested properties together in one payload. It does not compare, rank, filter or recommend.** The model and the widget do that. So the PRD's `recommendation` block, `is_recommended`, match flags, reason lines and the filter inputs (`maxRate`, `facilities`, `roomType`, `poi`, `travellerProfile`, `serviceCategory`) are not in the xAPI. They are accepted in the body and ignored. Do not add them back unless the owner asks.
@@ -279,7 +328,7 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
 
 ## Product specs (PRDs) for tools not yet built
 
-Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md`, `PRD-T07-compare-rooms-rates.md` (pasted as text by the owner) and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05 or T-08 yet; build one only when asked. T-07 is built as a gather-only tool: see "T-07 in this app". T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
+Full text: `asc-mcp-odx-backend-xapi/docs/PRD-T05-get-promotions.md`, `PRD-T06-compare-properties.md`, `PRD-T07-compare-rooms-rates.md` (pasted as text by the owner) and `PRD-T08-create-booking.md`. Read the full PRD before you build a tool. No flow exists for T-05 yet; build one only when asked. T-08 is built: see "T-08 in this app". T-07 is built as a gather-only tool: see "T-07 in this app". T-06 is built as a pass-through only: where the PRD below and "T-06 in this app" disagree, the latter wins.
 
 Tool map from the PRDs:
 
@@ -292,7 +341,7 @@ Tool map from the PRDs:
 | T-05 | Get_promotions | PRD only |
 | T-06 | Compare_properties | built: puts properties together only; mapped to the owner's schema 0.1.0 (2026-10-27) |
 | T-07 | Compare_rooms_rates | built (2026-10-27/28): 2–4 of the property's rooms by `roomCodes`, else the first four; owner's schema 0.4.0 |
-| T-08 | Create_booking | PRD only |
+| T-08 | Create_booking | built (2026-10-28): read-only checkout hand-off, one or several rooms; owner's schemas 0.1.0 |
 
 Rules for T-05 and T-06:
 
@@ -528,7 +577,7 @@ A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in 
 
 ## How to work on it
 
-- Diagnose from the audit log lines: `xapi.start` / `T04M.start` / `T06.start` / `T07.start`, `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
+- Diagnose from the audit log lines: `xapi.start` / `T04M.start` / `T06.start` / `T07.start` / `T08.start`, `xapi.compare.batch` / `xapi.compare.batch.failed` / `xapi.compare.lookup` (T-06), `xapi.bookingsearch.request` (exact body sent), `xapi.property.response` (upstream field names), `xapi.downstream.error` (upstream status and body), `xapi.poi.unavailable`, `xapi.failure`.
 - Check any response change against the tool's schema, using a sample built from real upstream data where possible.
 - Hand back complete, drop-in files with the owner's config names (`common_HTTP_Listener_Config`, `HTTP_Request_Bookingsearch_config`, `Property_POI_HTTP`) and key names (`https.*`, `poisystem.*`, `t03.*`, `t06.*`).
 - Commit to branch `claude/get-property-details-xapi`.
