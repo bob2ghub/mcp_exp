@@ -338,7 +338,7 @@ Tool map from the PRDs:
 | T-02 | Get_property_details | built |
 | T-03 | Get_service_offerings | built |
 | T-04 | Get_room_rate_details | built; rewritten for schema 0.3.0 (2026-10-26) |
-| T-05 | Get_promotions | PRD only |
+| T-05 | Get_promotions | schemas saved 2026-10-28 (vouchers only): `schemas/T05-get-promotions.structured-content.schema.json` 0.2.0 and `schemas/T05-get-promotions.input.schema.json` 0.1.0, the owner's files; no flow yet |
 | T-06 | Compare_properties | built: puts properties together only; mapped to the owner's schema 0.1.0 (2026-10-27) |
 | T-07 | Compare_rooms_rates | built (2026-10-27/28): 2–4 of the property's rooms by `roomCodes`, else the first four; owner's schema 0.4.0 |
 | T-08 | Create_booking | built (2026-10-28): read-only checkout hand-off, one or several rooms; owner's schemas 0.1.0 |

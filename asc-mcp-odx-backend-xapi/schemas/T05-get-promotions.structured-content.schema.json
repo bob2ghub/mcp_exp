@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_promotions:structured-content:0.2.0",
+  "title": "Get promotions (vouchers) — structuredContent",
+  "description": "The `structuredContent` of the `get_promotions` MCP tool, for the T-05 inline row \"Other vouchers and experiences available\" (Figma MVP 1630:46397, card `Component 5`). 0.1.0 carries VOUCHERS ONLY, in `vouchers`; rate-discount offers (MVP row 1630:46392) will come as a separate optional `offers` array in a minor version, sharing `meta` and the card field names below (README decision 1). No recommendation: the MVP hides the `Rec` block (decision 2). Zero vouchers is a valid result, not an error (PRD AC-03). 0.2.0, provisional (2026-10-28): `details_url` may be a path, like the image fields (README decision 8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "vouchers"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "country_code",
+        "location_label",
+        "voucher_count"
+      ],
+      "properties": {
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "The input's `countryCode` echoed."
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The input's `city` echoed, when sent."
+        },
+        "property_code": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "The input's `propertyCode` echoed, when sent."
+        },
+        "property_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The ENGLISH name of `property_code`, when sent."
+        },
+        "location_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the search covered, in English, for the model's text: the property name, else the city, else the country name, e.g. \"Singapore\" (PRD §2.3 'resolved location label')."
+        },
+        "applied_filters": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The input's filters echoed, when any was sent (PRD §2.3).",
+          "properties": {
+            "voucher_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "voucher_category": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217: the ONE currency of every voucher `price` in this response (PRD AC-06). Required when any voucher has a `price`; omit when none has."
+        },
+        "voucher_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of vouchers matching the search: equals `vouchers.length` (the server sends every match, PRD §2.3 'one data packet'). PRD §2.3 'result count'."
+        },
+        "asset_base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "As T-01 to T-08: the origin relative image paths resolve against; default https://www.discoverasr.com."
+        }
+      }
+    },
+    "vouchers": {
+      "type": "array",
+      "description": "The vouchers, in the upstream display order (`sequence`). Empty when none match (PRD ER-01).",
+      "items": {
+        "$ref": "#/$defs/voucher"
+      }
+    }
+  },
+  "$defs": {
+    "voucher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "details_url"
+      ],
+      "description": "One `Component 5` card. `id`, `title`, `image_url`, `image_alt`, `scope_label`, `expiry_date` and `details_url` are the CARD FIELDS offers will reuse under the same names (README decision 1); the rest are voucher-only.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `voucherProgrammeCode`, e.g. \"TRIP50\". Unique within the response."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `voucherTitle` (in the API's language), else `voucherEnTitle`. The card title."
+        },
+        "image_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `imageThumbnail`: a FULL URL, used as sent, or a PATH, which the widget resolves against `meta.asset_base_url` (default https://www.discoverasr.com), as T-01 to T-08. Omit when upstream has none; the card shows its placeholder (PRD EC-08)."
+        },
+        "image_alt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `altThumbnail`. The image's alt text; the widget falls back to `title`."
+        },
+        "scope_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the voucher can be used, composed by the server in English for the card's location line (MVP 📍; README decision 6): one property → its name (\"lyf Funan Singapore\"); several properties → their distinct city names, in first-seen order, joined by \", \" (\"Singapore, Jakarta\", PRD EC-03); country-wide → the country names. Omit when upstream gives no scope."
+        },
+        "scope_level": {
+          "type": "string",
+          "enum": [
+            "property",
+            "country"
+          ],
+          "description": "← upstream `applicableLevel`: \"property_specific\" → \"property\", \"country\" → \"country\". Tells the model whether `property_codes` limits the voucher."
+        },
+        "property_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "← upstream `propertyCode[]`, duplicates and empty values removed, upstream order kept. Values are the upstream codes verbatim (upstream has non-numeric ones such as \"CN1178\")."
+        },
+        "country_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "description": "← upstream `countryCode[]`, empty values removed (README open item 5)."
+        },
+        "expiry_date": {
+          "type": "string",
+          "format": "date",
+          "description": "← upstream `expiryDate`, as YYYY-MM-DD. The card's \"Offer ends: …\" line. OMIT when upstream sends null: the card then shows no end date, never an invented one (decision 7)."
+        },
+        "details_url": {
+          "type": "string",
+          "anyOf": [
+            {
+              "pattern": "^https?://[^/]+"
+            },
+            {
+              "pattern": "^/(?!/)"
+            }
+          ],
+          "description": "← upstream `voucherUrl`: a FULL URL (\"https://…\"), used as sent, or a PATH starting with one \"/\" (\"/en/member/buy-experiences/…\"), to which the widget adds its configured website domain (`VITE_SITE_ORIGIN`, default https://www.discoverasr.com; README decision 8). Either way the doubled \"/\" upstream sends after the host (\"…capitaland.com//en/…\") is collapsed. \"View details ↗\" opens it; the user buys there (PRD 'Redemption always finishes off-platform')."
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `category` verbatim, e.g. \"package\", \"cash\" (PRD OQ-02). Not on the card; what `voucherCategory` matches."
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0,
+          "description": "The voucher's purchase price in `meta.currency` (MVP \"999,999,999 SGD\"). Source upstream field and currency to be confirmed by MuleSoft (README open item 1: `promoPrice` carries no currency). Omit when the voucher is bought with points only."
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The ASR points the voucher costs (MVP \"999,999,999 Points\", or \"or use N ASR points\" next to a `price`). Source upstream field to be confirmed (README open item 1). Omit when the voucher cannot be bought with points."
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "← upstream `inventory`: vouchers left. With `is_low_stock` it makes the card's tag \"Only N left!\" (MVP)."
+        },
+        "is_low_stock": {
+          "type": "boolean",
+          "description": "True when the server judges `remaining` low enough for the \"Only N left!\" tag: `inventory` ≤ upstream `urgencyTrigger` (README decision 5, meaning to be confirmed by MuleSoft, open item 3). The widget shows the tag only when true AND `remaining` is sent."
+        },
+        "description_text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "← upstream `description` as PLAIN TEXT: HTML tags removed, entities decoded, paragraphs joined by a blank line. For the model only; not on the card (decision 9). Omit when upstream repeats the code (e.g. \"Chinavoucher\") or sends nothing."
+        }
+      },
+      "dependentRequired": {
+        "is_low_stock": [
+          "remaining"
+        ]
+      }
+    }
+  }
+}

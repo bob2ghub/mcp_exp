@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_promotions:input:0.1.0",
+  "title": "Get promotions (vouchers) — tool input (arguments of tools/call)",
+  "description": "The `inputSchema` of the `get_promotions` MCP tool: what the model sends. Both servers must declare exactly this. 0.1.0 returns VOUCHERS ONLY (user decision 2026-10-28: rate-discount offers wait for their API); the filters here are the ones vouchers and offers share, so offers can add theirs (dates, guests) later as optional parameters without breaking this version (README decision 1). PRD T-05 §5 minus `checkinDate` / `checkoutDate` / guests (no voucher validity data yet, decision 7), `maxPrice` (PRD parameter gap, OQ-03) and `memberId` (anonymous MVP). 0.1.0, provisional (2026-10-28).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "countryCode"
+  ],
+  "properties": {
+    "countryCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "ISO 3166-1 alpha-2, upper case, as find_properties, e.g. \"SG\". The model resolves the user's location (or the property's country) before calling; the tool is never called without one (PRD AC-09).",
+      "examples": [
+        "SG",
+        "JP"
+      ]
+    },
+    "city": {
+      "type": "string",
+      "minLength": 1,
+      "description": "City name resolved by the model, as find_properties. Omit for a country-level search. Keeps vouchers usable at a property in that city, plus country-wide vouchers of the country.",
+      "examples": [
+        "Singapore"
+      ]
+    },
+    "propertyCode": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "The property's code, e.g. \"51052\", when a property is already in context (a find_properties / get_property_details / get_service_offerings result) or named by the user. Keeps vouchers usable at that property, plus country-wide vouchers of its country (PRD AC-02). A code that no longer resolves is an error (PRD ER-04).",
+      "examples": [
+        "51052"
+      ]
+    },
+    "voucherName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-text keyword matched against the voucher title, case-insensitive, e.g. \"flight\" (PRD §5).",
+      "examples": [
+        "flight"
+      ]
+    },
+    "voucherCategory": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Upstream voucher categories to keep, matched case-insensitively against each voucher's `category`. No confirmed list yet (PRD OQ-02); values seen upstream are \"package\" and \"cash\". Omit unless the user names a category; an unknown value returns zero vouchers, not an error.",
+      "examples": [
+        [
+          "package"
+        ]
+      ]
+    },
+    "currencyCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217. Every price in the response uses this one currency (PRD AC-06). Server default when omitted: the upstream price currency (README open item 2)."
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "fr",
+        "de",
+        "es",
+        "ko",
+        "ja",
+        "id",
+        "vi",
+        "th"
+      ],
+      "description": "As find_properties: the language the user is writing in, set by the model and never asked of the user. Omit for any other language, or when unsure. The widget shows its own UI text in it; voucher titles stay in the API's language for now. Servers accept it and pass it through untouched.",
+      "examples": [
+        "en",
+        "th"
+      ]
+    }
+  }
+}
