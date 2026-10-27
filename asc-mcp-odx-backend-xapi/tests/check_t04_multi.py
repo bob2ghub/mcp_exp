@@ -1,4 +1,4 @@
-"""T-04 multi-room (get-multi-room-rates.xml): checks the three pieces it chains, in Python.
+"""T-04 multi-room (get-multi-room-rates.xml), for one or several rooms: checks the three pieces it chains, in Python.
 
 1. dwl/rooms-validate-request.dwl on the mobile app's multi-room body (mirror: tests/check_t04_request.py),
    plus the flow's noOfRooms check;
@@ -156,5 +156,47 @@ o = map_rooms(short, r, {"asset.baseUrl": "https://www.discoverasr.com"})
 results.append(validate("upstream returned no room2", o))
 results.append(check("room 3 present with rooms [] and total_results 0",
                      o["requested_rooms"][2]["rooms"] == [] and o["requested_rooms"][2]["total_results"] == 0))
+
+# ---------- one room: the same endpoint must serve it in every shape a caller may send
+PROPS_MAP = {"asset.baseUrl": "https://www.discoverasr.com"}
+real_one = copy.deepcopy(real)   # upstream's single-room answer: apartments[0].room0 only
+
+shapes = {
+    "T-04 short names, no apartmentList": {"propertyCode": "51052", "checkin": "2026-12-03", "checkout": "2026-12-06",
+                                            "adults": 2, "children": 1, "childAges": [4], "currency": "SGD"},
+    "PRD names, no apartmentList": {"propertyCode": "51052", "checkinDate": "2026-12-03", "checkoutDate": "2026-12-06",
+                                     "noOfadults": "2", "noOfchildren": "1", "childAges": [4], "currencyCode": "SGD"},
+    "mobile body, one apartmentList entry": dict(BODY, noOfRooms=1,
+                                                 apartmentList=[{"noOfadults": "2", "noOfchildren": "1", "childAges": [4]}]),
+    "no noOfRooms, one apartmentList entry": {k: v for k, v in dict(BODY, apartmentList=[{"noOfadults": "2", "noOfchildren": "1", "childAges": [4]}]).items() if k != "noOfRooms"},
+    "rooms: 1 (older T-04 callers)": {"propertyCode": "51052", "checkin": "2026-12-03", "checkout": "2026-12-06", "adults": 2,
+                                      "children": 1, "childAges": [4], "rooms": 1},
+}
+for label, body1 in shapes.items():
+    v1 = validate_request(body1)
+    r1 = v1["request"]
+    b1 = booking_body(r1)
+    o1 = map_rooms(real_one, r1, PROPS_MAP)
+    ok = (v1["errors"] == [] and no_of_rooms_errors(r1) == []
+          and b1["noOfRooms"] == 1
+          and b1["apartmentList"] == [{"childAges": [4], "noOfadults": "2", "noOfchildren": "1"}]
+          and b1["noOfadults"] == "2" and b1["noOfchildren"] == "1"
+          and len(o1["requested_rooms"]) == 1 and o1["meta"]["noOfRooms"] == 1
+          and o1["requested_rooms"][0]["total_results"] == 4
+          and o1["requested_rooms"][0]["childAges"] == [4])
+    results.append(check("single room, " + label + ": one room sent, room0 mapped", ok))
+    results.append(validate("single room, " + label + " (schema)", o1))
+
+# Defaults only: one room, default guests.
+v1 = validate_request({"propertyCode": "51052"})
+b1 = booking_body(v1["request"])
+results.append(check("single room, property code only: defaults, noOfRooms 1, one apartmentList entry",
+                     v1["errors"] == [] and b1["noOfRooms"] == 1 and len(b1["apartmentList"]) == 1))
+
+# A room count with no list to match is refused, not quietly searched as one room.
+bad = {"propertyCode": "51052", "adults": 2, "rooms": 2}
+results.append(check("rooms: 2 without an apartmentList is refused",
+                     no_of_rooms_errors(validate_request(bad)["request"])
+                     == ["noOfRooms is 2 but apartmentList describes 1 room(s): send one apartmentList entry per room."]))
 
 sys.exit(0 if all(results) else 1)

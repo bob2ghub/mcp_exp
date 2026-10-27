@@ -527,7 +527,7 @@
       ]
     },
     {
-      "name": "T-04 Multi-room details and rates",
+      "name": "T-04 Multi-room details and rates (one or several rooms)",
       "item": [
         {
           "name": "Multi-room details - three rooms (mobile app body)",
@@ -547,6 +547,80 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isExcludePriceStartFrom\": false,\n  \"perNightRate\": false,\n  \"promoCorpCode\": \"\",\n  \"version\": \"10.9\",\n  \"memberId\": \"\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"language\": \"en\",\n  \"platform\": \"iOS\",\n  \"messageId\": \"Q7Gc8ffBQPzUHXYd\",\n  \"currencyCode\": \"SGD\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"noOfRooms\": 3,\n  \"apartmentList\": [\n    {\n      \"noOfadults\": \"2\",\n      \"noOfchildren\": \"1\",\n      \"childAges\": [\n        3\n      ]\n    },\n    {\n      \"noOfadults\": \"1\",\n      \"noOfchildren\": \"2\",\n      \"childAges\": [\n        2,\n        10\n      ]\n    },\n    {\n      \"noOfadults\": \"2\",\n      \"noOfchildren\": \"0\",\n      \"childAges\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/multi-room-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "multi-room-details"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multi-room details - single room, T-04 names (no apartmentList)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Full request. Dates come from the collection pre-request script (today + 21 days, 3 nights).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2,\n  \"children\": 1,\n  \"childAges\": [\n    4\n  ],\n  \"currency\": \"SGD\",\n  \"language\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/multi-room-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "multi-room-details"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multi-room details - single room, mobile body (one apartmentList entry)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Full request. Dates come from the collection pre-request script (today + 21 days, 3 nights).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"currencyCode\": \"SGD\",\n  \"language\": \"en\",\n  \"noOfRooms\": 1,\n  \"apartmentList\": [\n    {\n      \"noOfadults\": \"2\",\n      \"noOfchildren\": \"1\",\n      \"childAges\": [\n        4\n      ]\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -664,6 +738,43 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isExcludePriceStartFrom\": false,\n  \"perNightRate\": false,\n  \"promoCorpCode\": \"\",\n  \"version\": \"10.9\",\n  \"memberId\": \"\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"language\": \"en\",\n  \"platform\": \"iOS\",\n  \"messageId\": \"Q7Gc8ffBQPzUHXYd\",\n  \"currencyCode\": \"SGD\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"noOfRooms\": 1,\n  \"apartmentList\": [\n    {\n      \"noOfadults\": \"1\",\n      \"noOfchildren\": \"1\",\n      \"childAges\": [\n        3,\n        5\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/multi-room-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "multi-room-details"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multi-room details - 400 rooms 2 without apartmentList",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "Full request. Dates come from the collection pre-request script (today + 21 days, 3 nights).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2,\n  \"rooms\": 2\n}",
               "options": {
                 "raw": {
                   "language": "json"

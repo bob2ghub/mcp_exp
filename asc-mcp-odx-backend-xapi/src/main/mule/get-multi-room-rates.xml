@@ -1,26 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  T-04 for SEVERAL rooms: POST /api/v1/multi-room-details
+  T-04 room and rate details for ONE OR SEVERAL rooms: POST /api/v1/multi-room-details
 
-  Same as get-room-rates.xml (T-04), but the booking search body carries one apartmentList entry per requested
-  room, so upstream answers with apartments[].room0[], room1[], room2[], … , one list per requested room.
+  The booking search body carries one apartmentList entry per requested room, so upstream answers with
+  apartments[].room0[] (and room1[], room2[], … when more than one room is asked for).
 
-  Request: the mobile app's own booking search shape is accepted as is, e.g.
-    {propertyCode, checkinDate, checkoutDate, currencyCode, language, noOfRooms,
-     apartmentList: [{noOfadults: "2", noOfchildren: "1", childAges: [3]}, …],
-     perNightRate, isExcludePriceStartFrom, promoCorpCode, memberId, messageId, version, platform}
-  It is validated by dwl/rooms-validate-request.dwl (the T-04 validator: 1 to rooms.maxRooms entries, per-room
-  guests and child ages), plus a check here that noOfRooms, when sent, matches apartmentList. memberId, messageId,
-  version and platform are ignored (non-logged-in journey; messageId is the correlation ID).
+  Request, either shape:
+    Several rooms (the mobile app's own body):
+      {propertyCode, checkinDate, checkoutDate, currencyCode, language, noOfRooms,
+       apartmentList: [{noOfadults: "2", noOfchildren: "1", childAges: [3]}, …],
+       perNightRate, isExcludePriceStartFrom, promoCorpCode, memberId, messageId, version, platform}
+    One room: the same body with one apartmentList entry, or no apartmentList at all and the guests at the top:
+      {propertyCode, checkin | checkinDate, checkout | checkoutDate, adults | noOfadults, children | noOfchildren,
+       childAges, currency | currencyCode, language}
+  Validated by dwl/rooms-validate-request.dwl (1 to rooms.maxRooms rooms; per-room guests and child ages), plus a
+  check here that noOfRooms (or rooms), when sent, matches the rooms described: 3 rooms with no apartmentList is
+  refused rather than searched as one. memberId, messageId, version and platform are ignored (non-logged-in
+  journey; messageId is the correlation ID).
 
-  Body: the inline DataWeave in multi-rooms-get-rates -> vars.bookingSearchBody, which the shared get-property-common-info
-  (get-common-details.xml) sends instead of its single-room body. No http:request of its own.
+  Body: the inline DataWeave in multi-rooms-get-rates -> vars.bookingSearchBody, which the shared
+  get-property-common-info (get-common-details.xml) sends instead of its own single-room body.
 
   Response: the T-04 structuredContent (schema 0.3.0) from dwl/room-rate-details.dwl: requested_rooms[i] holds the
-  room types upstream returned in room{i} for apartmentList[i]. With ?format=raw it returns the unmapped property
-  object (propertyList[0], with apartments[].room0[] … room{n}[]) instead, for checking what upstream sent.
+  room types upstream returned in room{i} for apartmentList[i]; one entry for one room. With ?format=raw it returns
+  the unmapped property object (propertyList[0]) instead, for checking what upstream sent.
 
-  Errors: rooms-error-handler from get-room-rates.xml (same codes as T-04).
+  SELF-CONTAINED: this file has its own map sub-flow and error handler (multi-rooms-*), so get-room-rates.xml can
+  be reworked (e.g. for T-07) without breaking it. Shared with other flows: get-property-common-info
+  (get-common-details.xml), dwl/rooms-validate-request.dwl and dwl/room-rate-details.dwl.
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
@@ -41,11 +48,11 @@
         <set-payload value="#[output application/json --- vars.roomsSource]" doc:name="raw property"/>
       </when>
       <otherwise>
-        <flow-ref name="rooms-map-response" doc:name="rooms-map-response"/>
+        <flow-ref name="multi-rooms-map-response" doc:name="multi-rooms-map-response"/>
       </otherwise>
     </choice>
     <logger category="ascott.audit" level="INFO" message='#[output text/plain --- write({event: "T04M.success", tool: vars.toolName, correlationId: vars.traceId, propertyCode: vars.roomsRequest.propertyCode, noOfRooms: vars.roomsRequest.rooms, roomTypesPerRoom: (vars.roomsSource.apartments default []) reduce ((e, acc = {}) -> acc ++ (if (e is Object) (e mapObject ((v, k) -> {(k): if (v is Array) sizeOf(v) else 0})) else {})), raw: vars.rawResponse default false, elapsedMs: (now() as Number {unit: "milliseconds"}) - vars.startedAt}, "application/json", {indent: false})]' doc:name="T04M-SUCCESS"/>
-    <error-handler ref="rooms-error-handler"/>
+    <error-handler ref="multi-rooms-error-handler"/>
   </flow>
 
   <!-- Tool arguments -> vars.roomsRequest (the T-04 validator, which also carries noOfRoomsSent and the pass-through
@@ -62,7 +69,8 @@
         </on-error-continue>
       </error-handler>
     </try>
-    <!-- noOfRooms is optional, but when sent it must agree with apartmentList: upstream answers per entry. -->
+    <!-- noOfRooms (or rooms) is optional, but when sent it must agree with the rooms described: one per apartmentList
+         entry, or one room when there is no apartmentList. Upstream answers per entry. -->
     <set-variable variableName="roomsErrors" value="#[output application/java --- do {
 	var sent = vars.roomsValidation.request.noOfRoomsSent
 	var n = if (sent is Number) sent else if ((sent is String) and (sent matches /^[0-9]+$/)) (sent as Number) else null
@@ -148,5 +156,68 @@ fun text(v) = if (v is String) trim(v) else ""
         <raise-error type="APP:NOT_FOUND" description="Property not found"/>
       </when>
     </choice>
+  </sub-flow>
+
+  <!-- vars.roomsSource + vars.roomsRequest -> T-04 structuredContent (schema 0.3.0), one requested_rooms entry per room. -->
+  <sub-flow name="multi-rooms-map-response">
+    <ee:transform doc:name="room-rate-details">
+      <ee:message>
+        <ee:set-payload resource="dwl/room-rate-details.dwl"/>
+      </ee:message>
+    </ee:transform>
+  </sub-flow>
+
+  <error-handler name="multi-rooms-error-handler">
+    <on-error-propagate type="APP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[400]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'BAD_REQUEST', message: vars.errorMessage default 'Invalid request.', retryable: false}]"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:NOT_FOUND" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[404]"/>
+      <set-variable variableName="publicError" value="#[{category: 'FUNCTIONAL', code: 'ROOMS_NOT_FOUND', message: vars.errorMessage default 'No rooms found for this property.', retryable: false}]"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="HTTP:TIMEOUT" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[504]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_TIMEOUT', message: 'Room and rate service timed out. Retry later.', retryable: true}]"/>
+      <flow-ref name="multi-rooms-log-downstream"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <!-- A 400 from booking search is its own category: our body was rejected, not the service being down. -->
+    <on-error-propagate type="HTTP:BAD_REQUEST" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_REJECTED', message: 'Room and rate service rejected the request. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="multi-rooms-log-downstream"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate when="#[error.errorType.namespace == 'HTTP']" logException="false" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[502]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'DOWNSTREAM_UNAVAILABLE', message: 'Room and rate service unavailable. Contact support with the correlation ID.', retryable: true}]"/>
+      <flow-ref name="multi-rooms-log-downstream"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY" logException="true" enableNotifications="false">
+      <set-variable variableName="httpStatus" value="#[500]"/>
+      <set-variable variableName="publicError" value="#[{category: 'TECHNICAL', code: 'INTERNAL_ERROR', message: 'Request failed. Contact support with the correlation ID.', retryable: false}]"/>
+      <flow-ref name="multi-rooms-format-and-log-error"/>
+    </on-error-propagate>
+  </error-handler>
+
+  <!-- The upstream status and body (first 1000 characters), the only place they can be read from. -->
+  <sub-flow name="multi-rooms-log-downstream">
+    <try>
+      <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_multi_room_rate_details", correlationId: vars.traceId default correlationId, propertyCode: vars.roomsRequest.propertyCode default null, status: error.errorMessage.attributes.statusCode default null, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description, body: do { var b = (if (error.errorMessage.payload is String) error.errorMessage.payload else write(error.errorMessage.payload default "", "application/json", {indent: false})) as String --- if (sizeOf(b) > 1000) b[0 to 999] else b }}, "application/json", {indent: false})]' doc:name="downstream.error"/>
+      <error-handler>
+        <on-error-continue type="ANY" logException="false" enableNotifications="false">
+          <logger category="ascott.audit" level="WARN" message='#[output text/plain --- write({event: "xapi.downstream.error", tool: vars.toolName default "get_multi_room_rate_details", correlationId: vars.traceId default correlationId, note: "downstream body is not readable"}, "application/json", {indent: false})]'/>
+        </on-error-continue>
+      </error-handler>
+    </try>
+  </sub-flow>
+
+  <sub-flow name="multi-rooms-format-and-log-error">
+    <logger category="ascott.audit" level="ERROR" message='#[output text/plain --- write({event: "xapi.failure", tool: vars.toolName default "get_multi_room_rate_details", correlationId: vars.traceId default correlationId, status: vars.httpStatus, category: vars.publicError.category, code: vars.publicError.code, errorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier, detail: error.description}, "application/json", {indent: false})]'/>
+    <set-payload value="#[output application/json --- {success: false, correlationId: vars.traceId default correlationId, error: vars.publicError}]"/>
   </sub-flow>
 </mule>

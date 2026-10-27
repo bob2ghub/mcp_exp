@@ -133,7 +133,8 @@ var errors = ([
 		maxPois: 0,
 		// Carried for the multi-room flow (get-multi-room-rates.xml), which sends them on to booking search and checks
 		// noOfRooms against apartmentList. property-info-request.dwl (single room) reads none of them.
-		noOfRoomsSent: body.noOfRooms,
+		// noOfRooms (mobile app) or rooms (older T-04 callers): only checked, the room count is apartmentList's.
+		noOfRoomsSent: body.noOfRooms default body.rooms,
 		perNightRate: if (body.perNightRate is Boolean) body.perNightRate else null,
 		isExcludePriceStartFrom: if (body.isExcludePriceStartFrom is Boolean) body.isExcludePriceStartFrom else null,
 		promoCorpCode: text(body.promoCorpCode)
