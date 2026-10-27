@@ -1,4 +1,4 @@
-"""T-07 compare_rooms_rates (get-room-rates.xml): checks the pieces it chains, in Python.
+"""T-07 compare_rooms_rates (t07-compare-rooms.xml): checks the pieces it chains, in Python.
 
 1. dwl/compare-rooms-validate-request.dwl (room codes; mirrored here) and dwl/rooms-validate-request.dwl
    (stay and guests; mirror: tests/check_t04_request.py) plus multi-rooms-validate-request's noOfRooms check

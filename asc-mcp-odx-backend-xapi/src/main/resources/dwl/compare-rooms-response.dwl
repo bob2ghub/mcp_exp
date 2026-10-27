@@ -10,7 +10,7 @@
 //     apartmentCategoryCode (room_category), ignoring case; the first match not already picked wins. A code with no
 //     match is excluded as "not_available" (no such room, or no bookable rate: upstream cannot tell them apart).
 //   Without roomCodes: the first four room types; the rest are excluded as "over_limit" with their own room_code.
-// excluded is left out when empty. Fewer than two rooms is an error, raised by the flow (get-room-rates.xml).
+// excluded is left out when empty. Fewer than two rooms is an error, raised by the flow (t07-compare-rooms.xml).
 output application/json skipNullOn="everywhere"
 
 var t04 = vars.roomsT04 default {}

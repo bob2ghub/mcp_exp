@@ -25,8 +25,9 @@
   room types upstream returned in room{i} for apartmentList[i]; one entry for one room. With ?format=raw it returns
   the unmapped property object (propertyList[0]) instead, for checking what upstream sent.
 
-  SELF-CONTAINED: this file has its own map sub-flow and error handler (multi-rooms-*), so get-room-rates.xml can
-  be reworked (e.g. for T-07) without breaking it. Shared with other flows: get-property-common-info
+  SELF-CONTAINED: this file has its own map sub-flow and error handler (multi-rooms-*), so the old T-04 file
+  get-room-rates.xml could be reworked for T-07 (now t07-compare-rooms.xml) without breaking it. T-07 reuses
+  multi-rooms-validate-request and multi-rooms-get-rates from here. Shared with other flows: get-property-common-info
   (get-common-details.xml), dwl/rooms-validate-request.dwl and dwl/room-rate-details.dwl.
 -->
 <mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">

@@ -26,7 +26,9 @@
   when roomCodes was omitted. Fewer than two rooms left: 404 NOT_ENOUGH_ROOMS (the tool's isError, ER-05 / EC-04);
   the message lists the room types that do have rates.
 
-  2026-10-27: this file was T-04 (POST /api/v1/room-details, flow get-room-details). T-04 is now served by
+  2026-10-28: renamed from get-room-rates.xml. Delete get-room-rates.xml from the project when adding this file:
+  both define flow compare-rooms-rates and its sub-flows, and duplicate names stop the app from deploying.
+  2026-10-27: this file was T-04 get-room-rates.xml (POST /api/v1/room-details, flow get-room-details). T-04 is now served by
   get-multi-room-rates.xml (POST /api/v1/multi-room-details), whose sub-flows multi-rooms-validate-request and
   multi-rooms-get-rates this flow reuses, so get-multi-room-rates.xml must be deployed with it. The MCP tool
   getRoomAndRateDetails must be moved to /api/v1/multi-room-details before this file is deployed.
