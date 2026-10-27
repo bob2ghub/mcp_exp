@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
   <configuration-properties file="application_properties.yaml"/>
   <http:listener-config name="HTTP_Listener"><http:listener-connection host="${http.host}" port="${http.port}"/></http:listener-config>
   <mcp:server-config name="asc_mcp_config" serverName="asc-mcp-server-1" serverVersion="1.0.0" >
     <mcp:streamable-http-server-connection listenerConfig="HTTP_Listener" mcpEndpointPath="${mcp.endpoint}" requestTimeout="30" responseContentType="JSON"/>
   </mcp:server-config>
-  <flow name="health">
+	<flow name="health">
     <http:listener config-ref="HTTP_Listener" path="/health" allowedMethods="GET"/>
     <set-payload value='#[output application/json --- {status: "UP", service: "ascott-mcp-api", version: "1.0.0", mode: p("data.mode"), tools: 8}]'/>
   </flow>
-
+<http:request-config name="MCP-ODX_Backend_XAPI_config">
+    <http:request-connection protocol="${xapi.protocol}" host="${xapi.host}" port="${xapi.port}"/>
+  </http:request-config>
 <http:request-config name="MCP-EXP-HTTPconfig" >
     <http:request-connection
         protocol="HTTP"

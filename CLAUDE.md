@@ -562,7 +562,7 @@ Despite its name, T-08 is **read-only**. It never writes a reservation, holds a 
 
 ## The MCP server app (`asc-mcp-server/`, owner's files, 2026-10-26)
 
-**Re-shared by the owner on 2026-10-28:** `business-flows.xml` and `observability.xml` (identical to the copies here) and `mcp-html-widget.xml` (only change: the widget URI is now `widget-v3`). These three are current as of that date.
+**Re-shared by the owner on 2026-10-28:** `business-flows.xml` and `observability.xml` (identical to the copies here) and `mcp-html-widget.xml` (only change: the widget URI is now `widget-v3`). These three are current as of that date. Also re-shared the same day: `property-mcp-api.xml` (identical; its 112 KB line 99 is a commented-out dummy payload) and `global-config.xml`. **`global-config.xml` now defines `MCP-ODX_Backend_XAPI_config`** (`${xapi.protocol}` / `${xapi.host}` / `${xapi.port}`), the owner's own copy of our xAPI connection, under a different name from the **`ODX_Backend_XAPI_config`** that our `mcp-tool.xml` defines and `call-odx-xapi` uses. The two names do not clash, but the owner's deployed `mcp-tool.xml` may now point at `MCP-ODX_Backend_XAPI_config` instead of ours; ask for it before changing that file.
 
 A **separate Mule app** that hosts the MCP server ChatGPT talks to. The xAPI in `asc-mcp-odx-backend-xapi/` is a backend; this app is the tool-call layer in front of it. Seven files were shared. **It holds two live generations side by side**, so check which one a change belongs in.
 
