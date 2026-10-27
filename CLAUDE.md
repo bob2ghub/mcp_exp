@@ -214,15 +214,16 @@ A second T-04 endpoint, **`POST /api/v1/multi-room-details`**, for **one room or
 
 ## T-05 in this app (`t05-get-promotions.xml`, written by us 2026-10-28, not yet deployed)
 
-**Minimal, vouchers only** (owner, 2026-10-28: "keep it simple"). It is the anonymous core of the owner's mobile flow `ODX_Search_Purchase_Voucher_Flow`: one `POST /v1/searchvoucher` on the CPRV process API, with no `memberId` or `userToken`.
+**Minimal, vouchers only** (owner, 2026-10-28: "keep it simple"). It is the anonymous core of the owner's mobile flow `ODX_Search_Purchase_Voucher_Flow`: one `POST /v1/searchvoucher` on the CPRV process API, anonymous: `memberId ""`, `userCountryCode` = `countryCode` and header `userToken ""` (added 2026-10-28: UAT answered 500, errorCode 325, on every call without them; the 500 comes from a null in searchvoucher's own response logger, so if it persists the fix is theirs).
 
 - **`POST /api/v1/promotions`.** Input schema 0.1.0, validated by `dwl/promotions-validate-request.dwl`:
   - `countryCode` (required, upper-cased) and optional `city`, `propertyCode` (digits), `voucherName` and `voucherCategory[]` (duplicates removed ignoring case).
   - `currencyCode` defaults to `property.currency`.
   - `language` is passed through when it is in the schema list, else `default.language`.
 - **Upstream:** `HTTP_Request_configuration-CPRVProcessAPI` is defined in `t05-get-promotions.xml`, with the same name and `https.cprvprocessapi.*` keys as the mobile app.
-  - Body (inline): `messageId`, `language`, `voucherName`, `country`, `voucherCategory`, `propertyCode` [code], `currency`, `sortBy "latest"`, `private false`, `channel "mobile"`. There is no paging, so upstream's default page applies.
-  - Headers: `client_id`, `client_secret`, `messageId`.
+  - Body (inline): `messageId`, `memberId ""`, `userCountryCode`, `language`, `voucherName`, `country`, `voucherCategory`, `propertyCode` [code], `currency`, `sortBy "latest"`, `private false`, `channel "mobile"`. There is no paging, so upstream's default page applies.
+  - Headers: `client_id`, `client_secret`, `messageId`, `userToken ""`.
+  - The CPRV host in UAT on 2026-10-28 was `lodging-odx-loyalty-dev-app` (DEV), while booking search is UAT.
   - **A 404 counts as zero vouchers** (PRD AC-03). Other errors map to 502 / 504 / 500 as in the other tools.
 - **Left out of the mobile flow**, so these parts are missing:
   - The VM archive.

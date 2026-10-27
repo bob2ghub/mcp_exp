@@ -3,7 +3,7 @@
   T-05 get_promotions (vouchers only): POST /api/v1/promotions
 
   A minimal, anonymous version of the mobile xAPI's ODX_Search_Purchase_Voucher_Flow: one call to the CPRV process API
-  POST /v1/searchvoucher, without memberId / userToken, mapped to the T-05 structuredContent.
+  POST /v1/searchvoucher, anonymous (memberId "", userToken ""), mapped to the T-05 structuredContent.
   Left out from that flow: the VM archive, the ASR property cache (city -> property codes) and the AEM voucher details
   call (voucherUrl, imageThumbnail, description, altThumbnail, urgencyTrigger); see dwl/promotions-response.dwl for
   what that means for each field.
@@ -61,8 +61,9 @@
     </choice>
     <set-variable variableName="promotionsRequest" value="#[vars.promotionsValidation.request]" doc:name="promotionsRequest"/>
 
-    <!-- The body of ODX_Search_Purchase_Voucher_Flow's "Create Request", anonymous: no memberId, no userCountryCode,
-         no paging (upstream's own default page), public vouchers only. -->
+    <!-- The body of ODX_Search_Purchase_Voucher_Flow's "Create Request", anonymous: memberId "" and userCountryCode =
+         countryCode (searchvoucher answered 500 on every call without them, 2026-10-28), no paging (upstream's own
+         default page), public vouchers only. -->
     <ee:transform doc:name="searchvoucher body">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
@@ -71,6 +72,8 @@ var r = vars.promotionsRequest
 ---
 {
 	messageId: vars.traceId,
+	memberId: "",
+	userCountryCode: r.countryCode,
 	language: r.language,
 	voucherName: r.voucherName,
 	country: r.countryCode,
@@ -91,7 +94,8 @@ var r = vars.promotionsRequest
 	"Content-Type" : "application/json",
 	"client_id" : Mule::p('https.cprvprocessapi.clientid'),
 	"client_secret" : Mule::p('https.cprvprocessapi.clientsecret'),
-	"messageId" : vars.traceId
+	"messageId" : vars.traceId,
+	"userToken" : ""
 }]]]></http:headers>
       <http:response-validator>
         <http:success-status-code-validator values="200..299,404"/>
