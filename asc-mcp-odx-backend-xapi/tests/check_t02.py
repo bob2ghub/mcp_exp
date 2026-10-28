@@ -192,8 +192,11 @@ def map_property(src, req, pois, props=PROPS, property_code_var=None):
                for rp in rate_plans if dflt(positive(rp.get("perNightRatePrefCurr")), positive(rp.get("perNightRate"))) == per_night]
     strikes = [s for s in strikes if s is not None]
     strike = dflt(positive(src.get("strikethroughRatePrefCurr")), positive(src.get("strikethroughRate")), strikes[0] if strikes else None)
-    currency_in = (first(src, ["currency", "currencyCode"]) or "").upper()
-    currency = currency_in if re.fullmatch(r"[A-Z]{3}", currency_in) else (dflt(text(req.get("currency")), p("default.currency", props), "SGD")).upper()
+    requested = (text(req.get("currency")) or "").upper()
+    property_currency = (first(src, ["currency", "currencyCode"]) or "").upper()
+    currency = (requested if re.fullmatch(r"[A-Z]{3}", requested)
+                else property_currency if re.fullmatch(r"[A-Z]{3}", property_currency)
+                else (dflt(p("default.currency", props), "SGD")).upper())
     nightly = sorted(d for d in (us_date(n.get("date")) for rp in rate_plans for n in objects(rp.get("nightlyRate"))) if d is not None)
     checkin = dflt(iso_date(req.get("checkin")), nightly[0].isoformat() if nightly else None)
     checkout = dflt(iso_date(req.get("checkout")), (nightly[-1] + datetime.timedelta(days=1)).isoformat() if nightly else None)
@@ -399,6 +402,11 @@ results.append(check("best_rate_guaranteed emitted when the property key is set"
 bare = {k: src[k] for k in ("propertyCode", "propertyName", "address", "location")}
 r = map_property(bare, REQ, None)
 results.append(validate("bare property (only code, name, address, location)", r))
+
+r = map_property(src, dict(REQ, currency="USD"), [])
+results.append(check("pricing.currency is the requested currency (the PrefCurr prices are in it), not upstream's SGD", r["pricing"]["currency"] == "USD"))
+r = map_property(src, {"propertyCode": "51052"}, [])
+results.append(check("no requested currency: the property's own (SGD)", r["pricing"]["currency"] == "SGD"))
 
 r = map_property(src, REQ, [])
 results.append(validate("vars.pois [] (maxPois 0, no POIs or POI call failed) -> nearby []", r) and r["nearby"] == [])

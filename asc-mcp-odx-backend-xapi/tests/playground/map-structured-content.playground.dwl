@@ -11,8 +11,8 @@ import days from dw::core::Periods
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
 // Copy of dwl/map-structured-content.dwl for https://dataweave.mulesoft.com/learn/playground.
-// Input 'payload' = {property: <propertyList[0]>, request: <vars.request>, pois: <vars.pois>} (map-structured-content.playground-input.json)
-// Mule's vars.* are read from the payload (renamed ctx.*) and p('key') from the values below.
+// Input 'payload' = {property: <propertyList[0]>, request: <ctx.request>, pois: <ctx.pois>} (map-structured-content.playground-input.json)
+// Mule's ctx.* are read from the payload (renamed ctx.*) and p('key') from the values below.
 var ctx = payload
 var props = {"asset.baseUrl": "https://www.discoverasr.com", "default.currency": "SGD"}
 fun p(key: String) = props[key]
@@ -93,8 +93,13 @@ var totalStay = positive(src.totalStayRatePrefCurr) default positive(src.totalSt
 var strike = positive(src.strikethroughRatePrefCurr) default positive(src.strikethroughRate)
 	default ((ratePlans filter ((rp) -> (positive(rp.perNightRatePrefCurr) default positive(rp.perNightRate)) == perNight)
 		map (positive($.strikethroughRatePrefCurr) default positive($.strikethroughRate))) filter ($ != null))[0]
-var currencyIn = upper(first(src, ["currency", "currencyCode"]) default "")
-var currency = if (currencyIn matches /^[A-Z]{3}$/) currencyIn else upper(text(req.currency) default (p('default.currency') default "SGD"))
+// The *PrefCurr prices are in the currency the request asked booking search for (currencyCode); upstream `currency` is the
+// property's own. So the requested currency labels the prices, else the property's, else default.currency.
+var requestedCurrency = upper(text(req.currency) default "")
+var propertyCurrency = upper(first(src, ["currency", "currencyCode"]) default "")
+var currency = if (requestedCurrency matches /^[A-Z]{3}$/) requestedCurrency
+	else if (propertyCurrency matches /^[A-Z]{3}$/) propertyCurrency
+	else upper(p('default.currency') default "SGD")
 // The stay: the validated request, else the nightly rates upstream quoted.
 var nightlyDates = ((flatten(ratePlans map objects($.nightlyRate)) map usDate($.date)) filter ($ != null)) orderBy $
 var checkin = isoDate(req.checkin) default (if (isEmpty(nightlyDates)) null else nightlyDates[0] as String {format: "yyyy-MM-dd"})

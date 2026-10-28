@@ -76,9 +76,9 @@
     "isPASR": null,
     "isCASR": null,
     "perNightRate": "211.50",
-    "totalStayRate": "423.00",
+    "totalStayRate": "634.50",
     "perNightRatePrefCurr": "211.50",
-    "totalStayRatePrefCurr": "423.00",
+    "totalStayRatePrefCurr": "634.50",
     "junk": {
       "perNightRate": "211.50",
       "totalStayRate": "423.00",
@@ -178,14 +178,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "479.00"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
@@ -262,14 +262,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "563.53"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
@@ -346,14 +346,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "359.70"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
@@ -430,14 +430,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "479.00"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
@@ -514,14 +514,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "211.50",
                     "tax": "42.09",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "253.59"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "211.50",
                     "tax": "42.09",
                     "fee": "0.00",
@@ -538,7 +538,7 @@
                 "redeemASRpointsAfterVoucherApplied": "202872",
                 "savePercentage": "55",
                 "strikethroughRate": "940.00",
-                "strikethroughRatePrefCurr": "940.00",
+                "strikethroughRatePrefCurr": "1410.00",
                 "multiplierPointsRedemptionCampain": "",
                 "bonusPointRewardCampain": "",
                 "campaignName": ""
@@ -598,14 +598,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "757.50",
                     "tax": "150.74",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "908.24"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "757.50",
                     "tax": "150.74",
                     "fee": "0.00",
@@ -682,14 +682,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "423.00",
                     "tax": "84.18",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "507.18"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "423.00",
                     "tax": "84.18",
                     "fee": "0.00",
@@ -766,14 +766,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "563.53"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
@@ -850,14 +850,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "563.53"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
@@ -934,14 +934,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "530.00",
                     "tax": "105.47",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "635.47"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "530.00",
                     "tax": "105.47",
                     "fee": "0.00",
@@ -1018,14 +1018,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "479.00"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "399.50",
                     "tax": "79.50",
                     "fee": "0.00",
@@ -1102,14 +1102,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "563.53"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "470.00",
                     "tax": "93.53",
                     "fee": "0.00",
@@ -1186,14 +1186,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "376.00",
                     "tax": "74.82",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "450.82"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "376.00",
                     "tax": "74.82",
                     "fee": "0.00",
@@ -1270,14 +1270,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "240.00",
                     "tax": "47.76",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "287.76"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "240.00",
                     "tax": "47.76",
                     "fee": "0.00",
@@ -1853,14 +1853,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "765.00",
                     "tax": "152.24",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "917.24"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "765.00",
                     "tax": "152.24",
                     "fee": "0.00",
@@ -1937,14 +1937,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "900.00",
                     "tax": "179.10",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "1079.10"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "900.00",
                     "tax": "179.10",
                     "fee": "0.00",
@@ -2021,14 +2021,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "359.70"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
@@ -2105,14 +2105,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "765.00",
                     "tax": "152.24",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "917.24"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "765.00",
                     "tax": "152.24",
                     "fee": "0.00",
@@ -2652,14 +2652,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "501.50",
                     "tax": "99.80",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "601.30"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "501.50",
                     "tax": "99.80",
                     "fee": "0.00",
@@ -2736,14 +2736,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "590.00",
                     "tax": "117.41",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "707.41"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "590.00",
                     "tax": "117.41",
                     "fee": "0.00",
@@ -2820,14 +2820,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "359.70"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
@@ -3442,14 +3442,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "552.50",
                     "tax": "109.95",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "662.45"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "552.50",
                     "tax": "109.95",
                     "fee": "0.00",
@@ -3526,14 +3526,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "650.00",
                     "tax": "129.35",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "779.35"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "650.00",
                     "tax": "129.35",
                     "fee": "0.00",
@@ -3610,14 +3610,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "359.70"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "300.00",
                     "tax": "59.70",
                     "fee": "0.00",
@@ -3694,14 +3694,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "552.50",
                     "tax": "109.95",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "662.45"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "552.50",
                     "tax": "109.95",
                     "fee": "0.00",
@@ -3778,14 +3778,14 @@
                 },
                 "nightlyRate": [
                   {
-                    "date": "11/10/2026",
+                    "date": "11/17/2026",
                     "price": "292.50",
                     "tax": "58.21",
                     "fee": "0.00",
                     "priceWithTaxAndFee": "350.71"
                   },
                   {
-                    "date": "11/11/2026",
+                    "date": "11/18/2026",
                     "price": "292.50",
                     "tax": "58.21",
                     "fee": "0.00",
@@ -5047,13 +5047,18 @@
   },
   "request": {
     "propertyCode": "51052",
-    "checkin": "2026-11-10",
-    "checkout": "2026-11-12",
+    "checkin": "2026-11-17",
+    "checkout": "2026-11-20",
+    "nights": 3,
     "adults": 2,
-    "children": 0,
+    "children": 1,
+    "childAges": [
+      6
+    ],
     "currency": "SGD",
     "language": "en",
     "maxPois": 5
   },
-  "pois": null
+  "pois": [],
+  "propertyCode": "51052"
 }

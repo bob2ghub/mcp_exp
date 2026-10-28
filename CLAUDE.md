@@ -156,6 +156,7 @@ Maps `vars.property` (one `propertyList[]` entry) + `vars.pois` + `vars.request`
 - **Rules worth knowing:**
   - `brand_code`: upstream `brand`, else slug of `brandName` ("Ascott The Residence" → `ascott-the-residence`). The 51052 response has no `brand` field.
   - `thumbnail_url` (required): `newPropertyThumbnail` → `bannerImageMobile` → first gallery image → first room's `thumbnailImage` / `bannerImageMobile` → `location.mapImage`.
+  - **`pricing.currency`** = the request's currency (the `…PrefCurr` prices are in the currency booking search was asked for), else upstream `currency` (the property's own), else `default.currency`. **Fixed 2026-10-28:** it used upstream `currency` first, so a USD request was labelled SGD.
   - `pricing`: property-level `perNightRatePrefCurr` / `totalStayRatePrefCurr` (**ex-tax, as upstream gives them**; unlike T-04, which adds tax). `strikethrough_rate` comes from the rate plan whose per-night rate equals the lead-in (51052: `ASRAPPFX` 211.50 → 940.00), kept only when higher. No rate → `on_request`.
   - `based_on`: the request's stay; when the request has none, the first and last+1 `nightlyRate` dates (`MM/dd/yyyy`). `adults` ≥ 1 (default 1), `children` default 0. `child_ages` from `vars.request.childAges`, which `validate-request.dwl` sets since 2026-10-28.
   - `hotel_information.check_in_time` / `check_out_time`: upstream "03:00 PM" → "15:00" (schema is 24-hour).
