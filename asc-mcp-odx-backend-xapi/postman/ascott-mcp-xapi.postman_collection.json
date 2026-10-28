@@ -155,7 +155,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2,\n  \"children\": 1,\n  \"currency\": \"{{currency}}\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 1,\n  \"childAges\": [\n    6\n  ],\n  \"currencyCode\": \"{{currency}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -414,7 +414,7 @@
     },
     {
       "name": "T-02 get_property_details",
-      "description": "POST /api/v1/property-details: one property's details (schema 0.6.0).",
+      "description": "POST /api/v1/property-details: one property's details (output schema 0.6.0, input schema 0.2.0).",
       "item": [
         {
           "id": "58aac52e-5a29-54c4-9b24-8a93d0990608",
@@ -452,7 +452,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"{{checkin}}\",\n  \"checkout\": \"{{checkout}}\",\n  \"adults\": 2,\n  \"children\": 0,\n  \"currency\": \"{{currency}}\",\n  \"language\": \"en\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 0,\n  \"currencyCode\": \"{{currency}}\",\n  \"language\": \"en\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -473,8 +473,8 @@
           }
         },
         {
-          "id": "0ccac49e-c7ac-5d64-accf-fa534a5f362d",
-          "name": "200 by property name",
+          "id": "af7f64e6-11b7-50f7-9008-d4e6b5ca5c3f",
+          "name": "200 with children (childAges, one per child)",
           "event": [
             {
               "listen": "test",
@@ -506,7 +506,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyName\": \"{{propertyName}}\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"{{checkin}}\",\n  \"checkoutDate\": \"{{checkout}}\",\n  \"noOfadults\": 2,\n  \"noOfchildren\": 2,\n  \"childAges\": [\n    4,\n    9\n  ],\n  \"currencyCode\": \"{{currency}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -611,7 +611,7 @@
                 "value": "{{correlationId}}"
               }
             ],
-            "description": "nearby[] is [] while the POI mock answers 400 for real codes.",
+            "description": "nearby[] is [] while the POI mock answers 400 for real codes. maxPois is server-side, not in the input schema.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"maxPois\": 5\n}",
@@ -635,8 +635,8 @@
           }
         },
         {
-          "id": "cae8e16f-7626-5950-81fb-50ffd16cd110",
-          "name": "400 no propertyCode or propertyName",
+          "id": "b3700d88-2f69-5656-9f65-aa8f3145600c",
+          "name": "400 no propertyCode",
           "event": [
             {
               "listen": "test",
@@ -663,7 +663,105 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"adults\": 2\n}",
+              "raw": "{\n  \"noOfadults\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/property-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "property-details"
+              ]
+            }
+          }
+        },
+        {
+          "id": "c78d685e-65cf-5443-99f8-f73da4423ca9",
+          "name": "400 propertyName only (not in input schema 0.2.0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyName\": \"{{propertyName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/property-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "property-details"
+              ]
+            }
+          }
+        },
+        {
+          "id": "71c31609-e96d-5445-b8d3-c1f8527ed75a",
+          "name": "400 children without childAges",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"noOfchildren\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -712,7 +810,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkin\": \"2030-01-10\",\n  \"checkout\": \"2030-01-09\"\n}",
+              "raw": "{\n  \"propertyCode\": \"{{propertyCode}}\",\n  \"checkinDate\": \"2030-01-10\",\n  \"checkoutDate\": \"2030-01-09\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -27,7 +27,7 @@ Read this before changing anything in this repo. It is the agreed context for th
 
 | Tool | Path | Flow file | Response schema |
 |---|---|---|---|
-| T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26) |
+| T-02 `get_property_details` | `/api/v1/property-details` | `get-property-details.xml` | `schemas/T02-get-property-details.structured-content.schema.json` (**0.6.0**, owner's file 2026-10-26); input `schemas/T02-get-property-details.input.schema.json` (**0.2.0**, owner's file 2026-10-28) |
 | T-03 `get_service_offerings` | `${t03.http.path}` (`/api/v1/service-offerings`) | `get-service-offerings.xml` | `schemas/T03-get-service-offerings.structured-content.schema.json` (0.1.0) |
 | T-04 `get_room_rate_details`, one or several rooms | `/api/v1/multi-room-details` (`?format=raw` returns the unmapped property) | `get-multi-room-rates.xml` | `schemas/T04-get-room-rate-details.structured-content.schema.json` (**0.3.0**, owner's file 2026-10-26) |
 | T-05 `get_promotions` (vouchers only) | `/api/v1/promotions` | `t05-get-promotions.xml` | `schemas/T05-get-promotions.structured-content.schema.json` (**0.2.0**, owner's file 2026-10-28); input `schemas/T05-get-promotions.input.schema.json` (0.1.0) |
@@ -144,7 +144,8 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 ## Not yet in the base (ask for these before relying on them)
 
 - The error-handler file that defines `property-details-error-handler`, which T-02 and T-03 reference.
-- `src/main/resources/dwl/*`: `validate-request.dwl`, `property-info-request.dwl`, `unwrap-property.dwl` and `poi-request.dwl`. Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`. (`map-structured-content.dwl` for T-02 is now in the base: see "T-02 mapping" below.)
+- `src/main/resources/dwl/*`: `property-info-request.dwl`, `unwrap-property.dwl` and `poi-request.dwl`. Until the deployed versions arrive, assume the versions in `ascott.mcp.get-property-details.xapi/src/main/resources/dwl/` at commit `76aa457`. (`map-structured-content.dwl` and `validate-request.dwl` for T-02 are now in the base: see "T-02 mapping" and "T-02 request" below.)
+- **`property-info-request.dwl` sends `apartmentList[0].childAges: []`** even though T-02 now validates `childAges`: change it to `childAges: vars.request.childAges default []` in the owner's copy (T-03 / T-06 set no `childAges`, so they are unaffected).
 - `uat.yaml` (share without secrets) and `pom.xml`.
 
 ## T-02 mapping (`dwl/map-structured-content.dwl`, written by us 2026-10-26, not yet deployed)
@@ -156,7 +157,7 @@ Maps `vars.property` (one `propertyList[]` entry) + `vars.pois` + `vars.request`
   - `brand_code`: upstream `brand`, else slug of `brandName` ("Ascott The Residence" → `ascott-the-residence`). The 51052 response has no `brand` field.
   - `thumbnail_url` (required): `newPropertyThumbnail` → `bannerImageMobile` → first gallery image → first room's `thumbnailImage` / `bannerImageMobile` → `location.mapImage`.
   - `pricing`: property-level `perNightRatePrefCurr` / `totalStayRatePrefCurr` (**ex-tax, as upstream gives them**; unlike T-04, which adds tax). `strikethrough_rate` comes from the rate plan whose per-night rate equals the lead-in (51052: `ASRAPPFX` 211.50 → 940.00), kept only when higher. No rate → `on_request`.
-  - `based_on`: the request's stay; when the request has none, the first and last+1 `nightlyRate` dates (`MM/dd/yyyy`). `adults` ≥ 1 (default 1), `children` default 0. `child_ages` from `vars.request.childAges`, **which `validate-request.dwl` does not set yet**, so it is absent until the validator passes it.
+  - `based_on`: the request's stay; when the request has none, the first and last+1 `nightlyRate` dates (`MM/dd/yyyy`). `adults` ≥ 1 (default 1), `children` default 0. `child_ages` from `vars.request.childAges`, which `validate-request.dwl` sets since 2026-10-28.
   - `hotel_information.check_in_time` / `check_out_time`: upstream "03:00 PM" → "15:00" (schema is 24-hour).
   - `location`: coordinates are converted to numbers; `gettingToProperty` / `publicTransport` titles have upstream's `{0}` replaced with the property name.
   - `amenities.facility_groups` from `facilities.facilityGroup`: label = `description`, else `name` (e.g. "Residents' lounge" has a null description); rows without label or icon dropped; **de-duplicated within and across groups** (schema: "De-duplicated by the server"), so groups left empty disappear (51052: "Business Matters").
@@ -166,6 +167,16 @@ Maps `vars.property` (one `propertyList[]` entry) + `vars.pois` + `vars.request`
   - `best_rate_guaranteed`: upstream only has the `isBestRateGuaranteeEnabled` flag, so the sentence is the optional key `t02.bestrateguaranteedtext` (`src/main/resources/property-details.yaml`). Not set → no cell.
   - `awards` from `listOfAwards` (image + title), `gallery` titles fall back to the property name (upstream sends "").
 - **Required in the schema with no fallback:** `location.address` and `location.coordinates`. Both are present in the booking search response; a property without them would not validate.
+
+## T-02 request (`dwl/validate-request.dwl`, rewritten by us 2026-10-28 to input schema 0.2.0, not yet deployed)
+
+Validates the tool arguments against the owner's `schemas/T02-get-property-details.input.schema.json` **0.2.0** and applies the server defaults; `common-validate-request` (`validate-request.xml`) runs it into `vars.validation` / `vars.request`.
+
+- **Schema names:** `propertyCode` (required, digits), `checkinDate` (default today + `t02.checkinOffsetDays`, **30**), `checkoutDate` (default check-in + `t02.nights`, 1), `noOfadults` (default **1**), `noOfchildren` (default 0), **`childAges` (required when `noOfchildren` > 0, one age per child, 0–17)**, `currencyCode` (upper-cased; default the property's own), `language` (the 11-tag enum; anything else falls back to `default.language`). Both `t02.*` keys are optional. Limits from `request.maxAdults` / `maxChildren` / `maxNights`.
+- **Still accepted so old callers work:** the short names `checkin`, `checkout`, `adults`, `children`, `currency` (the schema name wins when both are sent), a numeric `propertyCode`, a one-code array (the booking search shape the owner sent from Postman on 2026-10-28), and the server-side `maxPois` (`poi.maxPerProperty`, default 5). Unknown fields are ignored.
+- **No longer accepted: `propertyName`** (not in 0.2.0). A body with only a name is a 400 "propertyCode is required."
+- **Output `vars.request`** keeps the downstream names (`propertyCode`, `checkin`, `checkout`, `adults`, `children`, `currency`, `language`, `maxPois`) and adds `childAges` and `nights`.
+- **Checks:** `tests/check_t02_request.py` (23 checks; also validates the bodies against the input schema). Playground: `tests/playground/validate-request.playground.*`. Postman folder "T-02" uses the schema names.
 
 ## T-03 mapping (`dwl/service-offerings.dwl`, written by us 2026-10-26, not yet deployed)
 
@@ -359,7 +370,7 @@ Owner's request (2026-10-28): map every tool call to its xAPI endpoint, with pro
 - **Tool names** are the schema ids' names (`urn:ascott:mcp:<name>:…`), all snake_case. **`compare-properties` (the owner's hyphen) became `compare_properties`**: confirm the widget matches on that name.
 - **One vocabulary for the model:** `propertyCode` (digits), `checkinDate` / `checkoutDate`, `noOfadults` / `noOfchildren` / `childAges` or `apartmentList[{noOfadults, noOfchildren, childAges}]`, `currencyCode` (`^[A-Z]{3}$`), `language` (the 11-tag enum of the owner's schemas).
   - `get_promotions` and `create_booking` declare **the owner's input schemas verbatim** (`schemas/T05-…input…`, `schemas/T08-…input…`), with only `$schema` set to draft-07 and `dependentRequired` written as draft-07 `dependencies`.
-  - **`get_property_details`** takes the shared names and its flow maps them to the short names the T-02 validator reads (`checkin`, `checkout`, `adults`, `children`, `currency`) in `vars.xapiBody`.
+  - **`get_property_details`** declares the owner's T-02 input schema 0.2.0 (draft-07 `$schema`; `propertyName` is gone, `childAges` added) and sends the arguments unchanged: the xAPI's `validate-request.dwl` reads those names since 2026-10-28 (the `vars.xapiBody` mapping to short names was removed).
   - `get_room_rate_details` takes `apartmentList[]` (1–4 rooms) and `priceIncludesTax`; `compare_rooms_rates` takes `roomCodes[]` (2–4) and one room's guests; `compare_properties` now also takes `childAges`.
   - Limits in the non-owner schemas (8 adults, 6 children, 4 rooms) are guesses at `request.maxAdults` / `request.maxChildren` / `rooms.maxRooms`; the xAPI still enforces its own and answers 400.
 - **Descriptions** say what each tool returns, when to use it and which tool to use instead, how results chain (`room_code` / `rate_plan_code` from T-04 into T-07 and T-08), the tax basis of prices, that every tool is read-only, and that `create_booking` reserves nothing.

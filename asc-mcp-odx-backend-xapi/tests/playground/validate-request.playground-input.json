@@ -1,0 +1,12 @@
+{
+  "propertyCode": "51052",
+  "checkinDate": "2026-12-10",
+  "checkoutDate": "2026-12-13",
+  "noOfadults": 2,
+  "noOfchildren": 1,
+  "childAges": [
+    6
+  ],
+  "currencyCode": "USD",
+  "language": "en"
+}

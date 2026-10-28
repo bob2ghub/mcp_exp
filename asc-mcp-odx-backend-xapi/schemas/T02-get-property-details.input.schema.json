@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ascott:mcp:get_property_details:input:0.2.0",
+  "title": "Get property details — tool input (arguments of tools/call)",
+  "description": "The `inputSchema` of the `get_property_details` MCP tool: what the model sends. Both servers (the local mock and MuleSoft's) must declare exactly this. Derived from PRD T-02 section 5 ('INPUT PARAMETERS — LLM-to-API SCHEMA'), with the same deliberate differences as T-01's input (property-details/README.md, 'Input contract'): parameters are TYPED where the PRD gives the upstream String; `memberId` is absent (anonymous MVP); `language` is added (T-01 input 0.2.0). Defaults are applied by the server. 0.1.0, provisional (2026-10-10). 0.2.0 (2026-10-26): `childAges`, required when `noOfchildren` > 0.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "propertyCode"
+  ],
+  "properties": {
+    "propertyCode": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "The property's code, e.g. \"50926\". Resolved by the model from the user's property name, or carried from a T-01 result (`property_code`). PRD §5 `propertyCode`.",
+      "examples": [
+        "50926"
+      ]
+    },
+    "checkinDate": {
+      "type": "string",
+      "format": "date",
+      "description": "YYYY-MM-DD, today or later. Carried from the T-01 context when present. Server default when omitted: 30 days from today (PRD §5). Must be before `checkoutDate` (enforced by the server)."
+    },
+    "checkoutDate": {
+      "type": "string",
+      "format": "date",
+      "description": "YYYY-MM-DD, after `checkinDate`. Carried from the T-01 context when present. Server default when omitted: the day after check-in (PRD §5: 31 days from today)."
+    },
+    "noOfadults": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Server default 1. Carried from the T-01 context when present. Integer, not the PRD's String."
+    },
+    "noOfchildren": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Server default 0. Carried from the T-01 context when present. When above 0, `childAges` is required."
+    },
+    "childAges": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Each child's age in years, one per child: its length MUST equal `noOfchildren`. REQUIRED whenever `noOfchildren` is above 0 (the server rejects a call without it): if the user mentions children but not their ages, ASK their ages before calling; never guess them. Omit, or `[]`, when there are no children. Carried on to the next tools (T-04) and to T-04 `apartmentList[].childAges`, where upstream requires it and decides who counts as a child. Added 0.2.0 (user, 2026-10-26)."
+    },
+    "currencyCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217; every rate in the response uses it. Carried from the T-01 response currency when present. Server default when omitted: the property's own currency, as T-01 (PRD T-02 §5 still says 'the currency associated with the user's region'; see README, 'Input contract')."
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "fr",
+        "de",
+        "es",
+        "ko",
+        "ja",
+        "id",
+        "vi",
+        "th"
+      ],
+      "description": "The language the user is writing in, set by the model and never asked of the user: a BCP 47 tag from this list (the languages of discoverasr.com, Chinese split by script so the model can pick from what the user typed; Arabic is not supported yet, user decision 2026-10-10). Omit for any other language, or when unsure. The widget shows its own UI text and website links in it; property data (names, descriptions, amenities) stays in the API's language for now. Servers accept it and pass it through untouched (user decision 2026-10-09; not in the PRD).",
+      "examples": [
+        "en",
+        "th"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "noOfchildren": {
+            "minimum": 1
+          }
+        },
+        "required": [
+          "noOfchildren"
+        ]
+      },
+      "then": {
+        "required": [
+          "childAges"
+        ]
+      }
+    }
+  ]
+}

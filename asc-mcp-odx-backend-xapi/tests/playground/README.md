@@ -30,3 +30,8 @@ The result depends on today's date only through the defaults; the sample sets bo
 - `create-booking-response.playground.dwl` + `-input.json`: the 51052 T-04 answer for that request. Expect `problems: []`
   and `response.rooms[0]` = 0BRCT with rate ZZFLEX, `meta.resolution` "selected".
 - `create-booking-add-ons.playground.dwl` + `-input.json`: a GUESSED addonlist response (no real sample yet). Expect two add-ons.
+
+## T-02 get_property_details request (input schema 0.2.0)
+
+- `validate-request.playground.dwl` + `-input.json`: 2 adults, 1 child aged 6, 12-10 to 12-13, USD. Expect `errors: []`,
+  `request.childAges` `[6]`, `nights` 3. Remove `childAges` to see "childAges is required when noOfchildren is above 0".

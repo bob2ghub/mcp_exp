@@ -35,19 +35,24 @@ def request(name, path, body, status, tool=None, checks=(), desc="", raw=None, q
 STAY = {"checkinDate": "{{checkin}}", "checkoutDate": "{{checkout}}"}
 
 # ---------------------------------------------------------------------------------------------------- T-02
-T02 = ("T-02 get_property_details", "POST /api/v1/property-details: one property's details (schema 0.6.0).", [
+T02 = ("T-02 get_property_details", "POST /api/v1/property-details: one property's details (output schema 0.6.0, input schema 0.2.0).", [
     request("200 by property code, full stay", "/api/v1/property-details",
-            {"propertyCode": "{{propertyCode}}", "checkin": "{{checkin}}", "checkout": "{{checkout}}", "adults": 2, "children": 0,
-             "currency": "{{currency}}", "language": "en"}, 200, "T02",
+            dict(propertyCode="{{propertyCode}}", **STAY, noOfadults=2, noOfchildren=0, currencyCode="{{currency}}", language="en"),
+            200, "T02",
             ["pm.expect(b.property_code).to.eql(pm.collectionVariables.get('propertyCode'));",
              "pm.expect(b.pricing).to.be.an('object');"]),
-    request("200 by property name", "/api/v1/property-details", {"propertyName": "{{propertyName}}"}, 200, "T02"),
+    request("200 with children (childAges, one per child)", "/api/v1/property-details",
+            dict(propertyCode="{{propertyCode}}", **STAY, noOfadults=2, noOfchildren=2, childAges=[4, 9], currencyCode="{{currency}}"),
+            200, "T02"),
     request("200 property code only (server defaults)", "/api/v1/property-details", {"propertyCode": "{{propertyCode}}"}, 200, "T02"),
     request("200 with nearby POIs (maxPois 5)", "/api/v1/property-details", {"propertyCode": "{{propertyCode}}", "maxPois": 5}, 200, "T02",
-            desc="nearby[] is [] while the POI mock answers 400 for real codes."),
-    request("400 no propertyCode or propertyName", "/api/v1/property-details", {"adults": 2}, 400),
+            desc="nearby[] is [] while the POI mock answers 400 for real codes. maxPois is server-side, not in the input schema."),
+    request("400 no propertyCode", "/api/v1/property-details", {"noOfadults": 2}, 400),
+    request("400 propertyName only (not in input schema 0.2.0)", "/api/v1/property-details", {"propertyName": "{{propertyName}}"}, 400),
+    request("400 children without childAges", "/api/v1/property-details",
+            {"propertyCode": "{{propertyCode}}", "noOfchildren": 1}, 400),
     request("400 checkout before checkin", "/api/v1/property-details",
-            {"propertyCode": "{{propertyCode}}", "checkin": "2030-01-10", "checkout": "2030-01-09"}, 400),
+            {"propertyCode": "{{propertyCode}}", "checkinDate": "2030-01-10", "checkoutDate": "2030-01-09"}, 400),
     request("400 invalid JSON", "/api/v1/property-details", None, 400, raw='{"propertyCode": "51052",'),
     request("404 unknown property", "/api/v1/property-details", {"propertyCode": "99999999"}, 404),
 ])
@@ -235,8 +240,8 @@ T08 = ("T-08 create_booking (checkout hand-off, read-only)",
 # ---------------------------------------------------------------------------------------------------- journey
 JOURNEY = ("00 Journey: details -> rooms -> compare -> book -> vouchers",
            "Run this folder alone (Collection Runner) for the ChatGPT journey in order; each step uses what the previous one returned.", [
-    request("1 get_property_details", "/api/v1/property-details", {"propertyCode": "{{propertyCode}}", "checkin": "{{checkin}}",
-            "checkout": "{{checkout}}", "adults": 2, "children": 1, "currency": "{{currency}}"}, 200, "T02"),
+    request("1 get_property_details", "/api/v1/property-details",
+            dict(propertyCode="{{propertyCode}}", **STAY, noOfadults=2, noOfchildren=1, childAges=[6], currencyCode="{{currency}}"), 200, "T02"),
     request("2 get_room_rate_details", "/api/v1/multi-room-details",
             dict(propertyCode="{{propertyCode}}", **STAY, noOfadults=2, noOfchildren=1, childAges=[6], currencyCode="SGD"), 200, "T04", SAVE_PICK),
     request("3 compare_rooms_rates (first four)", "/api/v1/compare-rooms",
