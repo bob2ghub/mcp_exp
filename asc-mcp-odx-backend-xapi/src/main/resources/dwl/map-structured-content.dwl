@@ -62,7 +62,9 @@ fun usDate(v) = do {
 }
 
 // ---------- sources
-var src = obj(vars.property)
+// The property: vars.property (set by get-property-common-info), else the payload itself, either the booking search
+// response ({propertyList: [...]}) or one propertyList[] entry, so the script also works in a plain Transform Message.
+var src = obj(vars.property default (if (payload.propertyList is Array) payload.propertyList[0] else payload))
 var req = obj(vars.request)
 var loc = obj(src.location)
 var ratePlans = objects(flatten(flatten(objects(src.apartments) map objects($.room0)) map objects($.ratePlan)))

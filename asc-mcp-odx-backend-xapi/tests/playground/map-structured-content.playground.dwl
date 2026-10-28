@@ -11,9 +11,10 @@ import days from dw::core::Periods
 
 // ---------- PLAYGROUND SHIM (not in the deployed file)
 // Copy of dwl/map-structured-content.dwl for https://dataweave.mulesoft.com/learn/playground.
-// Input 'payload' = {property: <propertyList[0]>, request: <ctx.request>, pois: <ctx.pois>} (map-structured-content.playground-input.json)
-// Mule's ctx.* are read from the payload (renamed ctx.*) and p('key') from the values below.
-var ctx = payload
+// Input 'payload' = {property: <propertyList[0]>, request: <vars.request>, pois: <vars.pois>} (map-structured-content.playground-input.json)
+// Mule's vars.* are read from the payload (renamed ctx.*) and p('key') from the values below.
+// Paste either {property, request, pois} or the booking search response / one property object as it is.
+var ctx = if (payload.property is Object) payload else {property: if (payload.propertyList is Array) payload.propertyList[0] else payload}
 var props = {"asset.baseUrl": "https://www.discoverasr.com", "default.currency": "SGD"}
 fun p(key: String) = props[key]
 // ---------- END SHIM
@@ -71,7 +72,9 @@ fun usDate(v) = do {
 }
 
 // ---------- sources
-var src = obj(ctx.property)
+// The property: ctx.property (set by get-property-common-info), else the payload itself, either the booking search
+// response ({propertyList: [...]}) or one propertyList[] entry, so the script also works in a plain Transform Message.
+var src = obj(ctx.property default (if (payload.propertyList is Array) payload.propertyList[0] else payload))
 var req = obj(ctx.request)
 var loc = obj(src.location)
 var ratePlans = objects(flatten(flatten(objects(src.apartments) map objects($.room0)) map objects($.ratePlan)))

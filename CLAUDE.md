@@ -150,7 +150,7 @@ POI: the Anypoint mock (`/mocking/api/v1/links/7f9e4e4b-…/getpropertypois`) an
 
 ## T-02 mapping (`dwl/map-structured-content.dwl`, written by us 2026-10-26, not yet deployed)
 
-Maps `vars.property` (one `propertyList[]` entry) + `vars.pois` + `vars.request` to T-02 schema **0.6.0**. Same file name and inputs as the version the T-02 flow already references, so it is a drop-in replacement.
+Maps `vars.property` (one `propertyList[]` entry; when that variable is not set, the payload itself: the booking search response or one property object, so it also works in a plain Transform Message, 2026-10-28) + `vars.pois` + `vars.request` to T-02 schema **0.6.0**. Same file name and inputs as the version the T-02 flow already references, so it is a drop-in replacement.
 
 - **Checked against the real 51052 (Ascott Raffles Place) booking search response**, stored at `examples/upstream-property-details-51052.json`. `tests/check_t02.py` is a function-for-function Python copy that writes `examples/property-details-51052-response.sample.json` and runs 23 checks (that sample, no stay in the request, `childAges`, no rate, POIs, the best-rate text, a bare property); all validate against 0.6.0. Keep the two in step. The DataWeave itself has not been run here: a downloaded runtime may not be executed in this session. `tests/playground/map-structured-content.playground.dwl` + `-input.json` run it in the DataWeave Playground.
 - **Rules worth knowing:**
