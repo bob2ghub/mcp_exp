@@ -400,4 +400,7 @@ bare = {k: src[k] for k in ("propertyCode", "propertyName", "address", "location
 r = map_property(bare, REQ, None)
 results.append(validate("bare property (only code, name, address, location)", r))
 
+r = map_property(src, REQ, [])
+results.append(validate("vars.pois [] (maxPois 0, no POIs or POI call failed) -> nearby []", r) and r["nearby"] == [])
+
 sys.exit(0 if all(results) else 1)
